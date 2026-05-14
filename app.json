@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Thane Property Search",
+    "slug": "thane-property-search",
+    "version": "1.0.0",
+    "scheme": "thaneproperty",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.thane.propertysearch",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.thane.propertysearch",
+      "adaptiveIcon": {
+        "backgroundColor": "#2563eb"
+      }
+    },
+    "plugins": ["expo-secure-store"]
+  }
+}
