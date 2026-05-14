@@ -8,3 +8,4 @@ ios/
 .env
 .env.*
 !.env.example
+/.vs/Repo.slnx/FileContentIndex
