@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Thane Property Search",
+    "name": "Thane Flats",
     "slug": "thane-property-search",
     "version": "1.0.0",
     "scheme": "thaneproperty",
@@ -12,10 +12,23 @@
     },
     "android": {
       "package": "com.thane.propertysearch",
+      "permissions": [
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_PHONE_NUMBERS"
+      ],
+      "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "backgroundColor": "#2563eb"
       }
     },
-    "plugins": ["expo-secure-store"]
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Thane Flats to access your photos for property listings."
+        }
+      ]
+    ]
   }
 }

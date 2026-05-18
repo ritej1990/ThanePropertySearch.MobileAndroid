@@ -15,6 +15,17 @@ export type LoginBody = {
   password: string;
 };
 
+export type UsernameCheckResponse = {
+  exists: boolean;
+  message: string;
+  suggestions?: string[];
+};
+
+export type EmailCheckResponse = {
+  exists: boolean;
+  message: string;
+};
+
 /** Matches RegisterRequest */
 export type RegisterBody = {
   fullName: string;

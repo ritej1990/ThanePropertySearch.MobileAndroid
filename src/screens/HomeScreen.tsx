@@ -1,44 +1,85 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   Pressable,
-  ActivityIndicator,
   StyleSheet,
   RefreshControl,
-  Image,
+  type FlatList as FlatListType,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { PropertyListCard } from '../components/property/PropertyListCard';
+import { BrandLoading } from '../components/ui/BrandLoading';
+import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { PropertySearchPanel } from '../components/search/PropertySearchPanel';
+import { PropertySearchStickyBar } from '../components/search/PropertySearchStickyBar';
+import { PropertySearchMap } from '../components/search/PropertySearchMap';
+import { SearchEmptyState } from '../components/search/SearchEmptyState';
+import { PlanTopButton } from '../components/search/PlanTopButton';
+import { SearchViewToggle, type SearchViewMode } from '../components/search/SearchViewToggle';
+import type { SelectedPlace } from '../services/googlePlaces';
+import { DEFAULT_SEARCH_RADIUS_KM, hasGoogleMapsKey } from '../config/env';
 import type { RootStackParamList } from '../navigation/types';
 import { propertiesApi } from '../api/singleton';
 import type { PropertyResponse } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
+import { colors, radius, spacing } from '../theme';
+import {
+  applyPropertySearch,
+  countActiveFilters,
+  defaultSearchFilters,
+  type PropertySearchFilters,
+} from '../utils/propertySearchFilters';
+import { isOwnerRole, isUserRole } from '../utils/roles';
+import { useScrollCompactHeader } from '../hooks/useScrollCompactHeader';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
-  const { profile, logout } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
+  const listRef = useRef<FlatListType<PropertyResponse>>(null);
   const [items, setItems] = useState<PropertyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
+  const [filters, setFilters] = useState<PropertySearchFilters>(defaultSearchFilters);
+  const [viewMode, setViewMode] = useState<SearchViewMode>('list');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const { compactHeaderVisible, onScroll, resetCompactHeader } =
+    useScrollCompactHeader();
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await propertiesApi.list();
-      setItems(data);
-    } catch (e) {
-      const msg = e instanceof ApiError ? e.message : 'Could not load listings';
-      setError(msg);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (place?: SelectedPlace | null) => {
+      setError(null);
+      try {
+        const geo = place !== undefined ? place : selectedPlace;
+        const data = await propertiesApi.list(
+          geo
+            ? {
+                latitude: geo.latitude,
+                longitude: geo.longitude,
+                radiusKm: DEFAULT_SEARCH_RADIUS_KM,
+              }
+            : undefined
+        );
+        setItems(data);
+      } catch (e) {
+        const msg = e instanceof ApiError ? e.message : 'Could not load listings';
+        setError(msg);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [selectedPlace]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -47,129 +88,286 @@ export default function HomeScreen({ navigation }: Props) {
     }, [load])
   );
 
-  const isOwner = profile?.role === 'Owner';
+  function handlePlaceSelected(place: SelectedPlace | null) {
+    setSelectedPlace(place);
+    setLoading(true);
+    load(place);
+  }
+
+  function clearSearchAndFilters() {
+    setSearchText('');
+    setSelectedPlace(null);
+    setFilters(defaultSearchFilters());
+    setFiltersExpanded(false);
+    resetCompactHeader();
+    setLoading(true);
+    load(null);
+  }
+
+  function handleViewModeChange(mode: SearchViewMode) {
+    setViewMode(mode);
+    if (mode === 'map') {
+      resetCompactHeader();
+    }
+  }
+
+  function scrollToSearchTop(expandFilters = false) {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    resetCompactHeader();
+    if (expandFilters) {
+      setFiltersExpanded(true);
+    }
+  }
+
+  const filtered = useMemo(
+    () => applyPropertySearch(items, filters, searchText),
+    [items, filters, searchText]
+  );
+
+  const activeFilterCount = countActiveFilters(filters);
+  const isOwner = isOwnerRole(profile?.role);
+  const showPlan = isUserRole(profile?.role);
+
+  const openPlans = useCallback(() => {
+    navigation.navigate('EssentialService');
+  }, [navigation]);
+
+  function openProperty(item: PropertyResponse) {
+    navigation.navigate('PropertyDetails', {
+      propertyId: item.id,
+      title: item.title,
+    });
+  }
+
+  const goOwnerDashboard = useCallback(() => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'OwnerDashboard' }],
+    });
+  }, [navigation]);
+
+  const listHeader = useMemo(
+    () => (
+      <PropertySearchPanel
+        searchText={searchText}
+        onSearchTextChange={setSearchText}
+        selectedPlace={selectedPlace}
+        onPlaceSelected={handlePlaceSelected}
+        filters={filters}
+        onFiltersChange={setFilters}
+        resultCount={filtered.length}
+        totalLoaded={items.length}
+        onClearAll={clearSearchAndFilters}
+        showOwnerLink={isOwner}
+        onOwnerDashboard={isOwner ? goOwnerDashboard : undefined}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        filtersExpanded={filtersExpanded}
+        onFiltersExpandedChange={setFiltersExpanded}
+        embedded
+        hideViewToggle
+      />
+    ),
+    [
+      searchText,
+      selectedPlace,
+      filters,
+      filtered.length,
+      items.length,
+      isOwner,
+      viewMode,
+      filtersExpanded,
+      goOwnerDashboard,
+      handlePlaceSelected,
+      clearSearchAndFilters,
+      handleViewModeChange,
+    ]
+  );
+
+  const mapSearchPanel = (
+    <PropertySearchPanel
+      searchText={searchText}
+      onSearchTextChange={setSearchText}
+      selectedPlace={selectedPlace}
+      onPlaceSelected={handlePlaceSelected}
+      filters={filters}
+      onFiltersChange={setFilters}
+      resultCount={filtered.length}
+      totalLoaded={items.length}
+      onClearAll={clearSearchAndFilters}
+      showOwnerLink={isOwner}
+      onOwnerDashboard={isOwner ? goOwnerDashboard : undefined}
+      viewMode={viewMode}
+      onViewModeChange={handleViewModeChange}
+      filtersExpanded={filtersExpanded}
+      onFiltersExpandedChange={setFiltersExpanded}
+      hideViewToggle
+    />
+  );
+
+  const viewToggleBar = (
+    <View style={styles.viewBar}>
+      <View style={styles.viewBarToggle}>
+        <SearchViewToggle
+          mode={viewMode}
+          onChange={handleViewModeChange}
+          mapDisabled={!hasGoogleMapsKey()}
+          compact
+        />
+      </View>
+      {showPlan ? <PlanTopButton onPress={openPlans} /> : null}
+    </View>
+  );
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.toolbar}>
-        <Text style={styles.hi} numberOfLines={1}>
-          Hi, {profile?.fullName ?? 'there'}
-        </Text>
-        {isOwner ? (
-          <Pressable
-            style={styles.linkBtn}
-            onPress={() => navigation.navigate('OwnerDashboard')}
-          >
-            <Text style={styles.linkText}>My listings</Text>
-          </Pressable>
-        ) : null}
-        <Pressable style={styles.outlineBtn} onPress={() => logout()}>
-          <Text style={styles.outlineText}>Sign out</Text>
-        </Pressable>
-      </View>
+    <AuthenticatedScreenLayout>
+      <View style={styles.wrap}>
+        {viewToggleBar}
 
-      {loading && items.length === 0 ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" />
-        </View>
-      ) : error ? (
-        <View style={styles.centered}>
-          <Text style={styles.err}>{error}</Text>
-          <Pressable style={styles.retry} onPress={load}>
-            <Text style={styles.retryText}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => String(item.id)}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                load();
-              }}
-            />
-          }
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.card}
-              onPress={() =>
-                navigation.navigate('PropertyDetails', {
-                  propertyId: item.id,
-                  title: item.title,
-                })
-              }
-            >
-              {item.imageUrl ? (
-                <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
-              ) : (
-                <View style={[styles.thumb, styles.thumbPlaceholder]} />
-              )}
-              <View style={styles.cardBody}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.meta}>{item.areaName}</Text>
-                <Text style={styles.metaSmall}>
-                  {item.isForRent ? `Rent ₹${item.rentAmount}` : ''}
-                  {item.isForRent && item.isForSale ? ' · ' : ''}
-                  {item.isForSale && item.sellPrice != null
-                    ? `Sale ₹${item.sellPrice}`
-                    : ''}
-                </Text>
-                <Text style={styles.status}>{item.reviewStatus}</Text>
+        {viewMode === 'list' && compactHeaderVisible ? (
+          <PropertySearchStickyBar
+            searchText={searchText}
+            selectedPlace={selectedPlace}
+            resultCount={filtered.length}
+            activeFilterCount={activeFilterCount}
+            onPressSearch={() => scrollToSearchTop(false)}
+            onPressFilters={() => scrollToSearchTop(true)}
+            showPlanButton={showPlan}
+            onPressPlan={openPlans}
+          />
+        ) : null}
+
+        {viewMode === 'map' ? (
+          <View style={styles.mapWrap}>
+            {mapSearchPanel}
+            {loading && items.length === 0 ? (
+              <BrandLoading message="Loading homes…" />
+            ) : error ? (
+              <View style={styles.centered}>
+                <Text style={styles.errTitle}>Could not load listings</Text>
+                <Text style={styles.err}>{error}</Text>
+                <Pressable style={styles.retryBtn} onPress={() => load()}>
+                  <Text style={styles.retryText}>Try again</Text>
+                </Pressable>
               </View>
+            ) : (
+              <PropertySearchMap
+                properties={filtered}
+                selectedPlace={selectedPlace}
+                onPropertyPress={openProperty}
+              />
+            )}
+          </View>
+        ) : loading && items.length === 0 ? (
+          <BrandLoading message="Loading homes…" />
+        ) : error ? (
+          <View style={styles.centered}>
+            <Text style={styles.errTitle}>Could not load listings</Text>
+            <Text style={styles.err}>{error}</Text>
+            <Pressable style={styles.retryBtn} onPress={() => load()}>
+              <Text style={styles.retryText}>Try again</Text>
             </Pressable>
-          )}
-        />
-      )}
-    </View>
+          </View>
+        ) : (
+          <FlatList
+            ref={listRef}
+            data={filtered}
+            keyExtractor={(item) => String(item.id)}
+            ListHeaderComponent={listHeader}
+            stickyHeaderIndices={undefined}
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            ListEmptyComponent={
+              <SearchEmptyState onClearFilters={clearSearchAndFilters} />
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => {
+                  setRefreshing(true);
+                  load();
+                }}
+                tintColor="#0d9488"
+                colors={['#0d9488']}
+              />
+            }
+            contentContainerStyle={[
+              styles.listContent,
+              filtered.length === 0 && styles.listEmpty,
+              { paddingBottom: insets.bottom + spacing.lg },
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => (
+              <PropertyListCard item={item} onPress={() => openProperty(item)} />
+            )}
+          />
+        )}
+      </View>
+    </AuthenticatedScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: '#f1f5f9' },
-  toolbar: {
+  wrap: {
+    flex: 1,
+    backgroundColor: colors.surfaceMuted,
+    overflow: 'visible',
+  },
+  mapWrap: {
+    flex: 1,
+    overflow: 'visible',
+  },
+  viewBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: colors.borderLight,
+    zIndex: 30,
   },
-  hi: { flex: 1, fontWeight: '600', color: '#0f172a' },
-  linkBtn: { paddingVertical: 6, paddingHorizontal: 10 },
-  linkText: { color: '#2563eb', fontWeight: '600', fontSize: 13 },
-  outlineBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
+  viewBarToggle: {
+    flex: 1,
+    minWidth: 0,
   },
-  outlineText: { color: '#475569', fontWeight: '600', fontSize: 12 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  err: { color: '#b91c1c', textAlign: 'center', marginBottom: 12 },
-  retry: { backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  retryText: { color: '#fff', fontWeight: '600' },
-  listContent: { padding: 12, paddingBottom: 32 },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 10,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+  listContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
   },
-  thumb: { width: 100, height: 100, backgroundColor: '#e2e8f0' },
-  thumbPlaceholder: { backgroundColor: '#e2e8f0' },
-  cardBody: { flex: 1, padding: 10, justifyContent: 'center' },
-  title: { fontWeight: '700', fontSize: 16, color: '#0f172a' },
-  meta: { color: '#64748b', marginTop: 4, fontSize: 13 },
-  metaSmall: { color: '#334155', marginTop: 2, fontSize: 12 },
-  status: { marginTop: 6, fontSize: 11, color: '#64748b' },
+  listEmpty: {
+    flexGrow: 1,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+  },
+  errTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.navy,
+    marginBottom: spacing.sm,
+  },
+  err: {
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 22,
+  },
+  retryBtn: {
+    backgroundColor: '#0d9488',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+  },
+  retryText: {
+    color: colors.heroText,
+    fontWeight: '700',
+    fontSize: 15,
+  },
 });

@@ -1,0 +1,35 @@
+/** Brand palette aligned with thaneflats.com / site.css login theme */
+export const colors = {
+  navy: '#0f172a',
+  navyDeep: '#0c1829',
+  navyMid: '#1e3a5f',
+  slate: '#334155',
+  slateMuted: '#475569',
+  slateLight: '#64748b',
+  border: '#cbd5e1',
+  borderLight: '#e2e8f0',
+  surface: '#ffffff',
+  surfaceMuted: '#f8fafc',
+  surfaceWarm: '#faf8f5',
+  pageBg: '#eef2ff',
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  gold: '#c9a227',
+  goldLight: '#e8c96b',
+  goldAccent: '#fcd34d',
+  goldSoft: '#fde68a',
+  heroText: '#f8fafc',
+  error: '#b91c1c',
+  success: '#15803d',
+  overlay: 'rgba(7, 15, 28, 0.88)',
+  cardShadow: 'rgba(15, 23, 42, 0.09)',
+} as const;
+
+export const gradients = {
+  hero: ['#0c1829', '#1a4d6e', '#0e7490'] as const,
+  heroAlt: ['#0f2847', '#1a4d6e', '#0c4c6e'] as const,
+  goldBadge: ['#e8c96b', '#c9a227'] as const,
+  primaryButton: ['#1e3a5f', '#1d4ed8', '#0f172a'] as const,
+  formSide: ['#faf8f5', '#f1f5f9', '#e8edf4'] as const,
+  page: ['#dbeafe', '#eef2ff', '#ffffff'] as const,
+} as const;
