@@ -17,7 +17,7 @@ function joinUrl(base: string, path: string): string {
  * Token lifetime ~4h (JwtTokenService); no refresh endpoint — re-login on 401.
  */
 export function createApiClient(tokenStorage: TokenStorage) {
-  async function request<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
+    async function request<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
     const url = joinUrl(API_BASE_URL, path);
     const headers = new Headers(init.headers);
     if (!headers.has('Content-Type') && init.body != null && !(init.body instanceof FormData)) {
