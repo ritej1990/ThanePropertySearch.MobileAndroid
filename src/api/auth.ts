@@ -1,5 +1,11 @@
 import type { createApiClient } from './client';
-import type { AuthResponse, LoginBody, RegisterBody } from './types';
+import type {
+  AuthResponse,
+  EmailCheckResponse,
+  LoginBody,
+  RegisterBody,
+  UsernameCheckResponse,
+} from './types';
 
 /** Routes: ThanePropertySearch.Api.Controllers.AuthController — [Route("api/[controller]")] */
 export function createAuthApi(client: ReturnType<typeof createApiClient>) {
@@ -12,6 +18,22 @@ export function createAuthApi(client: ReturnType<typeof createApiClient>) {
       return client.post<{ message: string; verifyUrl?: string }>(
         '/api/auth/register',
         body,
+        { auth: false }
+      );
+    },
+
+    checkUsername(username: string) {
+      const q = encodeURIComponent(username.trim());
+      return client.get<UsernameCheckResponse>(
+        `/api/auth/check-username?username=${q}`,
+        { auth: false }
+      );
+    },
+
+    checkEmail(email: string) {
+      const q = encodeURIComponent(email.trim());
+      return client.get<EmailCheckResponse>(
+        `/api/auth/check-email?email=${q}`,
         { auth: false }
       );
     },

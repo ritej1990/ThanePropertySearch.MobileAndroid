@@ -6,7 +6,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { authApi } from '../api/singleton';
+import { authApi, usersApi } from '../api/singleton';
+import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { AuthResponse } from '../api/types';
 import {
   clearAuthSession,
@@ -23,6 +24,8 @@ type AuthState = {
   ready: boolean;
   login: (username: string, password: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  patchProfile: (patch: Partial<AuthProfileSnapshot>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -75,9 +78,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await clearAuthSession();
+    resetEmailVerificationToastSession();
     setToken(null);
     setProfile(null);
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!token) return;
+    try {
+      const me = await usersApi.getMe();
+      const snap: AuthProfileSnapshot = {
+        role: me.role,
+        fullName: me.fullName,
+        username: me.username,
+        email: me.email,
+        userId: profile?.userId ?? '',
+        emailConfirmed: me.emailConfirmed,
+      };
+      await saveAuthProfile(snap);
+      setProfile(snap);
+    } catch {
+      /* keep cached profile */
+    }
+  }, [token, profile?.userId]);
+
+  const patchProfile = useCallback(
+    async (patch: Partial<AuthProfileSnapshot>) => {
+      setProfile((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev, ...patch };
+        void saveAuthProfile(next);
+        return next;
+      });
+    },
+    []
+  );
 
   const value = useMemo(
     () => ({
@@ -86,8 +121,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ready,
       login,
       logout,
+      refreshProfile,
+      patchProfile,
     }),
-    [token, profile, ready, login, logout]
+    [token, profile, ready, login, logout, refreshProfile, patchProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

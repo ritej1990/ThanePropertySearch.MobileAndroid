@@ -1,51 +1,63 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   Pressable,
-  ActivityIndicator,
   StyleSheet,
   RefreshControl,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackParamList } from '../navigation/types';
+import type { OwnerDashboardItem } from '../api/ownerTypes';
 import { propertiesApi } from '../api/singleton';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
-
-type DashRow = {
-  id: number;
-  title: string;
-  areaName: string;
-  reviewStatus: string;
-  ownerListingTier: string | null;
-  listingDurationDays: number;
-  listingPeriodEndUtc: string | null;
-  isFeaturedInSearch: boolean;
-  daysRemaining: number | null;
-  totalRequests: number;
-  pendingRequests: number;
-};
+import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { BrandLoading } from '../components/ui/BrandLoading';
+import { OwnerDashboardHeader } from '../components/owner/OwnerDashboardHeader';
+import { OwnerListingCard } from '../components/owner/OwnerListingCard';
+import { colors, gradients, radius, spacing } from '../theme';
+import { computeOwnerStats } from '../utils/ownerDashboard';
+import { isOwnerRole } from '../utils/roles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OwnerDashboard'>;
+type ListFilter = 'all' | 'inquiries' | 'featured';
+
+const FILTERS: { key: ListFilter; label: string }[] = [
+  { key: 'all', label: 'All listings' },
+  { key: 'inquiries', label: 'Has inquiries' },
+  { key: 'featured', label: 'Featured' },
+];
 
 export default function OwnerDashboardScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
-  const [rows, setRows] = useState<DashRow[]>([]);
+  const [rows, setRows] = useState<OwnerDashboardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [listFilter, setListFilter] = useState<ListFilter>('all');
+
+  const isOwner = isOwnerRole(profile?.role);
+
+  useEffect(() => {
+    if (!isOwner) {
+      navigation.replace('Home');
+    }
+  }, [isOwner, navigation]);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const data = await propertiesApi.ownerDashboard();
-      setRows(data as DashRow[]);
+      setRows(data);
     } catch (e) {
       if (e instanceof ApiError && e.status === 403) {
-        setError('Owner access only. Sign in as an owner account.');
+        setError('Owner access only. Sign in with an owner account.');
       } else {
         setError(e instanceof ApiError ? e.message : 'Could not load dashboard');
       }
@@ -57,44 +69,92 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      if (profile?.role !== 'Owner') {
-        setLoading(false);
-        setError('Owner access only.');
-        return;
-      }
+      if (!isOwner) return;
       setLoading(true);
       load();
-    }, [load, profile?.role])
+    }, [load, isOwner])
   );
 
-  if (profile?.role !== 'Owner') {
+  const stats = useMemo(() => computeOwnerStats(rows), [rows]);
+
+  const filtered = useMemo(() => {
+    if (listFilter === 'inquiries') {
+      return rows.filter((r) => r.pendingRequests > 0);
+    }
+    if (listFilter === 'featured') {
+      return rows.filter((r) => r.isFeaturedInSearch);
+    }
+    return rows;
+  }, [rows, listFilter]);
+
+  if (!isOwner) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.err}>{error ?? 'Owner access only.'}</Text>
-        <Pressable style={styles.back} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
-      </View>
+      <BrandLoading message="Loading…" />
     );
   }
 
+  const listHeader = (
+    <View>
+      <LinearGradient
+        colors={[...gradients.page]}
+        style={styles.bgGlow}
+        pointerEvents="none"
+      />
+      <OwnerDashboardHeader
+        stats={stats}
+        onBrowse={() => navigation.navigate('Home')}
+        onPostProperty={() => navigation.navigate('PostProperty')}
+      />
+
+      <Text style={styles.sectionTitle}>Your listings</Text>
+      <Text style={styles.sectionSub}>
+        Tap a card to view details, respond to inquiries on thaneflats.com
+      </Text>
+
+      <View style={styles.filterRow}>
+        {FILTERS.map((f) => (
+          <Pressable
+            key={f.key}
+            onPress={() => setListFilter(f.key)}
+            style={[styles.filterChip, listFilter === f.key && styles.filterChipOn]}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                listFilter === f.key && styles.filterTextOn,
+              ]}
+            >
+              {f.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={styles.resultCount}>
+        {filtered.length} {filtered.length === 1 ? 'listing' : 'listings'}
+        {listFilter !== 'all' ? ' in this view' : ''}
+      </Text>
+    </View>
+  );
+
   return (
-    <View style={styles.wrap}>
+    <AuthenticatedScreenLayout>
+      <View style={styles.wrap}>
       {loading && rows.length === 0 ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" />
-        </View>
+        <BrandLoading message="Loading your dashboard…" />
       ) : error ? (
         <View style={styles.centered}>
+          <Text style={styles.errTitle}>Dashboard unavailable</Text>
           <Text style={styles.err}>{error}</Text>
-          <Pressable style={styles.back} onPress={load}>
-            <Text style={styles.backText}>Retry</Text>
+          <Pressable style={styles.retry} onPress={() => load()}>
+            <Text style={styles.retryText}>Try again</Text>
           </Pressable>
         </View>
       ) : (
         <FlatList
-          data={rows}
+          data={filtered}
           keyExtractor={(item) => String(item.id)}
+          ListHeaderComponent={listHeader}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -102,64 +162,188 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
                 setRefreshing(true);
                 load();
               }}
+              tintColor="#0d9488"
+              colors={['#0d9488']}
             />
           }
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: insets.bottom + spacing.xxxl },
+          ]}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text style={styles.empty}>No listings yet. Post from the website or add create flow in the app.</Text>
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyIcon}>🏠</Text>
+              <Text style={styles.emptyTitle}>
+                {listFilter === 'all'
+                  ? 'No listings yet'
+                  : 'Nothing in this filter'}
+              </Text>
+              <Text style={styles.empty}>
+                {listFilter === 'all'
+                  ? 'Post your first property — it will appear here with inquiries and review status.'
+                  : 'Try another filter or add more listings.'}
+              </Text>
+              {listFilter === 'all' ? (
+                <Pressable
+                  style={styles.emptyBtn}
+                  onPress={() => navigation.navigate('PostProperty')}
+                >
+                  <Text style={styles.emptyBtnText}>Post property</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={styles.emptyBtn}
+                  onPress={() => navigation.navigate('Home')}
+                >
+                  <Text style={styles.emptyBtnText}>Browse Thane market</Text>
+                </Pressable>
+              )}
+            </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.meta}>{item.areaName}</Text>
-              <View style={styles.row}>
-                <Text style={styles.badge}>{item.reviewStatus}</Text>
-                {item.daysRemaining != null ? (
-                  <Text style={styles.small}>Visible: {item.daysRemaining}d left</Text>
-                ) : null}
-              </View>
-              <Text style={styles.small}>
-                Requests: {item.pendingRequests} pending / {item.totalRequests} total
-              </Text>
-              {item.ownerListingTier ? (
-                <Text style={styles.small}>Plan: {item.ownerListingTier}</Text>
-              ) : null}
-            </View>
+            <OwnerListingCard
+              item={item}
+              onPress={() =>
+                navigation.navigate('PropertyDetails', {
+                  propertyId: item.id,
+                  title: item.title,
+                })
+              }
+            />
           )}
         />
       )}
-    </View>
+      </View>
+    </AuthenticatedScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: '#f1f5f9' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  list: { padding: 12, paddingBottom: 32 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+  wrap: {
+    flex: 1,
+    backgroundColor: colors.surfaceMuted,
+  },
+  bgGlow: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.45,
+  },
+  list: {
+    paddingHorizontal: spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.navy,
+    letterSpacing: -0.3,
+  },
+  sectionSub: {
+    fontSize: 13,
+    color: colors.slateLight,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
   },
-  title: { fontWeight: '700', fontSize: 16, color: '#0f172a' },
-  meta: { color: '#64748b', marginTop: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' },
-  badge: {
-    fontSize: 12,
+  filterChipOn: {
+    backgroundColor: colors.navyMid,
+    borderColor: colors.navyMid,
+  },
+  filterText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#1d4ed8',
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    overflow: 'hidden',
+    color: colors.slateMuted,
   },
-  small: { fontSize: 12, color: '#475569', marginTop: 4 },
-  err: { color: '#b91c1c', textAlign: 'center', marginBottom: 12 },
-  back: { backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  backText: { color: '#fff', fontWeight: '600' },
-  empty: { textAlign: 'center', color: '#64748b', marginTop: 24, paddingHorizontal: 16 },
+  filterTextOn: {
+    color: colors.heroText,
+  },
+  resultCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.slateLight,
+    marginBottom: spacing.md,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    color: colors.slateLight,
+    fontSize: 15,
+  },
+  errTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.navy,
+    marginBottom: spacing.sm,
+  },
+  err: {
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 22,
+  },
+  retry: {
+    backgroundColor: '#0d9488',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+  },
+  retryText: {
+    color: colors.heroText,
+    fontWeight: '700',
+  },
+  emptyBox: {
+    padding: spacing.xxxl,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    marginTop: spacing.md,
+  },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.navy,
+  },
+  empty: {
+    textAlign: 'center',
+    color: colors.slateLight,
+    marginTop: spacing.sm,
+    lineHeight: 22,
+    paddingHorizontal: spacing.md,
+  },
+  emptyBtn: {
+    marginTop: spacing.lg,
+    backgroundColor: '#0d9488',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.md,
+  },
+  emptyBtnText: {
+    color: colors.heroText,
+    fontWeight: '700',
+    fontSize: 15,
+  },
 });

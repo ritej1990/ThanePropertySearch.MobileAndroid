@@ -1,56 +1,156 @@
 import type { createApiClient } from './client';
+import type {
+  CreatePropertyRequest,
+  UploadImageResponse,
+  UploadImagesResponse,
+} from './createPropertyTypes';
+import type {
+  InquiryMessage,
+  MyChatThread,
+  OwnerContact,
+  PropertyInquirySummary,
+} from './inquiryTypes';
+import type { OwnerDashboardItem } from './ownerTypes';
 import type { PropertyResponse } from './types';
+import { normalizeProperties, normalizeProperty } from './normalizeProperty';
+
+type LocalImage = {
+  uri: string;
+  fileName?: string;
+  mimeType?: string;
+};
+
+function appendFile(
+  form: FormData,
+  field: string,
+  image: LocalImage
+) {
+  const name = image.fileName ?? `photo-${Date.now()}.jpg`;
+  const type = image.mimeType ?? 'image/jpeg';
+  form.append(field, { uri: image.uri, name, type } as unknown as Blob);
+}
 
 /** Routes: ThanePropertySearch.Api.Controllers.PropertiesController */
 export function createPropertiesApi(client: ReturnType<typeof createApiClient>) {
   return {
     /** GET /api/properties — optional geo filter */
-    list(params?: { latitude?: number; longitude?: number; radiusKm?: number }) {
+    async list(params?: { latitude?: number; longitude?: number; radiusKm?: number }) {
       const q = new URLSearchParams();
       if (params?.latitude != null) q.set('latitude', String(params.latitude));
       if (params?.longitude != null) q.set('longitude', String(params.longitude));
       if (params?.radiusKm != null) q.set('radiusKm', String(params.radiusKm));
       const qs = q.toString();
-      return client.get<PropertyResponse[]>(
+      const data = await client.get<PropertyResponse[]>(
         `/api/properties${qs ? `?${qs}` : ''}`,
         { auth: true }
       );
+      return normalizeProperties(data);
     },
 
-    /** Anonymous browse works if API allows; your controller filters by role — send token when logged in */
-    listPublic(params?: { latitude?: number; longitude?: number; radiusKm?: number }) {
+    async listPublic(params?: {
+      latitude?: number;
+      longitude?: number;
+      radiusKm?: number;
+    }) {
       const q = new URLSearchParams();
       if (params?.latitude != null) q.set('latitude', String(params.latitude));
       if (params?.longitude != null) q.set('longitude', String(params.longitude));
       if (params?.radiusKm != null) q.set('radiusKm', String(params.radiusKm));
       const qs = q.toString();
-      return client.get<PropertyResponse[]>(
+      const data = await client.get<PropertyResponse[]>(
         `/api/properties${qs ? `?${qs}` : ''}`,
         { auth: false }
       );
+      return normalizeProperties(data);
     },
 
-    getById(id: number) {
-      return client.get<PropertyResponse>(`/api/properties/${id}`, { auth: true });
+    async getById(id: number) {
+      const data = await client.get<PropertyResponse>(`/api/properties/${id}`, {
+        auth: true,
+      });
+      return normalizeProperty(data);
     },
 
     /** Owner dashboard summary — GET /api/properties/owner-dashboard */
     ownerDashboard() {
-      return client.get<
-        Array<{
-          id: number;
-          title: string;
-          areaName: string;
-          reviewStatus: string;
-          ownerListingTier: string | null;
-          listingDurationDays: number;
-          listingPeriodEndUtc: string | null;
-          isFeaturedInSearch: boolean;
-          daysRemaining: number | null;
-          totalRequests: number;
-          pendingRequests: number;
-        }>
-      >('/api/properties/owner-dashboard');
+      return client.get<OwnerDashboardItem[]>('/api/properties/owner-dashboard');
+    },
+
+    /** POST /api/properties — owner create listing */
+    create(body: CreatePropertyRequest) {
+      return client.post<PropertyResponse>('/api/properties', body);
+    },
+
+    /** POST /api/properties/upload-image — single cover image */
+    uploadImage(image: LocalImage) {
+      const form = new FormData();
+      appendFile(form, 'file', image);
+      return client.post<UploadImageResponse>('/api/properties/upload-image', form);
+    },
+
+    /** POST /api/properties/upload-images — gallery */
+    uploadImages(images: LocalImage[]) {
+      const form = new FormData();
+      for (const img of images) {
+        appendFile(form, 'files', img);
+      }
+      return client.post<UploadImagesResponse>('/api/properties/upload-images', form);
+    },
+
+    getOwnerContact(propertyId: number) {
+      return client.get<OwnerContact>(`/api/properties/${propertyId}/owner-contact`);
+    },
+
+    scheduleVisit(propertyId: number, visitAtLocal: string, message: string) {
+      return client.post<{ message: string }>(
+        `/api/properties/${propertyId}/visit-request`,
+        { visitAtLocal, message }
+      );
+    },
+
+    createInquiry(propertyId: number, message: string, offerAmount?: number | null) {
+      return client.post<{ inquiryId: number; message: string }>(
+        `/api/properties/${propertyId}/inquiries`,
+        { message, offerAmount: offerAmount ?? null }
+      );
+    },
+
+    getPropertyInquiries(propertyId: number) {
+      return client.get<PropertyInquirySummary[]>(
+        `/api/properties/${propertyId}/inquiries`
+      );
+    },
+
+    getInquiryMessages(inquiryId: number) {
+      return client.get<InquiryMessage[]>(
+        `/api/properties/inquiries/${inquiryId}/messages`
+      );
+    },
+
+    sendInquiryMessage(
+      inquiryId: number,
+      message: string,
+      offerAmount?: number | null
+    ) {
+      return client.post<{ message: string }>(
+        `/api/properties/inquiries/${inquiryId}/messages`,
+        { message, offerAmount: offerAmount ?? null }
+      );
+    },
+
+    rateProperty(propertyId: number, stars: number, review: string) {
+      return client.post<{ message: string }>(`/api/properties/${propertyId}/ratings`, {
+        stars,
+        review,
+      });
+    },
+
+    getMyMessageCount() {
+      return client.get<{ count: number }>('/api/properties/inquiries/my-message-count');
+    },
+
+    getMyThreads() {
+      return client.get<MyChatThread[]>('/api/properties/inquiries/my-threads');
     },
   };
 }
