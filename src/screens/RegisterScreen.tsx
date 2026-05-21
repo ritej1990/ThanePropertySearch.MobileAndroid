@@ -22,6 +22,7 @@ import { UsernameField } from '../components/auth/UsernameField';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { PhoneNumberField } from '../components/ui/PhoneNumberField';
 import { GradientButton } from '../components/ui/GradientButton';
+import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
 import { useDevicePhoneNumber } from '../hooks/useDevicePhoneNumber';
 import { useUsernameAvailability } from '../hooks/useUsernameAvailability';
 import { ApiError } from '../api/client';
@@ -393,6 +394,7 @@ export default function RegisterScreen({ navigation }: Props) {
         </View>
 
         <Text style={styles.footer}>Thane Flats · thane property search</Text>
+        <PolicyFooterLinks navigation={navigation} variant="dark" />
       </ScrollView>
 
       <RegisterSuccessModal

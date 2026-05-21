@@ -25,6 +25,7 @@ import PropertyInquiriesScreen from './src/screens/PropertyInquiriesScreen';
 import MyChatsScreen from './src/screens/MyChatsScreen';
 import SupportTicketsScreen from './src/screens/SupportTicketsScreen';
 import SupportTicketDetailsScreen from './src/screens/SupportTicketDetailsScreen';
+import PolicyScreen from './src/screens/PolicyScreen';
 import { linking } from './src/navigation/linking';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -65,6 +66,11 @@ function AppNavigator() {
           <Stack.Screen
             name="Register"
             component={RegisterScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Policy"
+            component={PolicyScreen}
             options={{ headerShown: false }}
           />
         </>
@@ -153,6 +159,11 @@ function AppNavigator() {
           <Stack.Screen
             name="SupportTicketDetails"
             component={SupportTicketDetailsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Policy"
+            component={PolicyScreen}
             options={{ headerShown: false }}
           />
         </>

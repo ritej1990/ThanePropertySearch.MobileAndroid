@@ -16,6 +16,7 @@ import { LoginBackdrop } from '../components/auth/LoginBackdrop';
 import { LoginHeader } from '../components/auth/LoginHeader';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
+import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
 import { useAuth } from '../context/AuthContext';
 import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { RootStackParamList } from '../navigation/types';
@@ -151,6 +152,7 @@ export default function LoginScreen({ navigation }: Props) {
         <Text style={styles.footer} pointerEvents="none">
           Thane Flats · thane property search
         </Text>
+        <PolicyFooterLinks navigation={navigation} variant="dark" />
       </View>
     </View>
   );
