@@ -24,6 +24,15 @@ export type BuilderProjectSummary = {
   ratingCount: number;
 };
 
+export type BuilderProjectMedia = {
+  id: number;
+  mediaType: string;
+  url: string;
+  caption: string;
+  reviewStatus: string;
+  createdAtUtc: string;
+};
+
 export type BuilderUnit = {
   id: number;
   towerName: string;
@@ -44,7 +53,7 @@ export type BuilderProjectDetail = BuilderProjectSummary & {
   preferredBank: string;
   amenities: string;
   createdAtUtc: string;
-  media: string[];
+  media: BuilderProjectMedia[];
   units: BuilderUnit[];
   constructionUpdates: unknown[];
 };

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -17,7 +16,7 @@ import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BuilderProjectCard } from '../components/builder/BuilderProjectCard';
 import { BrandLoading } from '../components/ui/BrandLoading';
-import { WEB_BUILDER_DASHBOARD, webHostLabel } from '../config/webLinks';
+import { PageHero } from '../components/ui/PageHero';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -75,10 +74,12 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
 
   const listHeader = (
     <View style={styles.header}>
-      <Text style={styles.title}>Builder dashboard</Text>
-      <Text style={styles.sub}>
-        Manage projects, leads, and promotions — synced with {webHostLabel()}
-      </Text>
+      <PageHero
+        variant="builder"
+        icon="construct-outline"
+        title="Builder dashboard"
+        subtitle="Manage projects, track leads, and respond to enquiries."
+      />
 
       <View style={styles.statsRow}>
         <StatCard label="Projects" value={String(stats.count)} icon="business" />
@@ -86,15 +87,6 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
         <StatCard label="Available units" value={String(stats.totalAvailable)} icon="home" />
         <StatCard label="Published" value={String(stats.published)} icon="checkmark-circle" />
       </View>
-
-      <Pressable
-        style={styles.webBtn}
-        onPress={() => Linking.openURL(WEB_BUILDER_DASHBOARD)}
-      >
-        <Ionicons name="globe-outline" size={18} color={colors.primary} />
-        <Text style={styles.webBtnText}>Full dashboard on {webHostLabel()}</Text>
-        <Ionicons name="open-outline" size={16} color={colors.slateMuted} />
-      </Pressable>
 
       <Pressable
         style={styles.browseBtn}
@@ -138,13 +130,14 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
               <Ionicons name="construct-outline" size={48} color={colors.slateLight} />
               <Text style={styles.emptyTitle}>No projects yet</Text>
               <Text style={styles.emptySub}>
-                Upload and manage projects on the website builder dashboard.
+                Your published projects will appear here. Contact support if you need
+                help setting up your builder profile.
               </Text>
               <Pressable
                 style={styles.emptyCta}
-                onPress={() => Linking.openURL(WEB_BUILDER_DASHBOARD)}
+                onPress={() => navigation.navigate('SupportTickets')}
               >
-                <Text style={styles.emptyCtaText}>Open builder dashboard</Text>
+                <Text style={styles.emptyCtaText}>Contact support</Text>
               </Pressable>
             </View>
           }
@@ -159,13 +152,21 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
                   })
                 }
               />
-              <View style={styles.leadStrip}>
-                <Ionicons name="mail-unread-outline" size={14} color="#0f766e" />
+              <Pressable
+                style={styles.leadStrip}
+                onPress={() =>
+                  navigation.navigate('BuilderLeads', {
+                    projectId: item.id,
+                    projectName: item.projectName,
+                  })
+                }
+              >
+                <Ionicons name="mail-unread-outline" size={14} color={colors.builder} />
                 <Text style={styles.leadStripText}>
-                  {item.leadCount} {item.leadCount === 1 ? 'lead' : 'leads'} · from{' '}
-                  {formatBuilderPrice(item.startingPrice)}
+                  {item.leadCount} {item.leadCount === 1 ? 'lead' : 'leads'} · tap to view
                 </Text>
-              </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.slateLight} />
+              </Pressable>
             </View>
           )}
         />
@@ -235,23 +236,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.slateLight,
-  },
-  webBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: '#eff6ff',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: '#bfdbfe',
-    marginBottom: spacing.sm,
-  },
-  webBtnText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primary,
   },
   browseBtn: {
     alignItems: 'center',

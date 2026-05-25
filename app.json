@@ -2,24 +2,41 @@
   "expo": {
     "name": "Thane Flats",
     "slug": "thane-property-search",
-    "version": "1.0.0",
+    "version": "3.0.0",
     "scheme": "thaneproperty",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0c1829"
+    },
     "ios": {
       "bundleIdentifier": "com.thaneflats.app",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/icon.png",
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0c1829"
+      }
     },
     "android": {
       "package": "com.thaneflats.app",
+      "versionCode": 3,
       "permissions": [
         "android.permission.READ_PHONE_STATE",
         "android.permission.READ_PHONE_NUMBERS"
       ],
       "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
-        "backgroundColor": "#2563eb"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store",

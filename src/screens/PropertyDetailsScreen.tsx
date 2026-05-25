@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -21,8 +21,7 @@ import { PropertyGallery } from '../components/property/PropertyGallery';
 import { SimilarPropertyCard } from '../components/property/SimilarPropertyCard';
 import { SpecRow } from '../components/property/SpecRow';
 import type { RootStackParamList } from '../navigation/types';
-import { WEB_PROPERTY_DETAIL } from '../config/webLinks';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, gradients, radius, spacing, typography } from '../theme';
 import {
   formatInr,
   formatListingDate,
@@ -30,10 +29,11 @@ import {
   parseRichMetadata,
 } from '../utils/propertyFormat';
 import { PropertyNextStepsPanel } from '../components/property/PropertyNextStepsPanel';
+import { PropertyPlanCreditsBar } from '../components/property/PropertyPlanCreditsBar';
 import { PropertyRatingSection } from '../components/property/PropertyRatingSection';
 import { useAuth } from '../context/AuthContext';
-import { formatRating, getPrimaryPrice } from '../utils/propertyDisplay';
-import { isUserRole } from '../utils/roles';
+import { getPrimaryPrice } from '../utils/propertyDisplay';
+import { isOwnerRole, isUserRole } from '../utils/roles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyDetails'>;
 
@@ -41,7 +41,7 @@ const SAFETY_TIPS = [
   'Do not send money in advance before site visit and ownership verification.',
   'Avoid sharing OTP, bank PIN, UPI PIN, or card details with anyone.',
   'Verify owner identity and property documents before token payment.',
-  'Report suspected fraud through thaneflats.com support.',
+  'Report suspected fraud via in-app Support.',
 ] as const;
 
 function StatTile({
@@ -68,14 +68,19 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
   const { propertyId } = route.params;
   const { profile } = useAuth();
   const showUserActions = isUserRole(profile?.role);
+  const showOwnerActions = isOwnerRole(profile?.role);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollContentRef = useRef<View>(null);
+  const nextStepsRef = useRef<View>(null);
   const [item, setItem] = useState<PropertyResponse | null>(null);
   const [similar, setSimilar] = useState<PropertyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creditsRefreshKey, setCreditsRefreshKey] = useState(0);
 
-  async function load() {
+  async function load(silent = false) {
     setError(null);
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const [detail, list] = await Promise.all([
         propertiesApi.getById(propertyId),
@@ -126,7 +131,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
         <View style={styles.centered}>
           <Text style={styles.errorTitle}>Property unavailable</Text>
           <Text style={styles.error}>{error ?? 'Property not found'}</Text>
-          <Pressable style={styles.retry} onPress={load}>
+          <Pressable style={styles.retry} onPress={() => load()}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
@@ -137,6 +142,11 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
   const chips = listingTypeChips(item);
   const price = getPrimaryPrice(item);
   const hasMap = Boolean(item.latitude && item.longitude);
+  const isOwnListing =
+    showOwnerActions &&
+    item.ownerId != null &&
+    profile?.userId != null &&
+    item.ownerId === profile.userId;
 
   const overviewPanel = (
     <View>
@@ -185,8 +195,8 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
         </View>
       ) : (
         <Text style={styles.mutedBody}>
-          No society details for this listing yet. Owners can add them when posting on
-          thaneflats.com.
+          No society details for this listing yet. Owners can add them when posting a
+          property from the app.
         </Text>
       )}
     </View>
@@ -222,15 +232,31 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     >
       <View style={styles.screen}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.pageContent}
         showsVerticalScrollIndicator={false}
       >
-        <PropertyGallery urls={gallery} />
+        <View ref={scrollContentRef} collapsable={false}>
+        <View style={styles.mediaBlock}>
+          <PropertyGallery
+            urls={gallery}
+            autoRotate={gallery.length > 1}
+            compact
+          />
+        </View>
+
+        {showUserActions ? (
+          <PropertyPlanCreditsBar
+            key={creditsRefreshKey}
+            propertyId={propertyId}
+            navigation={navigation}
+          />
+        ) : null}
 
         <View style={styles.heroCard}>
           <LinearGradient
-            colors={['#0d9488', '#2563eb', '#c9a227']}
+            colors={[...gradients.detailAccent]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={styles.heroAccent}
@@ -269,7 +295,19 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
             </View>
 
             <View style={styles.statsGrid}>
-              <StatTile icon="star" value={formatRating(item)} label="Rating" />
+              <StatTile
+                icon="star"
+                value={
+                  item.ratingCount > 0
+                    ? item.averageRating.toFixed(1)
+                    : 'New'
+                }
+                label={
+                  item.ratingCount > 0
+                    ? `${item.ratingCount} review${item.ratingCount === 1 ? '' : 's'}`
+                    : 'No reviews yet'
+                }
+              />
               <StatTile
                 icon="resize-outline"
                 value={`${item.builtupSqft}`}
@@ -298,14 +336,26 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
           about={aboutPanel}
         />
 
-        {showUserActions && (
-          <PropertyNextStepsPanel
-            propertyId={propertyId}
-            navigation={navigation}
-          />
-        )}
+        {showUserActions ? (
+          <View ref={nextStepsRef} collapsable={false}>
+            <PropertyNextStepsPanel
+              propertyId={propertyId}
+              navigation={navigation}
+              onUsageChanged={() => setCreditsRefreshKey((k) => k + 1)}
+            />
+          </View>
+        ) : null}
 
-        {showUserActions && <PropertyRatingSection propertyId={propertyId} />}
+        <View style={styles.ratingsSection}>
+          <Text style={styles.sectionHeading}>Ratings & reviews</Text>
+          <PropertyRatingSection
+            propertyId={propertyId}
+            averageRating={item.averageRating}
+            ratingCount={item.ratingCount}
+            canSubmit={showUserActions}
+            onRated={() => load(true)}
+          />
+        </View>
 
         {similar.length > 0 && (
           <View style={styles.similarSection}>
@@ -339,14 +389,56 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
             ))}
           </View>
         </View>
+        </View>
       </ScrollView>
 
-      <PropertyDetailStickyBar
-        webUrl={WEB_PROPERTY_DETAIL(item.id)}
-        hasMap={hasMap}
-        latitude={item.latitude}
-        longitude={item.longitude}
-      />
+      {(showUserActions || isOwnListing) && (
+        <PropertyDetailStickyBar
+          primaryLabel={isOwnListing ? 'View inquiries' : 'Contact owner'}
+          primaryIcon={
+            isOwnListing ? 'mail-unread-outline' : 'chatbubble-ellipses-outline'
+          }
+          secondaryIcon={isOwnListing ? 'calendar-outline' : undefined}
+          secondaryAccessibilityLabel="Visit requests"
+          onSecondaryPress={
+            isOwnListing
+              ? () =>
+                  navigation.navigate('VisitRequests', {
+                    propertyId,
+                    title: item.title,
+                  })
+              : undefined
+          }
+          onPrimaryPress={() => {
+            if (isOwnListing) {
+              navigation.navigate('PropertyInquiries', {
+                propertyId,
+                title: item.title,
+              });
+              return;
+            }
+            const content = scrollContentRef.current;
+            const target = nextStepsRef.current;
+            if (content && target) {
+              target.measureLayout(
+                content,
+                (_x, y) => {
+                  scrollRef.current?.scrollTo({
+                    y: Math.max(0, y - 12),
+                    animated: true,
+                  });
+                },
+                () => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }
+              );
+            }
+          }}
+          hasMap={hasMap}
+          latitude={item.latitude ?? undefined}
+          longitude={item.longitude ?? undefined}
+        />
+      )}
       </View>
     </AuthenticatedScreenLayout>
   );
@@ -361,8 +453,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pageContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: 120,
+  },
+  mediaBlock: {
+    marginBottom: spacing.sm,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
   },
   centered: {
     flex: 1,
@@ -417,14 +515,14 @@ const styles = StyleSheet.create({
     width: 5,
   },
   heroBody: {
-    padding: spacing.lg,
-    paddingLeft: spacing.lg + 8,
+    padding: spacing.md,
+    paddingLeft: spacing.md + 8,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
   },
   priceLabel: {
     ...typography.eyebrow,
@@ -433,7 +531,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   priceLg: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
     color: colors.navy,
@@ -475,14 +573,14 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
   },
   statTile: {
     width: '31%',
-    minWidth: 100,
+    minWidth: 96,
     flexGrow: 1,
-    padding: spacing.md,
+    padding: spacing.sm,
     backgroundColor: colors.surfaceMuted,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -507,8 +605,8 @@ const styles = StyleSheet.create({
   ownerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
+    gap: spacing.sm,
+    padding: spacing.sm,
     backgroundColor: colors.surfaceMuted,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -599,6 +697,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.navy,
     letterSpacing: -0.3,
+  },
+  ratingsSection: {
+    marginTop: spacing.xl,
   },
   similarSection: {
     marginTop: spacing.xl,

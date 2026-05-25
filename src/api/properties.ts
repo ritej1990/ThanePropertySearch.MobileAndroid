@@ -11,6 +11,8 @@ import type {
   PropertyInquirySummary,
 } from './inquiryTypes';
 import type { OwnerDashboardItem } from './ownerTypes';
+import type { PropertyRatingItem } from './ratingTypes';
+import type { VisitRequest } from './visitTypes';
 import type { PropertyResponse } from './types';
 import { normalizeProperties, normalizeProperty } from './normalizeProperty';
 
@@ -145,12 +147,44 @@ export function createPropertiesApi(client: ReturnType<typeof createApiClient>) 
       });
     },
 
+    /** GET /api/properties/{id}/ratings — public review list (web ratings modal). */
+    getPropertyRatings(propertyId: number) {
+      return client.get<PropertyRatingItem[]>(
+        `/api/properties/${propertyId}/ratings`,
+        { auth: false }
+      );
+    },
+
     getMyMessageCount() {
       return client.get<{ count: number }>('/api/properties/inquiries/my-message-count');
     },
 
     getMyThreads() {
       return client.get<MyChatThread[]>('/api/properties/inquiries/my-threads');
+    },
+
+    getVisitRequests(propertyId: number) {
+      return client.get<VisitRequest[]>(
+        `/api/properties/${propertyId}/visit-requests`
+      );
+    },
+
+    updateVisitRequestStatus(
+      propertyId: number,
+      visitId: number,
+      status: 'Approved' | 'Declined'
+    ) {
+      return client.post<{ message: string; status: string }>(
+        `/api/properties/${propertyId}/visit-requests/${visitId}/status`,
+        { status }
+      );
+    },
+
+    updateInquiryStatus(inquiryId: number, status: 'Approved' | 'Rejected') {
+      return client.post<{ message: string }>(
+        `/api/properties/inquiries/${inquiryId}/status`,
+        { status }
+      );
     },
   };
 }

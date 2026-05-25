@@ -3,6 +3,7 @@ import type { PolicyKind } from '../content/policies';
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined;
   Policy: { kind: PolicyKind };
   Home: undefined;
   OwnerDashboard: undefined;
@@ -42,4 +43,8 @@ export type RootStackParamList = {
   BuilderProjects: undefined;
   BuilderProjectDetails: { projectId: number; title?: string };
   BuilderDashboard: undefined;
+  MyPayments: { essentialOnly?: boolean } | undefined;
+  VisitRequests: { propertyId: number; title?: string };
+  Profile: undefined;
+  BuilderLeads: { projectId: number; projectName?: string };
 };

@@ -9,6 +9,7 @@
  * Physical devices cannot use localhost — that is the dev machine itself.
  */
 import Constants from 'expo-constants';
+import { isNativeMobile } from '../utils/platform';
 
 type Extra = {
   apiBaseUrl?: string;
@@ -51,6 +52,11 @@ export function hasGoogleMapsKey(): boolean {
   return GOOGLE_MAPS_API_KEY.length > 0;
 }
 
+/** Native MapView (iOS/Android) when a Maps API key is configured. */
+export function hasNativeMapSupport(): boolean {
+  return isNativeMobile() && hasGoogleMapsKey();
+}
+
 const webFromEnv = readPublicEnv('EXPO_PUBLIC_WEB_BASE_URL');
 const webFromExtra = extra?.webBaseUrl?.trim();
 
@@ -72,5 +78,26 @@ export const THANE_MAP_CENTER = {
   latitude: 19.2183,
   longitude: 72.9781,
 } as const;
+
+/**
+ * Thane district map lock — pan/zoom and place pickers stay inside this box.
+ * (Approx. Thane city + immediate suburbs.)
+ */
+export const THANE_MAP_BOUNDS = {
+  minLatitude: 19.08,
+  maxLatitude: 19.38,
+  minLongitude: 72.78,
+  maxLongitude: 73.12,
+} as const;
+
+/** Default map zoom when no listings (fits Thane). */
+export const THANE_MAP_DEFAULT_DELTAS = {
+  latitudeDelta: 0.14,
+  longitudeDelta: 0.14,
+} as const;
+
+/** Do not zoom out beyond ~district level. */
+export const THANE_MAP_MAX_LATITUDE_DELTA = 0.22;
+export const THANE_MAP_MAX_LONGITUDE_DELTA = 0.22;
 
 export const DEFAULT_SEARCH_RADIUS_KM = 12;

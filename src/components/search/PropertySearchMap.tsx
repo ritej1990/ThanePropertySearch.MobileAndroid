@@ -6,10 +6,12 @@ import type { PropertyResponse } from '../../api/types';
 import { hasGoogleMapsKey } from '../../config/env';
 import type { SelectedPlace } from '../../services/googlePlaces';
 import {
+  clampMapRegion,
   getMapInitialRegion,
   hasValidPropertyCoordinates,
   mapFitCoordinates,
   propertiesWithCoordinates,
+  regionsDiffer,
 } from '../../utils/mapHelpers';
 import { getPrimaryPrice } from '../../utils/propertyDisplay';
 import { listingTypeChips } from '../../utils/propertyFormat';
@@ -55,6 +57,13 @@ export function PropertySearchMap({
     [properties, selectedPlace]
   );
 
+  const handleRegionChangeComplete = (region: Region) => {
+    const clamped = clampMapRegion(region);
+    if (regionsDiffer(region, clamped) && mapRef.current) {
+      mapRef.current.animateToRegion(clamped, 280);
+    }
+  };
+
   useEffect(() => {
     if (tracksChanges) {
       const t = setTimeout(() => setTracksChanges(false), 800);
@@ -70,6 +79,12 @@ export function PropertySearchMap({
         edgePadding: { top: 56, right: 48, bottom: 160, left: 48 },
         animated: true,
       });
+      setTimeout(() => {
+        mapRef.current?.animateToRegion(
+          clampMapRegion(getMapInitialRegion(properties, selectedPlace)),
+          300
+        );
+      }, 500);
     }, 400);
     return () => clearTimeout(timer);
   }, [properties, selectedPlace]);
@@ -93,8 +108,8 @@ export function PropertySearchMap({
         <Ionicons name="home-outline" size={48} color={colors.slateLight} />
         <Text style={styles.placeholderTitle}>No mappable listings</Text>
         <Text style={styles.placeholderSub}>
-          Properties in this view need valid latitude and longitude. Try clearing filters
-          or searching a wider area.
+          No listings with coordinates inside Thane. Try different filters or search
+          another area in Thane.
         </Text>
       </View>
     );
@@ -107,10 +122,13 @@ export function PropertySearchMap({
         style={styles.map}
         provider={PROVIDER_GOOGLE}
         initialRegion={initialRegion as Region}
+        minZoomLevel={11}
+        maxZoomLevel={19}
         showsUserLocation
         showsMyLocationButton
         showsCompass
         onPress={() => setSelectedId(null)}
+        onRegionChangeComplete={handleRegionChangeComplete}
       >
         {selectedPlace && (
           <Marker
@@ -169,7 +187,8 @@ export function PropertySearchMap({
       <View style={styles.legend} pointerEvents="none">
         <Ionicons name="home" size={14} color="#0f766e" />
         <Text style={styles.legendText}>
-          {mappable.length} {mappable.length === 1 ? 'home' : 'homes'} on map
+          Thane only · {mappable.length}{' '}
+          {mappable.length === 1 ? 'listing' : 'listings'}
         </Text>
       </View>
 

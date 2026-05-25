@@ -1,8 +1,12 @@
 import {
   GOOGLE_MAPS_API_KEY,
+  THANE_MAP_BOUNDS,
   THANE_MAP_CENTER,
   hasGoogleMapsKey,
 } from '../config/env';
+import { isWithinThaneBounds } from '../utils/mapHelpers';
+
+const THANE_AUTOCOMPLETE_BOUNDS = `${THANE_MAP_BOUNDS.minLatitude},${THANE_MAP_BOUNDS.minLongitude}|${THANE_MAP_BOUNDS.maxLatitude},${THANE_MAP_BOUNDS.maxLongitude}`;
 
 export type PlacePrediction = {
   placeId: string;
@@ -97,7 +101,9 @@ export async function fetchPlacePredictions(
     key: GOOGLE_MAPS_API_KEY,
     components: 'country:in',
     location: `${THANE_MAP_CENTER.latitude},${THANE_MAP_CENTER.longitude}`,
-    radius: '50000',
+    radius: '25000',
+    bounds: THANE_AUTOCOMPLETE_BOUNDS,
+    strictbounds: 'true',
     types: 'geocode',
     language: 'en',
   });
@@ -111,12 +117,17 @@ export async function fetchPlacePredictions(
     throw mapsError(data.status, data.error_message);
   }
 
-  return (data.predictions ?? []).map((p) => ({
-    placeId: p.place_id,
-    description: p.description,
-    mainText: p.structured_formatting?.main_text ?? p.description,
-    secondaryText: p.structured_formatting?.secondary_text ?? '',
-  }));
+  return (data.predictions ?? [])
+    .filter((p) => {
+      const text = (p.description ?? '').toLowerCase();
+      return text.includes('thane') || text.includes('ठाणे');
+    })
+    .map((p) => ({
+      placeId: p.place_id,
+      description: p.description,
+      mainText: p.structured_formatting?.main_text ?? p.description,
+      secondaryText: p.structured_formatting?.secondary_text ?? '',
+    }));
 }
 
 export async function fetchPlaceDetails(placeId: string): Promise<SelectedPlace> {
@@ -143,6 +154,11 @@ export async function fetchPlaceDetails(placeId: string): Promise<SelectedPlace>
   const { lat, lng } = data.result.geometry.location;
   if (lat == null || lng == null) {
     throw new Error('Place has no coordinates.');
+  }
+  if (!isWithinThaneBounds(lat, lng)) {
+    throw new Error(
+      'Please choose a location within Thane district only.'
+    );
   }
 
   const components = data.result.address_components ?? [];

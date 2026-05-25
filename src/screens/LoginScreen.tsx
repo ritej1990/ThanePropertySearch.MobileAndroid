@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -23,7 +22,6 @@ import { useAuth } from '../context/AuthContext';
 import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { RootStackParamList } from '../navigation/types';
 import { LegalFooter } from '../components/layout/LegalFooter';
-import { WEB_FORGOT_PASSWORD } from '../config/webLinks';
 import { colors, radius, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -61,16 +59,6 @@ export default function LoginScreen({ navigation }: Props) {
     }
   }
 
-  function openForgotPassword() {
-    Keyboard.dismiss();
-    Linking.openURL(WEB_FORGOT_PASSWORD).catch(() => {
-      Alert.alert(
-        'Forgot password',
-        'Visit thaneflats.com in your browser to reset your password.'
-      );
-    });
-  }
-
   const paddingStyle = {
     paddingTop: insets.top + spacing.md,
     paddingBottom: insets.bottom + spacing.md,
@@ -85,7 +73,7 @@ export default function LoginScreen({ navigation }: Props) {
           <Text style={styles.eyebrow}>Account access</Text>
           <Text style={styles.cardTitle}>Sign in to continue</Text>
           <Text style={styles.cardSub}>
-            Same username & password as www.thaneflats.com
+            Use your Thane Flats username and password.
           </Text>
 
           <AuthTextField
@@ -115,7 +103,10 @@ export default function LoginScreen({ navigation }: Props) {
 
           <Pressable
             style={styles.forgot}
-            onPress={openForgotPassword}
+            onPress={() => {
+              Keyboard.dismiss();
+              navigation.navigate('ForgotPassword');
+            }}
             hitSlop={8}
           >
             <Text style={styles.forgotText}>Forgot password?</Text>

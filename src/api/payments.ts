@@ -1,4 +1,5 @@
 import type { createApiClient } from './client';
+import type { PaymentTransaction } from './paymentHistoryTypes';
 import type {
   ActivateContactPackResponse,
   ActivateEssentialResponse,
@@ -59,6 +60,10 @@ export function createPaymentsApi(client: ReturnType<typeof createApiClient>) {
           paymentAmountDeclared: amountInr,
         }
       );
+    },
+
+    getMyTransactions() {
+      return client.get<PaymentTransaction[]>('/api/payments/my');
     },
   };
 }

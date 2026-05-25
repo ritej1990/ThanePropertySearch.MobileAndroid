@@ -20,7 +20,7 @@ export function LoginHeader({ compact }: Props) {
       <BrandBadge />
       <Text style={[styles.title, compact && styles.titleCompact]}>Welcome back</Text>
       <Text style={[styles.lead, compact && styles.leadCompact]}>
-        Buy, rent, or list properties across Thane — synced with thaneflats.com
+        Buy, rent, or list properties across Thane — all in one app
       </Text>
       {!compact ? (
         <View style={styles.pills}>

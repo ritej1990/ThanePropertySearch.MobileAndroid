@@ -11,6 +11,7 @@ import type { RootStackParamList } from './src/navigation/types';
 import { colors } from './src/theme';
 import { isBuilderRole, isOwnerRole } from './src/utils/roles';
 import LoginScreen from './src/screens/LoginScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import OwnerDashboardScreen from './src/screens/OwnerDashboardScreen';
@@ -28,6 +29,11 @@ import SupportTicketDetailsScreen from './src/screens/SupportTicketDetailsScreen
 import BuilderProjectsScreen from './src/screens/BuilderProjectsScreen';
 import BuilderProjectDetailsScreen from './src/screens/BuilderProjectDetailsScreen';
 import BuilderDashboardScreen from './src/screens/BuilderDashboardScreen';
+import MyPaymentsScreen from './src/screens/MyPaymentsScreen';
+import VisitRequestsScreen from './src/screens/VisitRequestsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import BuilderLeadsScreen from './src/screens/BuilderLeadsScreen';
+import PolicyScreen from './src/screens/PolicyScreen';
 import { linking } from './src/navigation/linking';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -74,6 +80,11 @@ function AppNavigator() {
           <Stack.Screen
             name="Register"
             component={RegisterScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen
@@ -208,6 +219,26 @@ function AppNavigator() {
           <Stack.Screen
             name="Policy"
             component={PolicyScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="MyPayments"
+            component={MyPaymentsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="VisitRequests"
+            component={VisitRequestsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="BuilderLeads"
+            component={BuilderLeadsScreen}
             options={{ headerShown: false }}
           />
         </>

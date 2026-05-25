@@ -1,7 +1,5 @@
 import React from 'react';
 import {
-  Alert,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -9,7 +7,10 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { LEGAL_COPYRIGHT_YEAR, LEGAL_LINKS, legalPageUrl } from '../../config/legalLinks';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import { LEGAL_COPYRIGHT_YEAR, LEGAL_LINKS } from '../../config/legalLinks';
+import type { RootStackParamList } from '../../navigation/types';
 import { colors, spacing } from '../../theme';
 
 type Variant = 'onDark' | 'onLight';
@@ -19,21 +20,8 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-async function openLegalPage(path: string, label: string) {
-  const url = legalPageUrl(path);
-  try {
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) {
-      Alert.alert(label, `Open in your browser:\n${url}`);
-      return;
-    }
-    await Linking.openURL(url);
-  } catch {
-    Alert.alert(label, `Could not open the link. Visit:\n${url}`);
-  }
-}
-
 export function LegalFooter({ variant = 'onLight', style }: Props) {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const onDark = variant === 'onDark';
 
   return (
@@ -52,12 +40,12 @@ export function LegalFooter({ variant = 'onLight', style }: Props) {
 
       <View style={styles.linksRow}>
         {LEGAL_LINKS.map((item, index) => (
-          <React.Fragment key={item.path}>
+          <React.Fragment key={item.kind}>
             {index > 0 ? (
               <Text style={[styles.sep, onDark && styles.sepOnDark]}> · </Text>
             ) : null}
             <Pressable
-              onPress={() => openLegalPage(item.path, item.label)}
+              onPress={() => navigation.navigate('Policy', { kind: item.kind })}
               hitSlop={6}
               accessibilityRole="link"
               accessibilityLabel={item.label}

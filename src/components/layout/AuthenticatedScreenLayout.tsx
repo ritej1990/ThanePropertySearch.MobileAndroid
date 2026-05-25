@@ -51,7 +51,7 @@ export function AuthenticatedScreenLayout({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.pageBg,
   },
   body: {
     flex: 1,

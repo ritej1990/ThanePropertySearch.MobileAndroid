@@ -88,8 +88,9 @@ export function BuilderProjectCard({ item, onPress }: Props) {
         <View style={styles.footer}>
           <View style={styles.possession}>
             <Ionicons name="calendar-outline" size={13} color={colors.slateLight} />
-            <Text style={styles.possessionText}>
-              Possession {formatPossessionDate(item.possessionDate)}
+            <Text style={styles.possessionText} numberOfLines={1}>
+              <Text style={styles.possessionLabel}>Possession </Text>
+              {formatPossessionDate(item.possessionDate)}
             </Text>
           </View>
           <View style={styles.cta}>
@@ -322,9 +323,13 @@ const styles = StyleSheet.create({
   },
   possessionText: {
     flex: 1,
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '600',
     color: colors.slateLight,
+  },
+  possessionLabel: {
+    flexShrink: 0,
   },
   cta: {
     flexDirection: 'row',

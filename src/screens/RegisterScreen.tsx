@@ -425,7 +425,7 @@ export default function RegisterScreen({ navigation }: Props) {
           <View style={styles.trustRow}>
             <Ionicons name="shield-checkmark" size={16} color="#0f766e" />
             <Text style={styles.trustText}>
-              Same account works on www.thaneflats.com — verify email after signup
+              Verify your email after signup to unlock the full experience
             </Text>
           </View>
         </View>

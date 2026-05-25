@@ -16,8 +16,8 @@ export function RegisterHeader() {
       <BrandBadge />
       <Text style={styles.title}>Create your account</Text>
       <Text style={styles.lead}>
-        Join Thane Flats — search homes, chat with owners, or list your property on
-        thaneflats.com
+        Join Thane Flats — search homes, chat with owners, or list your property
+        from the app
       </Text>
       <View style={styles.steps}>
         {STEPS.map((step, i) => (

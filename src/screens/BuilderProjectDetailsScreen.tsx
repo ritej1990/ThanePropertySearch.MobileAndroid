@@ -15,10 +15,10 @@ import { builderProjectsApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import { BuilderCoverImage } from '../components/builder/BuilderCoverImage';
 import { BuilderLeadForm } from '../components/builder/BuilderLeadForm';
+import { BuilderProjectMediaSections } from '../components/builder/BuilderProjectMediaSections';
 import { BuilderUnitCard } from '../components/builder/BuilderUnitCard';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
-import { WEB_BUILDER_PROJECT, webHostLabel } from '../config/webLinks';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, gradients, radius, spacing } from '../theme';
 import {
@@ -27,6 +27,7 @@ import {
   parseAmenities,
   RERA_VERIFY_URL,
 } from '../utils/builderFormat';
+import { splitBuilderMedia } from '../utils/builderMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BuilderProjectDetails'>;
 
@@ -70,6 +71,7 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
   const [error, setError] = useState<string | null>(null);
   const [leadOpen, setLeadOpen] = useState(false);
   const [leadUnit, setLeadUnit] = useState<BuilderUnit | null>(null);
+  const [inventoryExpanded, setInventoryExpanded] = useState(false);
   const [showAllUnits, setShowAllUnits] = useState(false);
 
   async function load() {
@@ -93,6 +95,13 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
     () => parseAmenities(item?.amenities),
     [item?.amenities]
   );
+
+  const projectMedia = useMemo(() => {
+    if (!item?.media?.length) {
+      return { gallery: [], floorPlans: [], videos: [] };
+    }
+    return splitBuilderMedia(item.media);
+  }, [item?.media]);
 
   const availableUnits = useMemo(
     () =>
@@ -215,6 +224,16 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
             <StatTile icon="cash-outline" value={priceLabel} label="From" accent="gold" />
           </View>
 
+          {(projectMedia.gallery.length > 0 ||
+            projectMedia.floorPlans.length > 0 ||
+            projectMedia.videos.length > 0) && (
+            <BuilderProjectMediaSections
+              gallery={projectMedia.gallery}
+              floorPlans={projectMedia.floorPlans}
+              videos={projectMedia.videos}
+            />
+          )}
+
           <View style={styles.infoCard}>
             <Text style={styles.infoCardTitle}>Project snapshot</Text>
             <InfoLine icon="map-outline" label="Area" value={item.areaName} />
@@ -243,45 +262,55 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
           ) : null}
 
           <View style={styles.section}>
-            <SectionHeader
-              icon="layers-outline"
-              title="Available inventory"
-              sub={`${availableUnits.length} of ${item.units.length} units open`}
-            />
-            {visibleUnits.map((unit) => (
-              <BuilderUnitCard
-                key={unit.id}
-                unit={unit}
-                onEnquire={() => openLead(unit)}
+            <Pressable
+              style={styles.collapsibleHead}
+              onPress={() => setInventoryExpanded((v) => !v)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: inventoryExpanded }}
+              accessibilityLabel={`Available inventory, ${availableUnits.length} of ${item.units.length} units open`}
+            >
+              <SectionHeader
+                icon="layers-outline"
+                title="Available inventory"
+                sub={`${availableUnits.length} of ${item.units.length} units open`}
               />
-            ))}
-            {item.units.length > UNITS_PREVIEW ? (
-              <Pressable
-                style={styles.showMoreBtn}
-                onPress={() => setShowAllUnits((v) => !v)}
-              >
-                <Text style={styles.showMoreText}>
-                  {showAllUnits
-                    ? 'Show fewer units'
-                    : `Show all ${item.units.length} units`}
-                </Text>
-                <Ionicons
-                  name={showAllUnits ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.builder}
-                />
-              </Pressable>
+              <Ionicons
+                name={inventoryExpanded ? 'chevron-up' : 'chevron-down'}
+                size={22}
+                color={colors.builder}
+                style={styles.collapsibleChevron}
+              />
+            </Pressable>
+            {inventoryExpanded ? (
+              <>
+                {visibleUnits.map((unit) => (
+                  <BuilderUnitCard
+                    key={unit.id}
+                    unit={unit}
+                    onEnquire={() => openLead(unit)}
+                  />
+                ))}
+                {item.units.length > UNITS_PREVIEW ? (
+                  <Pressable
+                    style={styles.showMoreBtn}
+                    onPress={() => setShowAllUnits((v) => !v)}
+                  >
+                    <Text style={styles.showMoreText}>
+                      {showAllUnits
+                        ? 'Show fewer units'
+                        : `Show all ${item.units.length} units`}
+                    </Text>
+                    <Ionicons
+                      name={showAllUnits ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color={colors.builder}
+                    />
+                  </Pressable>
+                ) : null}
+              </>
             ) : null}
           </View>
 
-          <Pressable
-            style={styles.webLink}
-            onPress={() => Linking.openURL(WEB_BUILDER_PROJECT(item.id))}
-          >
-            <Ionicons name="globe-outline" size={18} color={colors.builder} />
-            <Text style={styles.webLinkText}>Full details on {webHostLabel()}</Text>
-            <Ionicons name="open-outline" size={16} color={colors.slateMuted} />
-          </Pressable>
         </View>
       </ScrollView>
 
@@ -573,7 +602,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderLight,
   },
   infoLabel: {
-    width: 72,
+    minWidth: 88,
+    flexShrink: 0,
     fontSize: 13,
     fontWeight: '600',
     color: colors.slateLight,
@@ -595,11 +625,21 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing.xl,
   },
-  sectionHead: {
+  collapsibleHead: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.sm,
     marginBottom: spacing.md,
+  },
+  collapsibleChevron: {
+    marginTop: 10,
+  },
+  sectionHead: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginBottom: 0,
   },
   sectionIcon: {
     width: 40,
@@ -663,25 +703,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.builder,
-  },
-  webLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.builderBorder,
-  },
-  webLinkText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.builderDark,
-    textAlign: 'center',
   },
   stickyBar: {
     position: 'absolute',

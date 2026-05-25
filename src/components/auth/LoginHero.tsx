@@ -33,7 +33,7 @@ export function LoginHero({ compact }: Props) {
         </Text>
         {!compact && (
           <Text style={styles.lead}>
-            Browse verified flats and manage listings — same as thaneflats.com.
+            Browse verified flats, chat with owners, and manage listings in the app.
           </Text>
         )}
         <View style={styles.features}>

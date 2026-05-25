@@ -26,6 +26,7 @@ import {
   formatPlanEndDate,
   hasActiveEssentialPlan,
 } from '../utils/planDisplay';
+import { PageHero } from '../components/ui/PageHero';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EssentialService'>;
@@ -139,23 +140,12 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={['#2563eb', '#1d4ed8', '#1e40af']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.heroIcon}>
-            <Ionicons name="shield-checkmark" size={28} color="#fff" />
-          </View>
-          <View style={styles.heroText}>
-            <Text style={styles.heroTitle}>Plan payment</Text>
-            <Text style={styles.heroSub}>
-              Choose a plan to unlock owner chat and formal requests while you search
-              Thane listings.
-            </Text>
-          </View>
-        </LinearGradient>
+        <PageHero
+          variant="user"
+          icon="shield-checkmark"
+          title="Essential plan"
+          subtitle="Unlock owner chat and formal requests while you search Thane listings."
+        />
 
         <View style={styles.perks}>
           {PERKS.map((p) => (
@@ -259,6 +249,10 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
                 )}
               </Pressable>
             </View>
+
+            <Pressable onPress={() => navigation.navigate('MyPayments', { essentialOnly: true })}>
+              <Text style={styles.footerLink}>My payments (Essential)</Text>
+            </Pressable>
           </>
         )}
       </ScrollView>
@@ -434,5 +428,16 @@ const styles = StyleSheet.create({
     color: colors.heroText,
     fontWeight: '800',
     fontSize: 16,
+  },
+  footerLinks: {
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  footerLink: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
 });

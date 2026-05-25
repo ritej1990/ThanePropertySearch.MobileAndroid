@@ -2,15 +2,18 @@ import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
+  Image,
   StyleSheet,
   Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme';
 import { USE_NATIVE_DRIVER } from '../../utils/animation';
+
+const brandMark = require('../../../assets/logo-mark.png');
+const brandMarkLg = require('../../../assets/logo-mark-lg.png');
 
 type Props = {
   size?: number;
@@ -25,7 +28,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** Original Thane Flats mark — geometric building, no third-party artwork. */
+/** Thane Flats brand mark (Play Store medallion asset). */
 export function ThaneFlatsLogo({
   size = 36,
   showWordmark = false,
@@ -62,63 +65,19 @@ export function ThaneFlatsLogo({
   }, [animated, pulse]);
 
   const markSize = size;
-  const bodyW = markSize * 0.42;
-  const bodyH = markSize * 0.38;
-  const roofH = markSize * 0.14;
-  const win = markSize * 0.08;
+  const source = markSize >= 64 ? brandMarkLg : brandMark;
 
   const mark = (
-    <LinearGradient
-      colors={['#0d9488', '#2563eb', '#c9a227']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[
-        styles.mark,
-        {
-          width: markSize,
-          height: markSize,
-          borderRadius: markSize * 0.22,
-        },
-      ]}
-    >
-      <View style={styles.building}>
-        <View
-          style={[
-            styles.roof,
-            {
-              borderLeftWidth: bodyW * 0.55,
-              borderRightWidth: bodyW * 0.55,
-              borderBottomWidth: roofH,
-              marginBottom: -1,
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.body,
-            {
-              width: bodyW,
-              height: bodyH,
-              borderRadius: markSize * 0.04,
-            },
-          ]}
-        >
-          <View style={styles.windows}>
-            {[0, 1, 2].map((i) => (
-              <View
-                key={i}
-                style={{
-                  width: win,
-                  height: win,
-                  borderRadius: win * 0.2,
-                  backgroundColor: 'rgba(12, 24, 41, 0.35)',
-                }}
-              />
-            ))}
-          </View>
-        </View>
-      </View>
-    </LinearGradient>
+    <Image
+      source={source}
+      style={{
+        width: markSize,
+        height: markSize,
+        borderRadius: markSize / 2,
+      }}
+      resizeMode="contain"
+      accessibilityLabel="Thane Flats"
+    />
   );
 
   const animatedMark = animated ? (
@@ -163,39 +122,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  mark: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.navy,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  building: {
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  roof: {
-    width: 0,
-    height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: 'rgba(248, 250, 252, 0.95)',
-  },
-  body: {
-    backgroundColor: 'rgba(248, 250, 252, 0.92)',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 3,
-  },
-  windows: {
-    flexDirection: 'row',
-    gap: 3,
-    marginBottom: 2,
   },
   textCol: {
     flexShrink: 1,

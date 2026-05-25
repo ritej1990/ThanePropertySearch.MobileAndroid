@@ -3,6 +3,8 @@ import type {
   BuilderProjectSummary,
   BuilderUnit,
 } from '../api/builderTypes';
+import { extractRawBuilderMedia, normalizeBuilderMedia } from './builderMedia';
+import { resolveImageUrl } from './imageUrl';
 
 function isAvailableUnit(unit: BuilderUnit): boolean {
   return unit.availabilityStatus?.trim().toLowerCase() === 'available';
@@ -33,12 +35,15 @@ export function enrichBuilderProject<T extends BuilderProjectSummary>(
     }
   }
 
+  const media = normalizeBuilderMedia(extractRawBuilderMedia(project));
+  const galleryUrl = media.find(
+    (m) => m.mediaType?.toLowerCase() === 'gallery' && m.url?.trim()
+  )?.url;
   const coverImageUrl =
     project.coverImageUrl?.trim() ||
-    (Array.isArray((project as BuilderProjectDetail).media)
-      ? (project as BuilderProjectDetail).media.find((m) => typeof m === 'string' && m.trim())
-          ?.trim() ?? ''
-      : '');
+    resolveImageUrl(galleryUrl) ||
+    galleryUrl?.trim() ||
+    '';
 
   return {
     ...project,
@@ -51,5 +56,9 @@ export function enrichBuilderProject<T extends BuilderProjectSummary>(
 export function enrichBuilderProjectDetail(
   project: BuilderProjectDetail
 ): BuilderProjectDetail {
-  return enrichBuilderProject(project) as BuilderProjectDetail;
+  const enriched = enrichBuilderProject(project) as BuilderProjectDetail;
+  return {
+    ...enriched,
+    media: normalizeBuilderMedia(extractRawBuilderMedia(enriched)),
+  };
 }

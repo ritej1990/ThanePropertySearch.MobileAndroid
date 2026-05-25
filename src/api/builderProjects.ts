@@ -43,9 +43,10 @@ export function createBuilderProjectsApi(client: ReturnType<typeof createApiClie
     },
 
     async getById(id: number) {
+      // Send JWT when logged in (matches web Details) so builders see pending media too.
       const detail = await client.get<BuilderProjectDetail>(
         `/api/builder-projects/${id}`,
-        { auth: false }
+        { auth: true }
       );
       return enrichBuilderProjectDetail(detail);
     },
