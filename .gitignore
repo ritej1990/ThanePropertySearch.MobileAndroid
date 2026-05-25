@@ -8,3 +8,5 @@ ios/
 .env
 .env.*
 !.env.example
+/.vs/slnx.sqlite-journal
+/.vs/Thane PropertySearch.Mobile New.slnx
