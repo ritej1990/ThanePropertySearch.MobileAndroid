@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,6 +15,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useResendEmailVerification } from '../../hooks/useResendEmailVerification';
 import { SignOutConfirmModal } from '../auth/SignOutConfirmModal';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
+import type { RootStackParamList } from '../../navigation/types';
+import { AppNavMenu, type NavMenuTarget } from './AppNavMenu';
 import { colors, gradients, radius, spacing } from '../../theme';
 
 type Props = {
@@ -22,12 +26,39 @@ type Props = {
 
 export function AppProfileHeader({ showBack, onBack }: Props) {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile, logout } = useAuth();
   const { resend, sending, email, emailConfirmed } = useResendEmailVerification();
   const [signOutVisible, setSignOutVisible] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const displayName = profile?.fullName?.trim() || profile?.username || 'Signed in';
+
+  function handleMenuNavigate(target: NavMenuTarget) {
+    switch (target) {
+      case 'home':
+        navigation.navigate('Home');
+        break;
+      case 'builders':
+        navigation.navigate('BuilderProjects');
+        break;
+      case 'ownerDashboard':
+        navigation.navigate('OwnerDashboard');
+        break;
+      case 'builderDashboard':
+        navigation.navigate('BuilderDashboard');
+        break;
+      case 'myChats':
+        navigation.navigate('MyChats');
+        break;
+      case 'support':
+        navigation.navigate('SupportTickets');
+        break;
+      default:
+        break;
+    }
+  }
 
   async function handleSignOut() {
     if (signingOut) return;
@@ -70,6 +101,15 @@ export function AppProfileHeader({ showBack, onBack }: Props) {
         ) : null}
 
         <Pressable
+          onPress={() => setMenuVisible(true)}
+          style={styles.menuBtn}
+          hitSlop={8}
+          accessibilityLabel="Open menu"
+        >
+          <Ionicons name="menu" size={22} color={colors.heroText} />
+        </Pressable>
+
+        <Pressable
           onPress={() => setSignOutVisible(true)}
           style={styles.logoutBtn}
           hitSlop={8}
@@ -78,6 +118,12 @@ export function AppProfileHeader({ showBack, onBack }: Props) {
           <Ionicons name="log-out-outline" size={20} color={colors.heroText} />
         </Pressable>
       </View>
+
+      <AppNavMenu
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        onNavigate={handleMenuNavigate}
+      />
 
       <SignOutConfirmModal
         visible={signOutVisible}
@@ -160,6 +206,14 @@ const styles = StyleSheet.create({
     color: 'rgba(248, 250, 252, 0.88)',
     textAlign: 'right',
     paddingHorizontal: spacing.xs,
+  },
+  menuBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoutBtn: {
     width: 32,

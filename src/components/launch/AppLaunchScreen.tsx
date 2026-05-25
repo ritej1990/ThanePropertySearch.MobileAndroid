@@ -13,9 +13,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LoginBackdrop } from '../auth/LoginBackdrop';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
 import { colors, gradients, radius, spacing, typography } from '../../theme';
+import { USE_NATIVE_DRIVER } from '../../utils/animation';
 
 const MIN_VISIBLE_MS = 2600;
 const EXIT_MS = 420;
+const LAUNCH_SAFETY_MS = MIN_VISIBLE_MS + EXIT_MS + 800;
 
 const STATUS_LINES = [
   'Curating Thane homes for you…',
@@ -55,13 +57,13 @@ function LaunchActionCard({ variant, delay, entrance }: ActionCardProps) {
           duration: isSearch ? 2200 : 2600,
           delay,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(float, {
           toValue: 0,
           duration: isSearch ? 2200 : 2600,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     );
@@ -72,13 +74,13 @@ function LaunchActionCard({ variant, delay, entrance }: ActionCardProps) {
           toValue: 1.12,
           duration: 900,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(iconPulse, {
           toValue: 1,
           duration: 900,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     );
@@ -95,7 +97,7 @@ function LaunchActionCard({ variant, delay, entrance }: ActionCardProps) {
           toValue: 1,
           duration: 1800,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         })
       );
       shimmerLoop.start();
@@ -106,13 +108,13 @@ function LaunchActionCard({ variant, delay, entrance }: ActionCardProps) {
             toValue: 1,
             duration: 1400,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(plusSpin, {
             toValue: 0,
             duration: 1400,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ])
       );
@@ -248,19 +250,19 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
         toValue: 1,
         duration: 520,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(cardsEntrance, {
         toValue: 1,
         duration: 620,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(trustEntrance, {
         toValue: 1,
         duration: 480,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start();
   }, [cardsEntrance, headerEntrance, trustEntrance]);
@@ -271,12 +273,12 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
         Animated.timing(statusOpacity, {
           toValue: 0,
           duration: 180,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(statusOpacity, {
           toValue: 1,
           duration: 220,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start();
       setStatusIndex((i) => (i + 1) % STATUS_LINES.length);
@@ -288,15 +290,35 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
     if (!authReady || !minElapsed || finishedRef.current) return;
     finishedRef.current = true;
 
+    let completed = false;
+    const finishBoot = () => {
+      if (completed) return;
+      completed = true;
+      onComplete();
+    };
+
     Animated.timing(screenOpacity, {
       toValue: 0,
       duration: EXIT_MS,
       easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start(({ finished }) => {
-      if (finished) onComplete();
+      if (finished) finishBoot();
     });
+
+    const safety = setTimeout(finishBoot, EXIT_MS + 400);
+    return () => clearTimeout(safety);
   }, [authReady, minElapsed, onComplete, screenOpacity]);
+
+  useEffect(() => {
+    const safety = setTimeout(() => {
+      if (finishedRef.current) return;
+      if (!authReady || !minElapsed) return;
+      finishedRef.current = true;
+      onComplete();
+    }, LAUNCH_SAFETY_MS);
+    return () => clearTimeout(safety);
+  }, [authReady, minElapsed, onComplete]);
 
   const headerTranslateY = headerEntrance.interpolate({
     inputRange: [0, 1],

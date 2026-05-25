@@ -19,6 +19,7 @@ import { PropertySearchStickyBar } from '../components/search/PropertySearchStic
 import { PropertySearchMap } from '../components/search/PropertySearchMap';
 import { SearchEmptyState } from '../components/search/SearchEmptyState';
 import { PlanTopButton } from '../components/search/PlanTopButton';
+import { BuildersNavButton } from '../components/search/BuildersNavButton';
 import { SearchViewToggle, type SearchViewMode } from '../components/search/SearchViewToggle';
 import type { SelectedPlace } from '../services/googlePlaces';
 import { DEFAULT_SEARCH_RADIUS_KM, hasGoogleMapsKey } from '../config/env';
@@ -215,6 +216,7 @@ export default function HomeScreen({ navigation }: Props) {
           compact
         />
       </View>
+      <BuildersNavButton onPress={() => navigation.navigate('BuilderProjects')} />
       {showPlan ? <PlanTopButton onPress={openPlans} /> : null}
     </View>
   );

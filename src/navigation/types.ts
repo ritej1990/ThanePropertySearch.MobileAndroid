@@ -39,4 +39,7 @@ export type RootStackParamList = {
   MyChats: undefined;
   SupportTickets: undefined;
   SupportTicketDetails: { ticketId: number; subject?: string };
+  BuilderProjects: undefined;
+  BuilderProjectDetails: { projectId: number; title?: string };
+  BuilderDashboard: undefined;
 };

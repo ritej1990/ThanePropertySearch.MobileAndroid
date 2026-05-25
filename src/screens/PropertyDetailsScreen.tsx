@@ -21,6 +21,7 @@ import { PropertyGallery } from '../components/property/PropertyGallery';
 import { SimilarPropertyCard } from '../components/property/SimilarPropertyCard';
 import { SpecRow } from '../components/property/SpecRow';
 import type { RootStackParamList } from '../navigation/types';
+import { WEB_PROPERTY_DETAIL } from '../config/webLinks';
 import { colors, radius, spacing, typography } from '../theme';
 import {
   formatInr,
@@ -42,8 +43,6 @@ const SAFETY_TIPS = [
   'Verify owner identity and property documents before token payment.',
   'Report suspected fraud through thaneflats.com support.',
 ] as const;
-
-const WEB_DETAIL = (id: number) => `https://www.thaneflats.com/Property/Details/${id}`;
 
 function StatTile({
   icon,
@@ -343,7 +342,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
       </ScrollView>
 
       <PropertyDetailStickyBar
-        webUrl={WEB_DETAIL(item.id)}
+        webUrl={WEB_PROPERTY_DETAIL(item.id)}
         hasMap={hasMap}
         latitude={item.latitude}
         longitude={item.longitude}

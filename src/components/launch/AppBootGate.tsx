@@ -12,14 +12,33 @@ type Props = {
   children: React.ReactNode;
 };
 
+/**
+ * Splash for cold start only. After the user signs in while `step === 'done'`,
+ * stay on `done` so the stack can switch to Home immediately (web animations
+ * on welcome/launch can otherwise never finish).
+ */
 export function AppBootGate({ children }: Props) {
   const { token, ready, profile } = useAuth();
   const [step, setStep] = useState<BootStep>('init');
 
   useEffect(() => {
     if (!ready) return;
-    setStep(token ? 'welcome' : 'launch');
-  }, [ready, token]);
+
+    if (!token) {
+      if (step !== 'done') {
+        setStep('launch');
+      }
+      return;
+    }
+
+    if (step === 'done') {
+      return;
+    }
+
+    if (step === 'init' || step === 'launch') {
+      setStep('welcome');
+    }
+  }, [ready, token, step]);
 
   if (!ready || step === 'init') {
     return (
