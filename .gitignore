@@ -10,3 +10,6 @@ ios/
 !.env.example
 /.vs/slnx.sqlite-journal
 /.vs/Thane PropertySearch.Mobile New.slnx
+/.vs/slnx.sqlite
+/.gitignore
+/.vs/VSWorkspaceState.json
