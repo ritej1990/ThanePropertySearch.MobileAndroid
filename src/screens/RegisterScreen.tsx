@@ -32,12 +32,13 @@ import {
   sanitizeUsername,
 } from '../utils/username';
 import type { RootStackParamList } from '../navigation/types';
+import { LegalFooter } from '../components/layout/LegalFooter';
 import { colors, radius, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
-const roles = ['User', 'Owner'] as const;
-const intents = ['Buy', 'Rent', 'Sell', 'Invest'] as const;
+const roles = ['User', 'Owner', 'Builder'] as const;
+const intents = ['Buy', 'Rent', 'Sell', 'Invest', 'BuilderProjects'] as const;
 
 const ROLE_OPTIONS = [
   {
@@ -56,6 +57,14 @@ const ROLE_OPTIONS = [
     accent: '#0f766e',
     accentSoft: '#ccfbf1',
   },
+  {
+    value: 'Builder' as const,
+    label: 'Builder / developer',
+    description: 'List projects, units & receive buyer leads',
+    icon: 'business' as const,
+    accent: '#7c3aed',
+    accentSoft: '#ede9fe',
+  },
 ] as const;
 
 const INTENT_OPTIONS = [
@@ -63,6 +72,11 @@ const INTENT_OPTIONS = [
   { value: 'Rent' as const, label: 'Rent', icon: 'key-outline' as const },
   { value: 'Sell' as const, label: 'Sell', icon: 'pricetag-outline' as const },
   { value: 'Invest' as const, label: 'Invest', icon: 'trending-up-outline' as const },
+  {
+    value: 'BuilderProjects' as const,
+    label: 'Builder projects',
+    icon: 'business-outline' as const,
+  },
 ] as const;
 
 export default function RegisterScreen({ navigation }: Props) {
@@ -80,6 +94,28 @@ export default function RegisterScreen({ navigation }: Props) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [role, setRole] = useState<(typeof roles)[number]>('User');
   const [marketIntent, setMarketIntent] = useState<(typeof intents)[number]>('Buy');
+
+  const visibleIntents = useMemo(() => {
+    if (role === 'Builder') {
+      return INTENT_OPTIONS.filter((o) => o.value === 'BuilderProjects');
+    }
+    if (role === 'Owner') {
+      return INTENT_OPTIONS.filter((o) => o.value === 'Sell' || o.value === 'Invest');
+    }
+    return INTENT_OPTIONS.filter((o) => o.value !== 'BuilderProjects' && o.value !== 'Sell');
+  }, [role]);
+
+  useEffect(() => {
+    if (role === 'Builder') {
+      setMarketIntent('BuilderProjects');
+    } else if (role === 'Owner') {
+      setMarketIntent((prev) => (prev === 'Sell' || prev === 'Invest' ? prev : 'Sell'));
+    } else {
+      setMarketIntent((prev) =>
+        prev === 'BuilderProjects' || prev === 'Sell' ? 'Buy' : prev
+      );
+    }
+  }, [role]);
   const [submitting, setSubmitting] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -187,7 +223,8 @@ export default function RegisterScreen({ navigation }: Props) {
         password,
         phoneNumber: phoneNumber.trim(),
         role,
-        marketIntent,
+        marketIntent:
+          marketIntent === 'BuilderProjects' ? 'Builder projects' : marketIntent,
       });
 
       setSuccessMessage(
@@ -284,7 +321,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
           <Text style={styles.fieldLabel}>Primary interest</Text>
           <View style={styles.intentRow}>
-            {INTENT_OPTIONS.map((opt) => (
+            {visibleIntents.map((opt) => (
               <RegisterIntentChip
                 key={opt.value}
                 label={opt.label}
@@ -393,8 +430,7 @@ export default function RegisterScreen({ navigation }: Props) {
           </View>
         </View>
 
-        <Text style={styles.footer}>Thane Flats · thane property search</Text>
-        <PolicyFooterLinks navigation={navigation} variant="dark" />
+        <LegalFooter variant="onDark" style={styles.legalFooter} />
       </ScrollView>
 
       <RegisterSuccessModal
@@ -517,11 +553,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0f766e',
   },
-  footer: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: 'rgba(248, 250, 252, 0.72)',
+  legalFooter: {
     marginTop: spacing.lg,
-    letterSpacing: 0.3,
+    marginHorizontal: -spacing.lg,
   },
 });

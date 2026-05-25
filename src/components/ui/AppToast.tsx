@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme';
+import { USE_NATIVE_DRIVER } from '../../utils/animation';
 
 export type ToastVariant = 'info' | 'email' | 'success' | 'error';
 
@@ -36,12 +37,12 @@ export function AppToast({ visible, message, variant = 'info', onDismiss }: Prop
       Animated.timing(opacity, {
         toValue: visible ? 1 : 0,
         duration: 220,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(translateY, {
         toValue: visible ? 0 : -12,
         duration: 220,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start();
   }, [visible, opacity, translateY]);

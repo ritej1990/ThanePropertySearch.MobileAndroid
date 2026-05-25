@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 export type TokenStorage = {
@@ -17,9 +18,38 @@ export type AuthProfileSnapshot = {
   emailConfirmed: boolean;
 };
 
-/** Single instance — used by API client so every request reads the latest token from secure storage. */
+function webStorageAvailable(): boolean {
+  return Platform.OS === 'web' && typeof localStorage !== 'undefined';
+}
+
+async function readWebItem(key: string): Promise<string | null> {
+  if (!webStorageAvailable()) return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+async function writeWebItem(key: string, value: string | null): Promise<void> {
+  if (!webStorageAvailable()) return;
+  try {
+    if (value == null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, value);
+    }
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
+
+/** Single instance — used by API client so every request reads the latest token. */
 export const expoTokenStorage: TokenStorage = {
   async getAccessToken() {
+    if (webStorageAvailable()) {
+      return readWebItem(AUTH_TOKEN_KEY);
+    }
     try {
       return await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
     } catch {
@@ -27,6 +57,10 @@ export const expoTokenStorage: TokenStorage = {
     }
   },
   async setAccessToken(token) {
+    if (webStorageAvailable()) {
+      await writeWebItem(AUTH_TOKEN_KEY, token);
+      return;
+    }
     try {
       if (token) {
         await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
@@ -40,12 +74,23 @@ export const expoTokenStorage: TokenStorage = {
 };
 
 export async function saveAuthProfile(profile: AuthProfileSnapshot): Promise<void> {
-  await SecureStore.setItemAsync(AUTH_PROFILE_KEY, JSON.stringify(profile));
+  const raw = JSON.stringify(profile);
+  if (webStorageAvailable()) {
+    await writeWebItem(AUTH_PROFILE_KEY, raw);
+    return;
+  }
+  try {
+    await SecureStore.setItemAsync(AUTH_PROFILE_KEY, raw);
+  } catch {
+    /* ignore */
+  }
 }
 
 export async function loadAuthProfile(): Promise<AuthProfileSnapshot | null> {
   try {
-    const raw = await SecureStore.getItemAsync(AUTH_PROFILE_KEY);
+    const raw = webStorageAvailable()
+      ? await readWebItem(AUTH_PROFILE_KEY)
+      : await SecureStore.getItemAsync(AUTH_PROFILE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as AuthProfileSnapshot;
   } catch {
@@ -54,6 +99,10 @@ export async function loadAuthProfile(): Promise<AuthProfileSnapshot | null> {
 }
 
 export async function clearAuthProfile(): Promise<void> {
+  if (webStorageAvailable()) {
+    await writeWebItem(AUTH_PROFILE_KEY, null);
+    return;
+  }
   try {
     await SecureStore.deleteItemAsync(AUTH_PROFILE_KEY);
   } catch {
