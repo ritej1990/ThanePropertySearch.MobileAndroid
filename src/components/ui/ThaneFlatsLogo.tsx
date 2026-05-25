@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme';
+import { USE_NATIVE_DRIVER } from '../../utils/animation';
 
 type Props = {
   size?: number;
@@ -46,13 +47,13 @@ export function ThaneFlatsLogo({
           toValue: 1.06,
           duration: 700,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(pulse, {
           toValue: 1,
           duration: 700,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     );

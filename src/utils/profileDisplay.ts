@@ -1,4 +1,4 @@
-import { isOwnerRole } from './roles';
+import { isBuilderRole, isOwnerRole } from './roles';
 
 export function getProfileInitials(fullName?: string | null): string {
   const trimmed = fullName?.trim();
@@ -15,5 +15,7 @@ export function getProfileFirstName(fullName?: string | null): string {
 }
 
 export function getRoleLabel(role?: string | null): string {
-  return isOwnerRole(role) ? 'Owner' : 'User';
+  if (isOwnerRole(role)) return 'Owner';
+  if (isBuilderRole(role)) return 'Builder';
+  return 'User';
 }

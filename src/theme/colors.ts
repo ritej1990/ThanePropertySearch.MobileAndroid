@@ -23,6 +23,10 @@ export const colors = {
   success: '#15803d',
   overlay: 'rgba(7, 15, 28, 0.88)',
   cardShadow: 'rgba(15, 23, 42, 0.09)',
+  builder: '#6d28d9',
+  builderDark: '#5b21b6',
+  builderSoft: '#f5f3ff',
+  builderBorder: '#ddd6fe',
 } as const;
 
 export const gradients = {
@@ -32,4 +36,8 @@ export const gradients = {
   primaryButton: ['#1e3a5f', '#1d4ed8', '#0f172a'] as const,
   formSide: ['#faf8f5', '#f1f5f9', '#e8edf4'] as const,
   page: ['#dbeafe', '#eef2ff', '#ffffff'] as const,
+  /** Builder projects — purple → teal (distinct from resale listings). */
+  builder: ['#312e81', '#6d28d9', '#0e7490'] as const,
+  builderCard: ['#1e1b4b', '#4c1d95', '#0f766e'] as const,
+  builderCover: ['#4c1d95', '#2563eb', '#0d9488'] as const,
 } as const;

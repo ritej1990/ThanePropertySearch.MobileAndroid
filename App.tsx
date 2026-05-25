@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
 import type { RootStackParamList } from './src/navigation/types';
 import { colors } from './src/theme';
-import { isOwnerRole } from './src/utils/roles';
+import { isBuilderRole, isOwnerRole } from './src/utils/roles';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -25,6 +25,9 @@ import PropertyInquiriesScreen from './src/screens/PropertyInquiriesScreen';
 import MyChatsScreen from './src/screens/MyChatsScreen';
 import SupportTicketsScreen from './src/screens/SupportTicketsScreen';
 import SupportTicketDetailsScreen from './src/screens/SupportTicketDetailsScreen';
+import BuilderProjectsScreen from './src/screens/BuilderProjectsScreen';
+import BuilderProjectDetailsScreen from './src/screens/BuilderProjectDetailsScreen';
+import BuilderDashboardScreen from './src/screens/BuilderDashboardScreen';
 import { linking } from './src/navigation/linking';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -34,14 +37,20 @@ function AppNavigator() {
 
   const isAuthed = token != null;
   const isOwner = isOwnerRole(profile?.role);
+  const isBuilder = isBuilderRole(profile?.role);
+
+  const authedKey = isBuilder ? 'authed-builder' : isOwner ? 'authed-owner' : 'authed-user';
+  const initialAuthedRoute = isBuilder
+    ? 'BuilderDashboard'
+    : isOwner
+      ? 'OwnerDashboard'
+      : 'Home';
 
   return (
     <AppBootGate>
     <Stack.Navigator
-      key={isAuthed ? (isOwner ? 'authed-owner' : 'authed-user') : 'guest'}
-      initialRouteName={
-        isAuthed ? (isOwner ? 'OwnerDashboard' : 'Home') : 'Login'
-      }
+      key={isAuthed ? authedKey : 'guest'}
+      initialRouteName={isAuthed ? initialAuthedRoute : 'Login'}
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.navy,
@@ -70,7 +79,13 @@ function AppNavigator() {
         </>
       ) : (
         <>
-          {isOwner ? (
+          {isBuilder ? (
+            <Stack.Screen
+              name="BuilderDashboard"
+              component={BuilderDashboardScreen}
+              options={{ headerShown: false }}
+            />
+          ) : isOwner ? (
             <Stack.Screen
               name="OwnerDashboard"
               component={OwnerDashboardScreen}
@@ -88,7 +103,20 @@ function AppNavigator() {
             component={PostPropertyScreen}
             options={{ headerShown: false }}
           />
-          {isOwner ? (
+          {isBuilder ? (
+            <>
+              <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ headerShown: false, title: 'Browse properties' }}
+              />
+              <Stack.Screen
+                name="OwnerDashboard"
+                component={OwnerDashboardScreen}
+                options={{ headerShown: false, title: 'Owner listings' }}
+              />
+            </>
+          ) : isOwner ? (
             <Stack.Screen
               name="Home"
               component={HomeScreen}
@@ -99,6 +127,23 @@ function AppNavigator() {
               name="OwnerDashboard"
               component={OwnerDashboardScreen}
               options={{ headerShown: false, title: 'My listings' }}
+            />
+          )}
+          <Stack.Screen
+            name="BuilderProjects"
+            component={BuilderProjectsScreen}
+            options={{ headerShown: false, title: 'Builder projects' }}
+          />
+          <Stack.Screen
+            name="BuilderProjectDetails"
+            component={BuilderProjectDetailsScreen}
+            options={{ headerShown: false }}
+          />
+          {!isBuilder && (
+            <Stack.Screen
+              name="BuilderDashboard"
+              component={BuilderDashboardScreen}
+              options={{ headerShown: false, title: 'Builder dashboard' }}
             />
           )}
           <Stack.Screen
