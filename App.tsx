@@ -76,6 +76,11 @@ function AppNavigator() {
             component={RegisterScreen}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="Policy"
+            component={PolicyScreen}
+            options={{ headerShown: false }}
+          />
         </>
       ) : (
         <>
@@ -198,6 +203,11 @@ function AppNavigator() {
           <Stack.Screen
             name="SupportTicketDetails"
             component={SupportTicketDetailsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Policy"
+            component={PolicyScreen}
             options={{ headerShown: false }}
           />
         </>

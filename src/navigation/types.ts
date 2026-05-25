@@ -1,6 +1,9 @@
+import type { PolicyKind } from '../content/policies';
+
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
+  Policy: { kind: PolicyKind };
   Home: undefined;
   OwnerDashboard: undefined;
   PostProperty: undefined;

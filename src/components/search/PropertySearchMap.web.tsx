@@ -42,17 +42,17 @@ export function PropertySearchMap({
   }
 
   if (mappable.length === 0) {
-    return (
-      <View style={styles.placeholder}>
+  return (
+    <View style={styles.placeholder}>
         <Ionicons name="home-outline" size={48} color={colors.slateLight} />
         <Text style={styles.placeholderTitle}>No mappable listings</Text>
-        <Text style={styles.placeholderSub}>
+      <Text style={styles.placeholderSub}>
           Properties in this view need valid latitude and longitude. Try clearing filters
           or searching a wider area.
-        </Text>
-      </View>
-    );
-  }
+      </Text>
+    </View>
+  );
+}
 
   return (
     <View style={styles.wrap}>
@@ -215,5 +215,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginTop: spacing.sm,
+    maxWidth: 320,
   },
 });

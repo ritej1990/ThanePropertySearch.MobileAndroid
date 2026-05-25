@@ -18,6 +18,7 @@ import { LoginBackdrop } from '../components/auth/LoginBackdrop';
 import { LoginHeader } from '../components/auth/LoginHeader';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
+import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
 import { useAuth } from '../context/AuthContext';
 import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { RootStackParamList } from '../navigation/types';
