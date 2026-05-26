@@ -1,4 +1,4 @@
-/** Brand palette aligned with thaneflats.com / site.css login theme */
+/** Brand palette aligned with thaneflats.com site.css */
 export const colors = {
   navy: '#0f172a',
   navyDeep: '#0c1829',
@@ -14,22 +14,46 @@ export const colors = {
   pageBg: '#eef2ff',
   primary: '#2563eb',
   primaryDark: '#1d4ed8',
+  /** Owner / teal accent (site.css --owner-teal) */
+  teal: '#0d9488',
+  tealDark: '#0f766e',
+  tealSoft: '#ecfdf5',
+  tealBorder: '#99f6e4',
   gold: '#c9a227',
   goldLight: '#e8c96b',
   goldAccent: '#fcd34d',
   goldSoft: '#fde68a',
   heroText: '#f8fafc',
   error: '#b91c1c',
-  success: '#15803d',
+  errorSoft: '#fef2f2',
+  success: '#059669',
+  successSoft: '#ecfdf5',
+  warning: '#d97706',
+  warningSoft: '#fffbeb',
   overlay: 'rgba(7, 15, 28, 0.88)',
   cardShadow: 'rgba(15, 23, 42, 0.09)',
+  /** Builder lux UI (site.css --lux-violet) */
+  builder: '#7c3aed',
+  builderDark: '#5b21b6',
+  builderSoft: '#f5f3ff',
+  builderBorder: '#ddd6fe',
+  rent: '#0f766e',
+  sale: '#7c3aed',
+  pg: '#0d9488',
 } as const;
 
 export const gradients = {
   hero: ['#0c1829', '#1a4d6e', '#0e7490'] as const,
   heroAlt: ['#0f2847', '#1a4d6e', '#0c4c6e'] as const,
+  /** Owner dashboard hero (owner-dash-hero) */
+  ownerHero: ['#0f172a', '#1a4d6e', '#0f766e'] as const,
   goldBadge: ['#e8c96b', '#c9a227'] as const,
   primaryButton: ['#1e3a5f', '#1d4ed8', '#0f172a'] as const,
   formSide: ['#faf8f5', '#f1f5f9', '#e8edf4'] as const,
+  /** Body background radial (site body) */
   page: ['#dbeafe', '#eef2ff', '#ffffff'] as const,
+  builder: ['#312e81', '#7c3aed', '#0d9488'] as const,
+  builderCard: ['#1e1b4b', '#4c1d95', '#0f766e'] as const,
+  builderCover: ['#4c1d95', '#2563eb', '#0d9488'] as const,
+  detailAccent: ['#0d9488', '#2563eb', '#c9a227'] as const,
 } as const;

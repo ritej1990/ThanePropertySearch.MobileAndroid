@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { PageHero } from '../ui/PageHero';
 import { colors, radius, spacing } from '../../theme';
 import type { OwnerDashboardStats } from '../../utils/ownerDashboard';
 import { OwnerStatCard } from './OwnerStatCard';
@@ -10,35 +10,45 @@ type Props = {
   stats: OwnerDashboardStats;
   onBrowse: () => void;
   onPostProperty: () => void;
+  onMyPayments?: () => void;
 };
 
 export function OwnerDashboardHeader({
   stats,
   onBrowse,
   onPostProperty,
+  onMyPayments,
 }: Props) {
   return (
     <View style={styles.wrap}>
-      <LinearGradient
-        colors={[colors.navyDeep, '#1a4d6e', '#0f766e']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
+      <PageHero
+        variant="owner"
+        icon="speedometer-outline"
+        title="Owner dashboard"
+        subtitle="Listings, inquiries & visits"
       >
-        <Text style={styles.eyebrow}>Owner dashboard</Text>
-        <Text style={styles.heroHint}>Manage listings, inquiries & posting</Text>
-
+        <View style={styles.perks}>
+          <Perk icon="reply" label="Reply fast" />
+          <Perk icon="calendar" label="Visits" />
+          <Perk icon="trending-up" label="Track pending" />
+        </View>
         <View style={styles.quickActions}>
           <Pressable style={styles.quickPrimary} onPress={onBrowse}>
             <Ionicons name="search" size={18} color={colors.heroText} />
-            <Text style={styles.quickPrimaryText}>Browse market</Text>
+            <Text style={styles.quickPrimaryText}>Browse</Text>
           </Pressable>
           <Pressable style={styles.quickSecondary} onPress={onPostProperty}>
             <Ionicons name="add-circle-outline" size={18} color={colors.heroText} />
-            <Text style={styles.quickSecondaryText}>Post property</Text>
+            <Text style={styles.quickSecondaryText}>Post</Text>
           </Pressable>
+          {onMyPayments ? (
+            <Pressable style={styles.quickSecondary} onPress={onMyPayments}>
+              <Ionicons name="receipt-outline" size={18} color={colors.heroText} />
+              <Text style={styles.quickSecondaryText}>Payments</Text>
+            </Pressable>
+          ) : null}
         </View>
-      </LinearGradient>
+      </PageHero>
 
       <View style={styles.statsGrid}>
         <OwnerStatCard icon="home" value={stats.total} label="Listings" accent="#38bdf8" />
@@ -66,31 +76,48 @@ export function OwnerDashboardHeader({
   );
 }
 
+function Perk({
+  icon,
+  label,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+}) {
+  return (
+    <View style={styles.perk}>
+      <Ionicons name={icon} size={14} color={colors.goldAccent} />
+      <Text style={styles.perkText}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     marginBottom: spacing.lg,
   },
-  hero: {
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    overflow: 'hidden',
+  perks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  eyebrow: {
+  perk: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.25)',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  perkText: {
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    color: 'rgba(248, 250, 252, 0.75)',
-    marginBottom: 4,
-  },
-  heroHint: {
-    fontSize: 14,
+    fontWeight: '600',
     color: 'rgba(248, 250, 252, 0.9)',
-    marginBottom: spacing.lg,
   },
   quickActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   quickPrimary: {

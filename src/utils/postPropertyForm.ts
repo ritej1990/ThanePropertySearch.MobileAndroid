@@ -1,4 +1,5 @@
 import { hasGoogleMapsKey, THANE_MAP_CENTER } from '../config/env';
+import { isWithinThaneBounds } from './mapHelpers';
 import type { CreatePropertyRequest } from '../api/createPropertyTypes';
 import type { SelectedPlace } from '../services/googlePlaces';
 
@@ -93,7 +94,16 @@ export function validatePostPropertyStep(
 
   if (step === 2) {
     if (hasGoogleMapsKey() && !form.selectedPlace) {
-      return 'Search and pick your property on Google Maps.';
+      return 'Search and pick your property on Google Maps (Thane only).';
+    }
+    if (
+      form.selectedPlace &&
+      !isWithinThaneBounds(
+        form.selectedPlace.latitude,
+        form.selectedPlace.longitude
+      )
+    ) {
+      return 'Property location must be within Thane district.';
     }
     if (!form.address.trim()) return 'Address is required.';
     if (!form.areaName.trim()) return 'Enter the area name (e.g. Thane West).';

@@ -16,9 +16,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ApiError } from '../../api/client';
 import { paymentsApi } from '../../api/singleton';
 import { propertiesApi } from '../../api/singleton';
-import type { ContactCredits, EssentialStatus } from '../../api/paymentTypes';
+import type { EssentialStatus } from '../../api/paymentTypes';
 import type { OwnerContact } from '../../api/inquiryTypes';
 import type { RootStackParamList } from '../../navigation/types';
+import {
+  alertPlanRequired,
+  handlePlanUsageError,
+  hasActivePlanCredits,
+} from '../../utils/planUsage';
 import { colors, radius, spacing } from '../../theme';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -26,6 +31,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Props = {
   propertyId: number;
   navigation: Nav;
+  onUsageChanged?: () => void;
 };
 
 function ActionButton({
@@ -93,9 +99,12 @@ const actionStyles = {
   },
 };
 
-export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
+export function PropertyNextStepsPanel({
+  propertyId,
+  navigation,
+  onUsageChanged,
+}: Props) {
   const [essential, setEssential] = useState<EssentialStatus | null>(null);
-  const [credits, setCredits] = useState<ContactCredits | null>(null);
   const [visitModal, setVisitModal] = useState(false);
   const [requestModal, setRequestModal] = useState(false);
   const [visitMessage, setVisitMessage] = useState('');
@@ -105,12 +114,8 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
 
   const load = useCallback(async () => {
     try {
-      const [e, c] = await Promise.all([
-        paymentsApi.getEssentialStatus(),
-        paymentsApi.getContactCredits(),
-      ]);
+      const e = await paymentsApi.getEssentialStatus();
       setEssential(e);
-      setCredits(c);
     } catch {
       /* optional */
     }
@@ -122,28 +127,16 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
     }, [load])
   );
 
-  const hasEssential =
-    essential?.active === true ||
-    ((essential?.usageLeft ?? 0) > 0 &&
-      essential?.endsAtUtc != null &&
-      new Date(essential.endsAtUtc) > new Date());
+  const hasPlan = hasActivePlanCredits(essential);
 
-  function needPlanAlert() {
-    Alert.alert(
-      'Plan required',
-      'An active Essential plan unlocks chat and formal requests. Schedule visit is free.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'View plans',
-          onPress: () =>
-            navigation.navigate('EssentialService', { returnPropertyId: propertyId }),
-        },
-      ]
-    );
+  function ensurePlanCredits(): boolean {
+    if (hasPlan) return true;
+    alertPlanRequired(navigation, propertyId);
+    return false;
   }
 
   async function revealContact() {
+    if (!ensurePlanCredits()) return;
     setBusy(true);
     try {
       const contact: OwnerContact = await propertiesApi.getOwnerContact(propertyId);
@@ -161,23 +154,9 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
         ].filter(Boolean) as { text: string; onPress?: () => void }[]
       );
       load();
+      onUsageChanged?.();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 402) {
-        Alert.alert(
-          'No contact credits',
-          'Purchase a contact reveal pack (₹149 / 10 reveals).',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Buy pack',
-              onPress: () =>
-                navigation.navigate('ContactPackPurchase', {
-                  returnPropertyId: propertyId,
-                }),
-            },
-          ]
-        );
-      } else {
+      if (!handlePlanUsageError(e, navigation, propertyId)) {
         Alert.alert(
           'Could not reveal',
           e instanceof ApiError ? e.message : 'Try again'
@@ -189,6 +168,7 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
   }
 
   async function submitVisit() {
+    if (!ensurePlanCredits()) return;
     if (!visitDate.trim()) {
       Alert.alert('Date required', 'Enter visit date/time (ISO format or YYYY-MM-DDTHH:mm).');
       return;
@@ -202,21 +182,22 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
       );
       setVisitModal(false);
       Alert.alert('Visit requested', res.message);
+      load();
+      onUsageChanged?.();
     } catch (e) {
-      Alert.alert(
-        'Failed',
-        e instanceof ApiError ? e.message : 'Could not schedule visit'
-      );
+      if (!handlePlanUsageError(e, navigation, propertyId)) {
+        Alert.alert(
+          'Failed',
+          e instanceof ApiError ? e.message : 'Could not schedule visit'
+        );
+      }
     } finally {
       setBusy(false);
     }
   }
 
   async function submitRequest() {
-    if (!hasEssential) {
-      needPlanAlert();
-      return;
-    }
+    if (!ensurePlanCredits()) return;
     if (!requestMessage.trim()) {
       Alert.alert('Message required', 'Describe your interest in this property.');
       return;
@@ -230,10 +211,9 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
       setRequestModal(false);
       Alert.alert('Request sent', res.message);
       load();
+      onUsageChanged?.();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 403) {
-        needPlanAlert();
-      } else {
+      if (!handlePlanUsageError(e, navigation, propertyId)) {
         Alert.alert(
           'Failed',
           e instanceof ApiError ? e.message : 'Could not send request'
@@ -245,10 +225,7 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
   }
 
   async function startChat() {
-    if (!hasEssential) {
-      needPlanAlert();
-      return;
-    }
+    if (!ensurePlanCredits()) return;
     setBusy(true);
     try {
       const list = await propertiesApi.getPropertyInquiries(propertyId);
@@ -266,10 +243,9 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
         title: 'Chat with owner',
       });
       load();
+      onUsageChanged?.();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 403) {
-        needPlanAlert();
-      } else {
+      if (!handlePlanUsageError(e, navigation, propertyId)) {
         Alert.alert(
           'Chat unavailable',
           e instanceof ApiError ? e.message : 'Try again'
@@ -280,9 +256,10 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
     }
   }
 
-  const usedShown = credits
-    ? Math.min(credits.usedInCurrentPack, credits.packSize)
-    : 0;
+  function openVisitModal() {
+    if (!ensurePlanCredits()) return;
+    setVisitModal(true);
+  }
 
   return (
     <View style={styles.wrap}>
@@ -298,32 +275,12 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
       </LinearGradient>
 
       <View style={styles.body}>
-        {credits && (
-          <View style={styles.creditRow}>
-            <Text style={styles.creditText}>
-              <Text style={styles.creditStrong}>Contact reveals (this pack):</Text>{' '}
-              {usedShown} / {credits.packSize} · {credits.remaining} credit(s) left
-            </Text>
-            {credits.remaining < 1 && (
-              <Pressable
-                onPress={() =>
-                  navigation.navigate('ContactPackPurchase', {
-                    returnPropertyId: propertyId,
-                  })
-                }
-              >
-                <Text style={styles.buyPack}>Buy pack — ₹149 / 10</Text>
-              </Pressable>
-            )}
-          </View>
-        )}
-
-        {!hasEssential && (
+        {!hasPlan && (
           <View style={styles.hintBox}>
             <Ionicons name="information-circle" size={18} color="#2563eb" />
             <Text style={styles.hintText}>
-              Active plan unlocks chat and requests. Visits are free. Contact reveals
-              use a separate pack.{' '}
+              Essential plan required. Each action uses 1 credit (contact, visit,
+              request, chat).{' '}
               <Text
                 style={styles.hintLink}
                 onPress={() =>
@@ -349,15 +306,13 @@ export function PropertyNextStepsPanel({ propertyId, navigation }: Props) {
             label="Schedule visit"
             icon="calendar-outline"
             variant="primary"
-            onPress={() => setVisitModal(true)}
+            onPress={openVisitModal}
           />
           <ActionButton
             label="Request property"
             icon="send-outline"
             variant="warning"
-            onPress={() =>
-              hasEssential ? setRequestModal(true) : needPlanAlert()
-            }
+            onPress={() => (hasPlan ? setRequestModal(true) : ensurePlanCredits())}
           />
           <ActionButton
             label="Requests & threads"
@@ -476,20 +431,6 @@ const styles = StyleSheet.create({
   headTitle: { fontSize: 16, fontWeight: '800', color: colors.heroText },
   headSub: { fontSize: 13, color: 'rgba(248,250,252,0.85)', marginTop: 4 },
   body: { padding: spacing.lg },
-  creditRow: {
-    backgroundColor: colors.surfaceMuted,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    marginBottom: spacing.md,
-  },
-  creditStrong: { fontWeight: '800', color: colors.navy },
-  creditText: { fontSize: 13, color: colors.slateMuted, lineHeight: 18 },
-  buyPack: {
-    marginTop: spacing.sm,
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primary,
-  },
   hintBox: {
     flexDirection: 'row',
     gap: spacing.sm,

@@ -160,7 +160,7 @@ export function PropertyLocationSearch({
       {!mapsEnabled && !compact && (
         <Text style={styles.hint}>
           Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in `.env` for Google Maps autocomplete
-          (same as thaneflats.com).
+          across Thane.
         </Text>
       )}
 

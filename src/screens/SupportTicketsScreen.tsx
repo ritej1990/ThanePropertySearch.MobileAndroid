@@ -17,6 +17,7 @@ import { ApiError } from '../api/client';
 import type { SupportTicketSummary } from '../api/supportTypes';
 import { useAuth } from '../context/AuthContext';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
@@ -183,6 +184,8 @@ export default function SupportTicketsScreen({ navigation }: Props) {
             </Pressable>
           ))
         )}
+
+        <PolicyFooterLinks navigation={navigation} variant="light" />
       </ScrollView>
     </AuthenticatedScreenLayout>
   );

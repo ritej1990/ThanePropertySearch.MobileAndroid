@@ -19,9 +19,11 @@ import {
   getRoleLabel,
 } from '../../utils/profileDisplay';
 import { colors, gradients, radius, spacing } from '../../theme';
+import { USE_NATIVE_DRIVER } from '../../utils/animation';
 
 const WELCOME_MS = 3000;
 const EXIT_MS = 400;
+const WELCOME_SAFETY_MS = WELCOME_MS + EXIT_MS + 800;
 
 type Props = {
   profile: AuthProfileSnapshot | null;
@@ -58,19 +60,19 @@ export function AppWelcomeScreen({ profile, onComplete }: Props) {
         toValue: 1,
         duration: 320,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.spring(contentScale, {
         toValue: 1,
         friction: 7,
         tension: 80,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(contentOpacity, {
         toValue: 1,
         duration: 480,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(progress, {
         toValue: 1,
@@ -86,13 +88,13 @@ export function AppWelcomeScreen({ profile, onComplete }: Props) {
           toValue: 1.05,
           duration: 800,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(avatarPulse, {
           toValue: 1,
           duration: 800,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     );
@@ -106,14 +108,22 @@ export function AppWelcomeScreen({ profile, onComplete }: Props) {
         toValue: 0,
         duration: EXIT_MS,
         easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }).start(({ finished }) => {
         if (finished) onComplete();
       });
     }, WELCOME_MS);
 
+    const safety = setTimeout(() => {
+      if (finishedRef.current) return;
+      finishedRef.current = true;
+      pulseLoop.stop();
+      onComplete();
+    }, WELCOME_SAFETY_MS);
+
     return () => {
       clearTimeout(timer);
+      clearTimeout(safety);
       pulseLoop.stop();
     };
   }, [

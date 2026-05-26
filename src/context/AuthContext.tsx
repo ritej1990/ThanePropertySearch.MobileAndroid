@@ -68,12 +68,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     const res = await authApi.login({ username: username.trim(), password });
-    const snap = toProfile(res);
-    await expoTokenStorage.setAccessToken(res.token);
+    const raw = res as AuthResponse & { Token?: string };
+    const accessToken = (raw.token ?? raw.Token ?? '').trim();
+    if (!accessToken) {
+      throw new Error('Login succeeded but no token was returned from the API.');
+    }
+    const normalized: AuthResponse = { ...res, token: accessToken };
+    const snap = toProfile(normalized);
+    await expoTokenStorage.setAccessToken(accessToken);
     await saveAuthProfile(snap);
-    setToken(res.token);
+    setToken(accessToken);
     setProfile(snap);
-    return res;
+    return normalized;
   }, []);
 
   const logout = useCallback(async () => {

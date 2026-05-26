@@ -88,6 +88,17 @@ export function createApiClient(tokenStorage: TokenStorage) {
               ? JSON.stringify(body)
               : undefined,
       }),
+    put: <T>(path: string, body?: unknown, init?: ApiRequestInit) =>
+      request<T>(path, {
+        ...init,
+        method: 'PUT',
+        body:
+          body instanceof FormData
+            ? body
+            : body !== undefined
+              ? JSON.stringify(body)
+              : undefined,
+      }),
     delete: <T>(path: string, init?: ApiRequestInit) =>
       request<T>(path, { ...init, method: 'DELETE' }),
   };

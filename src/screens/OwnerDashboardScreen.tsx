@@ -104,11 +104,12 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
         stats={stats}
         onBrowse={() => navigation.navigate('Home')}
         onPostProperty={() => navigation.navigate('PostProperty')}
+        onMyPayments={() => navigation.navigate('MyPayments', undefined)}
       />
 
       <Text style={styles.sectionTitle}>Your listings</Text>
       <Text style={styles.sectionSub}>
-        Tap a card to view details, respond to inquiries on thaneflats.com
+        Tap a listing to view details or open inquiries and chat in the app
       </Text>
 
       <View style={styles.filterRow}>
@@ -204,12 +205,19 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
           renderItem={({ item }) => (
             <OwnerListingCard
               item={item}
-              onPress={() =>
+              onPress={() => {
+                if (item.pendingRequests > 0) {
+                  navigation.navigate('PropertyInquiries', {
+                    propertyId: item.id,
+                    title: item.title,
+                  });
+                  return;
+                }
                 navigation.navigate('PropertyDetails', {
                   propertyId: item.id,
                   title: item.title,
-                })
-              }
+                });
+              }}
             />
           )}
         />

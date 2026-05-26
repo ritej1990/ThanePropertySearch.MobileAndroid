@@ -2,8 +2,9 @@ import React, { useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
-  Linking,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,18 +17,20 @@ import { LoginBackdrop } from '../components/auth/LoginBackdrop';
 import { LoginHeader } from '../components/auth/LoginHeader';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
+import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
 import { useAuth } from '../context/AuthContext';
 import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { RootStackParamList } from '../navigation/types';
+import { LegalFooter } from '../components/layout/LegalFooter';
 import { colors, radius, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
-const FORGOT_PASSWORD_URL = 'https://www.thaneflats.com/Account/ForgotPassword';
+const isWeb = Platform.OS === 'web';
 
 /**
- * Plain View layout (no ScrollView / KeyboardAvoidingView) keeps Android keyboard stable.
- * Decoration uses pointerEvents="none" only.
+ * Plain View on native (keyboard-stable). ScrollView on web so header, form,
+ * and legal footer do not overlap on shorter viewports.
  */
 export default function LoginScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
@@ -56,102 +59,106 @@ export default function LoginScreen({ navigation }: Props) {
     }
   }
 
-  function openForgotPassword() {
-    Keyboard.dismiss();
-    Linking.openURL(FORGOT_PASSWORD_URL).catch(() => {
-      Alert.alert(
-        'Forgot password',
-        'Visit thaneflats.com in your browser to reset your password.'
-      );
-    });
-  }
+  const paddingStyle = {
+    paddingTop: insets.top + spacing.md,
+    paddingBottom: insets.bottom + spacing.md,
+  };
+
+  const body = (
+    <>
+      <LoginHeader compact={isWeb} />
+      <View style={isWeb ? styles.formAreaWeb : styles.formArea}>
+        <View style={styles.card}>
+          <View style={styles.cardAccent} pointerEvents="none" />
+          <Text style={styles.eyebrow}>Account access</Text>
+          <Text style={styles.cardTitle}>Sign in to continue</Text>
+          <Text style={styles.cardSub}>
+            Use your Thane Flats username and password.
+          </Text>
+
+          <AuthTextField
+            label="Username"
+            icon="person-outline"
+            placeholder="Enter username"
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            value={username}
+            onChangeText={setUsername}
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => passwordRef.current?.focus()}
+          />
+          <AuthTextField
+            ref={passwordRef}
+            label="Password"
+            icon="lock-closed-outline"
+            placeholder="Enter password"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+          />
+
+          <Pressable
+            style={styles.forgot}
+            onPress={() => {
+              Keyboard.dismiss();
+              navigation.navigate('ForgotPassword');
+            }}
+            hitSlop={8}
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </Pressable>
+
+          <GradientButton
+            label="Sign in"
+            loading={loading}
+            onPress={handleLogin}
+          />
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>New here?</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={() => {
+              Keyboard.dismiss();
+              navigation.navigate('Register');
+            }}
+          >
+            <Text style={styles.secondaryBtnText}>Create an account</Text>
+          </Pressable>
+        </View>
+      </View>
+      <LegalFooter variant="onDark" style={styles.legalFooter} />
+    </>
+  );
 
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
       <LoginBackdrop />
 
-      <View
-        style={[
-          styles.content,
-          {
-            paddingTop: insets.top + spacing.md,
-            paddingBottom: insets.bottom + spacing.md,
-          },
-        ]}
-      >
-        <LoginHeader />
-
-        <View style={styles.formArea}>
-          <View style={styles.card}>
-            <View style={styles.cardAccent} pointerEvents="none" />
-            <Text style={styles.eyebrow}>Account access</Text>
-            <Text style={styles.cardTitle}>Sign in to continue</Text>
-            <Text style={styles.cardSub}>
-              Same username & password as www.thaneflats.com
-            </Text>
-
-            <AuthTextField
-              label="Username"
-              icon="person-outline"
-              placeholder="Enter username"
-              autoCapitalize="none"
-              autoCorrect={false}
-              spellCheck={false}
-              value={username}
-              onChangeText={setUsername}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => passwordRef.current?.focus()}
-            />
-            <AuthTextField
-              ref={passwordRef}
-              label="Password"
-              icon="lock-closed-outline"
-              placeholder="Enter password"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
-
-            <Pressable
-              style={styles.forgot}
-              onPress={openForgotPassword}
-              hitSlop={8}
-            >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </Pressable>
-
-            <GradientButton
-              label="Sign in"
-              loading={loading}
-              onPress={handleLogin}
-            />
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>New here?</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <Pressable
-              style={styles.secondaryBtn}
-              onPress={() => {
-                Keyboard.dismiss();
-                navigation.navigate('Register');
-              }}
-            >
-              <Text style={styles.secondaryBtnText}>Create an account</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <Text style={styles.footer} pointerEvents="none">
-          Thane Flats · thane property search
-        </Text>
-      </View>
+      {isWeb ? (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.contentScrollable,
+            paddingStyle,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {body}
+        </ScrollView>
+      ) : (
+        <View style={[styles.content, paddingStyle]}>{body}</View>
+      )}
     </View>
   );
 }
@@ -161,13 +168,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.navyDeep,
   },
+  scroll: {
+    flex: 1,
+  },
   content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
   },
+  contentScrollable: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
+  },
   formArea: {
     flex: 1,
     justifyContent: 'center',
+  },
+  formAreaWeb: {
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   card: {
     backgroundColor: colors.surface,
@@ -246,11 +267,9 @@ const styles = StyleSheet.create({
     ...typography.link,
     color: colors.primaryDark,
   },
-  footer: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: 'rgba(248, 250, 252, 0.72)',
-    letterSpacing: 0.3,
+  legalFooter: {
     marginTop: spacing.md,
+    marginHorizontal: -spacing.lg,
+    paddingHorizontal: spacing.lg,
   },
 });

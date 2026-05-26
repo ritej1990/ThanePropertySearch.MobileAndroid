@@ -21,6 +21,8 @@ type Props = {
   /** Size container from image width/height after load (matches web detail gallery). */
   autoAspectRatio?: boolean;
   maxHeight?: number;
+  /** No logo flash when swapping images (e.g. gallery carousel). */
+  quietLoading?: boolean;
 };
 
 export function PropertyImage({
@@ -29,6 +31,7 @@ export function PropertyImage({
   resizeMode = 'cover',
   autoAspectRatio,
   maxHeight = 480,
+  quietLoading = false,
 }: Props) {
   const resolved = resolveImageUrl(uri);
   const [failed, setFailed] = useState(false);
@@ -39,8 +42,8 @@ export function PropertyImage({
   useEffect(() => {
     setAspectRatio(DEFAULT_ASPECT_RATIO);
     setFailed(false);
-    setLoading(true);
-  }, [resolved]);
+    setLoading(!quietLoading);
+  }, [resolved, quietLoading]);
 
   const flatStyle = StyleSheet.flatten(style) ?? {};
   const { height: _ignoredHeight, ...styleWithoutHeight } = flatStyle;
@@ -96,7 +99,9 @@ export function PropertyImage({
         source={{ uri: resolved }}
         style={StyleSheet.absoluteFill}
         resizeMode={resizeMode}
-        onLoadStart={() => setLoading(true)}
+        onLoadStart={() => {
+          if (!quietLoading) setLoading(true);
+        }}
         onLoad={(e) => {
           const { width, height } = e.nativeEvent.source;
           if (width > 0 && height > 0) {
@@ -109,11 +114,11 @@ export function PropertyImage({
           setLoading(false);
         }}
       />
-      {loading && (
+      {loading && !quietLoading ? (
         <View style={styles.loader}>
           <ThaneFlatsLogo size={36} animated />
         </View>
-      )}
+      ) : null}
     </View>
   );
 }

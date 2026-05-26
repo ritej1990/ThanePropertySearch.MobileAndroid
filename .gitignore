@@ -8,4 +8,12 @@ ios/
 .env
 .env.*
 !.env.example
+<<<<<<< HEAD
 *.vsidx
+=======
+/.vs/slnx.sqlite-journal
+/.vs/Thane PropertySearch.Mobile New.slnx
+/.vs/slnx.sqlite
+/.gitignore
+/.vs/VSWorkspaceState.json
+>>>>>>> 29bd0d518ac1463bfe6100a781cf51ae87cd5142

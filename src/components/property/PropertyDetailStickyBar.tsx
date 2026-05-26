@@ -5,30 +5,48 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
-  webUrl: string;
-  hasMap: boolean;
+  primaryLabel: string;
+  primaryIcon?: keyof typeof Ionicons.glyphMap;
+  onPrimaryPress: () => void;
+  secondaryIcon?: keyof typeof Ionicons.glyphMap;
+  onSecondaryPress?: () => void;
+  secondaryAccessibilityLabel?: string;
+  hasMap?: boolean;
   latitude?: number;
   longitude?: number;
 };
 
 export function PropertyDetailStickyBar({
-  webUrl,
+  primaryLabel,
+  primaryIcon = 'chatbubble-ellipses-outline',
+  onPrimaryPress,
+  secondaryIcon,
+  onSecondaryPress,
+  secondaryAccessibilityLabel,
   hasMap,
   latitude,
   longitude,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const showMap =
+    hasMap && latitude != null && longitude != null;
 
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
-      <Pressable
-        style={styles.primary}
-        onPress={() => Linking.openURL(webUrl)}
-      >
-        <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.heroText} />
-        <Text style={styles.primaryText}>Contact on web</Text>
+      <Pressable style={styles.primary} onPress={onPrimaryPress}>
+        <Ionicons name={primaryIcon} size={20} color={colors.heroText} />
+        <Text style={styles.primaryText}>{primaryLabel}</Text>
       </Pressable>
-      {hasMap && latitude != null && longitude != null && (
+      {onSecondaryPress && secondaryIcon ? (
+        <Pressable
+          style={styles.iconBtn}
+          onPress={onSecondaryPress}
+          accessibilityLabel={secondaryAccessibilityLabel ?? 'More actions'}
+        >
+          <Ionicons name={secondaryIcon} size={22} color={colors.navy} />
+        </Pressable>
+      ) : null}
+      {showMap ? (
         <Pressable
           style={styles.iconBtn}
           onPress={() =>
@@ -36,16 +54,11 @@ export function PropertyDetailStickyBar({
               `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
             )
           }
+          accessibilityLabel="Open in maps"
         >
           <Ionicons name="map-outline" size={22} color={colors.navy} />
         </Pressable>
-      )}
-      <Pressable
-        style={styles.iconBtn}
-        onPress={() => Linking.openURL(webUrl)}
-      >
-        <Ionicons name="open-outline" size={22} color={colors.navy} />
-      </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -76,7 +89,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: '#0d9488',
+    backgroundColor: colors.teal,
     paddingVertical: 14,
     borderRadius: radius.md,
   },

@@ -10,220 +10,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { LoginBackdrop } from '../auth/LoginBackdrop';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
+import { LaunchAnimatedBackdrop } from './LaunchAnimatedBackdrop';
+import { LaunchMarketShowcase } from './LaunchMarketShowcase';
 import { colors, gradients, radius, spacing, typography } from '../../theme';
+import { USE_NATIVE_DRIVER } from '../../utils/animation';
 
-const MIN_VISIBLE_MS = 2600;
+const MIN_VISIBLE_MS = 2800;
 const EXIT_MS = 420;
+const LAUNCH_SAFETY_MS = MIN_VISIBLE_MS + EXIT_MS + 800;
 
 const STATUS_LINES = [
-  'Curating Thane homes for you…',
-  'Maps, filters & verified listings…',
-  'Search flats · Post your property…',
+  'Buy · Rent · Sell · PG in Thane…',
+  'Verified listings & live maps…',
+  'Search homes or post your property…',
 ] as const;
 
 const TRUST_ITEMS = [
-  { icon: 'shield-checkmark' as const, label: 'Verified listings' },
+  { icon: 'shield-checkmark' as const, label: 'Verified' },
   { icon: 'location' as const, label: 'Thane local' },
-  { icon: 'people' as const, label: 'Owners & buyers' },
+  { icon: 'flash' as const, label: 'Fast search' },
 ] as const;
 
 type Props = {
   authReady: boolean;
   onComplete: () => void;
 };
-
-type ActionCardProps = {
-  variant: 'search' | 'post';
-  delay: number;
-  entrance: Animated.Value;
-};
-
-function LaunchActionCard({ variant, delay, entrance }: ActionCardProps) {
-  const isSearch = variant === 'search';
-  const float = useRef(new Animated.Value(0)).current;
-  const iconPulse = useRef(new Animated.Value(1)).current;
-  const shimmer = useRef(new Animated.Value(0)).current;
-  const plusSpin = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const floatLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(float, {
-          toValue: 1,
-          duration: isSearch ? 2200 : 2600,
-          delay,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(float, {
-          toValue: 0,
-          duration: isSearch ? 2200 : 2600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(iconPulse, {
-          toValue: 1.12,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(iconPulse, {
-          toValue: 1,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    floatLoop.start();
-    pulseLoop.start();
-
-    let shimmerLoop: Animated.CompositeAnimation | undefined;
-    let spinLoop: Animated.CompositeAnimation | undefined;
-
-    if (isSearch) {
-      shimmerLoop = Animated.loop(
-        Animated.timing(shimmer, {
-          toValue: 1,
-          duration: 1800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        })
-      );
-      shimmerLoop.start();
-    } else {
-      spinLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(plusSpin, {
-            toValue: 1,
-            duration: 1400,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(plusSpin, {
-            toValue: 0,
-            duration: 1400,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      spinLoop.start();
-    }
-
-    return () => {
-      floatLoop.stop();
-      pulseLoop.stop();
-      shimmerLoop?.stop();
-      spinLoop?.stop();
-    };
-  }, [delay, float, iconPulse, isSearch, plusSpin, shimmer]);
-
-  const translateY = float.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, isSearch ? -6 : -5],
-  });
-
-  const cardOpacity = entrance.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
-
-  const cardTranslateY = entrance.interpolate({
-    inputRange: [0, 1],
-    outputRange: [28, 0],
-  });
-
-  const shimmerX = shimmer.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-80, 120],
-  });
-
-  const plusRotate = plusSpin.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '90deg'],
-  });
-
-  return (
-    <Animated.View
-      style={[
-        styles.actionCard,
-        isSearch ? styles.actionCardSearch : styles.actionCardPost,
-        {
-          opacity: cardOpacity,
-          transform: [{ translateY: Animated.add(cardTranslateY, translateY) }],
-        },
-      ]}
-    >
-      <Animated.View
-        style={[
-          styles.actionIconWrap,
-          isSearch ? styles.actionIconSearch : styles.actionIconPost,
-          { transform: [{ scale: iconPulse }] },
-        ]}
-      >
-        {isSearch ? (
-          <Ionicons name="search" size={26} color={colors.heroText} />
-        ) : (
-          <Animated.View style={{ transform: [{ rotate: plusRotate }] }}>
-            <Ionicons name="add-circle" size={28} color={colors.heroText} />
-          </Animated.View>
-        )}
-      </Animated.View>
-
-      <Text style={styles.actionTitle}>
-        {isSearch ? 'Search properties' : 'Post property'}
-      </Text>
-      <Text style={styles.actionSub}>
-        {isSearch
-          ? 'Browse buy & rent across Thane'
-          : 'List your flat in minutes'}
-      </Text>
-
-      {isSearch ? (
-        <View style={styles.mockSearch}>
-          <Ionicons name="location-outline" size={14} color={colors.slateLight} />
-          <Text style={styles.mockSearchText} numberOfLines={1}>
-            Search area in Thane…
-          </Text>
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.mockSearchShimmer, { transform: [{ translateX: shimmerX }] }]}
-          />
-        </View>
-      ) : (
-        <View style={styles.mockSteps}>
-          {['Details', 'Photos', 'Publish'].map((step, i) => (
-            <View key={step} style={styles.mockStep}>
-              <View
-                style={[
-                  styles.mockStepDot,
-                  i === 2 && styles.mockStepDotActive,
-                ]}
-              />
-              <Text
-                style={[
-                  styles.mockStepText,
-                  i === 2 && styles.mockStepTextActive,
-                ]}
-              >
-                {step}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-    </Animated.View>
-  );
-}
 
 export function AppLaunchScreen({ authReady, onComplete }: Props) {
   const insets = useSafeAreaInsets();
@@ -233,9 +45,11 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
 
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const headerEntrance = useRef(new Animated.Value(0)).current;
-  const cardsEntrance = useRef(new Animated.Value(0)).current;
+  const showcaseEntrance = useRef(new Animated.Value(0)).current;
   const trustEntrance = useRef(new Animated.Value(0)).current;
   const statusOpacity = useRef(new Animated.Value(1)).current;
+  const loadProgress = useRef(new Animated.Value(0)).current;
+  const logoGlow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const t = setTimeout(() => setMinElapsed(true), MIN_VISIBLE_MS);
@@ -243,44 +57,70 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
   }, []);
 
   useEffect(() => {
-    Animated.stagger(120, [
+    Animated.stagger(100, [
       Animated.timing(headerEntrance, {
         toValue: 1,
-        duration: 520,
+        duration: 500,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
-      Animated.timing(cardsEntrance, {
+      Animated.timing(showcaseEntrance, {
         toValue: 1,
-        duration: 620,
+        duration: 680,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(trustEntrance, {
         toValue: 1,
-        duration: 480,
+        duration: 460,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start();
-  }, [cardsEntrance, headerEntrance, trustEntrance]);
+
+    Animated.timing(loadProgress, {
+      toValue: 1,
+      duration: MIN_VISIBLE_MS,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: false,
+    }).start();
+
+    const glowLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoGlow, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.timing(logoGlow, {
+          toValue: 0,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+      ])
+    );
+    glowLoop.start();
+    return () => glowLoop.stop();
+  }, [headerEntrance, loadProgress, logoGlow, showcaseEntrance, trustEntrance]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       Animated.sequence([
         Animated.timing(statusOpacity, {
           toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
+          duration: 160,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(statusOpacity, {
           toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
+          duration: 240,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start();
       setStatusIndex((i) => (i + 1) % STATUS_LINES.length);
-    }, 1400);
+    }, 1300);
     return () => clearInterval(interval);
   }, [statusOpacity]);
 
@@ -288,40 +128,66 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
     if (!authReady || !minElapsed || finishedRef.current) return;
     finishedRef.current = true;
 
+    let completed = false;
+    const finishBoot = () => {
+      if (completed) return;
+      completed = true;
+      onComplete();
+    };
+
     Animated.timing(screenOpacity, {
       toValue: 0,
       duration: EXIT_MS,
       easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start(({ finished }) => {
-      if (finished) onComplete();
+      if (finished) finishBoot();
     });
+
+    const safety = setTimeout(finishBoot, EXIT_MS + 400);
+    return () => clearTimeout(safety);
   }, [authReady, minElapsed, onComplete, screenOpacity]);
+
+  useEffect(() => {
+    const safety = setTimeout(() => {
+      if (finishedRef.current) return;
+      if (!authReady || !minElapsed) return;
+      finishedRef.current = true;
+      onComplete();
+    }, LAUNCH_SAFETY_MS);
+    return () => clearTimeout(safety);
+  }, [authReady, minElapsed, onComplete]);
 
   const headerTranslateY = headerEntrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [16, 0],
+    outputRange: [20, 0],
   });
-
   const trustOpacity = trustEntrance.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
   });
-
   const trustTranslateY = trustEntrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [12, 0],
+    outputRange: [14, 0],
+  });
+  const progressWidth = loadProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+  const logoScale = logoGlow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.04],
   });
 
   return (
     <Animated.View style={[styles.screen, { opacity: screenOpacity }]}>
       <StatusBar style="light" />
-      <LoginBackdrop />
+      <LaunchAnimatedBackdrop />
       <LinearGradient
         colors={[...gradients.hero]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, styles.heroTint]}
         pointerEvents="none"
       />
 
@@ -329,7 +195,7 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
         style={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.xl,
+            paddingTop: insets.top + spacing.lg,
             paddingBottom: insets.bottom + spacing.lg,
           },
         ]}
@@ -340,26 +206,16 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
             transform: [{ translateY: headerTranslateY }],
           }}
         >
-          <ThaneFlatsLogo size={52} showWordmark animated onDark />
-          <Text style={styles.tagline}>Thane's trusted property platform</Text>
-          <Text style={styles.lead}>
-            Search verified homes or post your listing — same experience as
-            thaneflats.com
+          <Animated.View style={{ transform: [{ scale: logoScale }] }}>
+            <ThaneFlatsLogo size={56} showWordmark animated onDark />
+          </Animated.View>
+          <Text style={styles.tagline}>Your Thane property companion</Text>
+          <Text style={styles.lead} numberOfLines={2}>
+            Buy, rent, sell & list in Thane
           </Text>
         </Animated.View>
 
-        <View style={styles.cardsRow}>
-          <LaunchActionCard
-            variant="search"
-            delay={0}
-            entrance={cardsEntrance}
-          />
-          <LaunchActionCard
-            variant="post"
-            delay={180}
-            entrance={cardsEntrance}
-          />
-        </View>
+        <LaunchMarketShowcase entrance={showcaseEntrance} />
 
         <Animated.View
           style={[
@@ -379,6 +235,16 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
         </Animated.View>
 
         <View style={styles.footer}>
+          <View style={styles.progressTrack}>
+            <Animated.View style={[styles.progressFill, { width: progressWidth }]}>
+              <LinearGradient
+                colors={[colors.goldAccent, colors.gold, colors.teal]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </Animated.View>
+          </View>
           <Animated.Text style={[styles.status, { opacity: statusOpacity }]}>
             {STATUS_LINES[statusIndex]}
           </Animated.Text>
@@ -401,132 +267,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.navyDeep,
   },
+  heroTint: {
+    opacity: 0.42,
+  },
   content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
     justifyContent: 'space-between',
   },
   tagline: {
-    marginTop: spacing.lg,
-    fontSize: 22,
+    marginTop: spacing.sm,
+    fontSize: 18,
     fontWeight: '800',
     color: colors.heroText,
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   lead: {
     ...typography.heroLead,
     color: 'rgba(248, 250, 252, 0.88)',
-    marginTop: spacing.sm,
-    maxWidth: 340,
-    lineHeight: 22,
-  },
-  cardsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginVertical: spacing.xl,
-  },
-  actionCard: {
-    flex: 1,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    minHeight: 168,
-    overflow: 'hidden',
-  },
-  actionCardSearch: {
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
-    borderColor: 'rgba(56, 189, 248, 0.45)',
-  },
-  actionCardPost: {
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
-    borderColor: 'rgba(52, 211, 153, 0.45)',
-  },
-  actionIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  actionIconSearch: {
-    backgroundColor: 'rgba(37, 99, 235, 0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(147, 197, 253, 0.5)',
-  },
-  actionIconPost: {
-    backgroundColor: 'rgba(15, 118, 110, 0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(110, 231, 183, 0.5)',
-  },
-  actionTitle: {
+    marginTop: spacing.xs,
+    maxWidth: 320,
+    lineHeight: 21,
     fontSize: 14,
-    fontWeight: '800',
-    color: colors.heroText,
-    marginBottom: 4,
-  },
-  actionSub: {
-    fontSize: 11,
-    color: 'rgba(248, 250, 252, 0.78)',
-    lineHeight: 16,
-    marginBottom: spacing.sm,
-  },
-  mockSearch: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 'auto',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: radius.sm,
-    backgroundColor: 'rgba(248, 250, 252, 0.12)',
-    overflow: 'hidden',
-  },
-  mockSearchText: {
-    flex: 1,
-    fontSize: 10,
-    fontWeight: '600',
-    color: 'rgba(248, 250, 252, 0.7)',
-  },
-  mockSearchShimmer: {
-    position: 'absolute',
-    top: 4,
-    bottom: 4,
-    width: 36,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
-  },
-  mockSteps: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 'auto',
-    paddingTop: spacing.xs,
-  },
-  mockStep: {
-    alignItems: 'center',
-    gap: 4,
-    flex: 1,
-  },
-  mockStepDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(248, 250, 252, 0.35)',
-  },
-  mockStepDotActive: {
-    backgroundColor: colors.goldAccent,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  mockStepText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: 'rgba(248, 250, 252, 0.55)',
-  },
-  mockStepTextActive: {
-    color: colors.goldSoft,
-    fontWeight: '800',
   },
   trustRow: {
     flexDirection: 'row',
@@ -555,10 +317,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
+  progressTrack: {
+    width: '100%',
+    maxWidth: 280,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(248, 250, 252, 0.15)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
   status: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(248, 250, 252, 0.8)',
+    color: 'rgba(248, 250, 252, 0.82)',
     textAlign: 'center',
   },
   dots: {
