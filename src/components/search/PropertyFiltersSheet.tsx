@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   BHK_FILTER_OPTIONS,
   RENT_PRESETS,
@@ -170,8 +171,15 @@ export function PropertyFiltersSheet({
           ) : (
             <View style={styles.clearSpacer} />
           )}
-          <Pressable style={styles.applyBtn} onPress={onClose}>
-            <Text style={styles.applyText}>Show {resultCount} homes</Text>
+          <Pressable style={styles.applyBtnWrap} onPress={onClose}>
+            <LinearGradient
+              colors={['#0d9488', '#0f766e']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.applyBtn}
+            >
+              <Text style={styles.applyText}>Show {resultCount} homes</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </View>
@@ -261,11 +269,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.error,
   },
-  applyBtn: {
+  applyBtnWrap: {
     flex: 1,
-    backgroundColor: '#0d9488',
-    paddingVertical: spacing.md,
     borderRadius: radius.md,
+    overflow: 'hidden',
+    shadowColor: '#0d9488',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  applyBtn: {
+    paddingVertical: spacing.md,
     alignItems: 'center',
   },
   applyText: {

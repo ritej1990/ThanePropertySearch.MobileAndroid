@@ -172,7 +172,11 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
             onPress={() => handleMenuNavigate('home')}
             accessibilityLabel="Go to home"
           >
-            <ThaneFlatsLogo size={backMode || slimHome ? 28 : 34} showWordmark onDark />
+            <ThaneFlatsLogo
+              size={slimHome ? 26 : backMode ? 28 : 34}
+              showWordmark
+              onDark
+            />
             {!backMode && !slimHome ? (
               <Text style={styles.tagline}>Thane property search</Text>
             ) : null}
@@ -201,10 +205,12 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
                 colors={[colors.teal, colors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.avatarRing}
+                style={[styles.avatarRing, slimHome && styles.avatarRingSlim]}
               >
                 <View style={styles.avatarInner}>
-                  <Text style={styles.avatarText}>{initials}</Text>
+                  <Text style={[styles.avatarText, slimHome && styles.avatarTextSlim]}>
+                    {initials}
+                  </Text>
                 </View>
               </LinearGradient>
             </Pressable>
@@ -212,12 +218,12 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
         </View>
 
         {slimHome ? (
-          <Text style={styles.slimGreeting} numberOfLines={1}>
-            Hi, {firstName}
-            {emailConfirmed ? ' · Verified' : ''}
-            {' · '}
-            {getRoleLabel(profile?.role)}
-          </Text>
+          <LinearGradient
+            colors={[colors.gold, colors.teal, colors.primary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.slimAccent}
+          />
         ) : null}
 
         {!backMode && !slimHome ? (
@@ -334,11 +340,17 @@ const styles = StyleSheet.create({
   gradientCompact: {
     paddingBottom: spacing.sm,
   },
+  slimAccent: {
+    height: 2,
+    borderRadius: 1,
+    marginTop: spacing.sm,
+    opacity: 0.85,
+  },
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    minHeight: 44,
+    minHeight: 40,
   },
   backBtn: {
     width: 40,
@@ -407,6 +419,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 2,
   },
+  avatarRingSlim: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
   avatarInner: {
     flex: 1,
     borderRadius: 18,
@@ -419,12 +436,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.heroText,
   },
-  slimGreeting: {
-    marginTop: spacing.xs,
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(248, 250, 252, 0.82)',
-    letterSpacing: 0.2,
+  avatarTextSlim: {
+    fontSize: 11,
   },
   welcomeRow: {
     marginTop: spacing.md,

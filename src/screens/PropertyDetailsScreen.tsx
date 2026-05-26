@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,6 +33,7 @@ import { PropertyNextStepsPanel } from '../components/property/PropertyNextSteps
 import { PropertyPlanCreditsBar } from '../components/property/PropertyPlanCreditsBar';
 import { PropertyRatingSection } from '../components/property/PropertyRatingSection';
 import { useAuth } from '../context/AuthContext';
+import { useScrollCompactHeader } from '../hooks/useScrollCompactHeader';
 import { getPrimaryPrice } from '../utils/propertyDisplay';
 import { isOwnerRole, isUserRole } from '../utils/roles';
 
@@ -85,7 +87,9 @@ function StatTile({
 
 export default function PropertyDetailsScreen({ route, navigation }: Props) {
   const { propertyId } = route.params;
+  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
+  const { goToTopVisible, onScroll, resetCompactHeader } = useScrollCompactHeader();
   const showUserActions = isUserRole(profile?.role);
   const showOwnerActions = isOwnerRole(profile?.role);
   const scrollRef = useRef<ScrollView>(null);
@@ -130,6 +134,11 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     if (urls.length === 0 && item.imageUrl) return [item.imageUrl];
     return urls;
   }, [item]);
+
+  const scrollToTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    resetCompactHeader();
+  }, [resetCompactHeader]);
 
   if (loading) {
     return (
@@ -267,6 +276,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     <AuthenticatedScreenLayout
       showBack
       onBack={() => navigation.goBack()}
+      scrollToTop={{ visible: goToTopVisible, onPress: scrollToTop }}
     >
       <View style={styles.screen}>
       <ScrollView
@@ -274,6 +284,8 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.pageContent}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         <View ref={scrollContentRef} collapsable={false}>
         <View style={styles.mediaBlock}>
@@ -472,6 +484,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.surfaceMuted,
+    position: 'relative',
   },
   scroll: {
     flex: 1,
@@ -479,7 +492,7 @@ const styles = StyleSheet.create({
   pageContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    paddingBottom: 120,
+    paddingBottom: 160,
   },
   mediaBlock: {
     marginBottom: spacing.sm,

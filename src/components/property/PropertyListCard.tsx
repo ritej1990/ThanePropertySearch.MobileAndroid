@@ -67,7 +67,7 @@ export function PropertyListCard({ item, onPress }: Props) {
 
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={16} color="#0d9488" />
-          <Text style={styles.location} numberOfLines={1}>
+          <Text style={styles.location} numberOfLines={2}>
             {item.areaName}
             {item.address ? ` · ${item.address}` : ''}
           </Text>
@@ -86,13 +86,18 @@ export function PropertyListCard({ item, onPress }: Props) {
           )}
         </View>
 
-        {item.isForRent && item.depositAmount > 0 && (
-          <Text style={styles.deposit}>Deposit {formatInr(item.depositAmount)}</Text>
-        )}
-
         <View style={styles.ctaRow}>
-          <Text style={styles.cta}>View details</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.primary} />
+          {item.isForRent && item.depositAmount > 0 ? (
+            <Text style={styles.depositInline}>
+              Deposit {formatInr(item.depositAmount)}
+            </Text>
+          ) : (
+            <View style={styles.ctaSpacer} />
+          )}
+          <View style={styles.ctaLink}>
+            <Text style={styles.cta}>View details</Text>
+            <Ionicons name="arrow-forward" size={18} color={colors.primary} />
+          </View>
         </View>
       </View>
     </Pressable>
@@ -130,9 +135,9 @@ const styles = StyleSheet.create({
   },
   chipsTop: {
     position: 'absolute',
-    top: spacing.md,
-    left: spacing.md,
-    right: spacing.md,
+    top: spacing.sm,
+    left: spacing.sm,
+    right: 52,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
@@ -198,13 +203,15 @@ const styles = StyleSheet.create({
   },
   locationRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 6,
     marginBottom: spacing.md,
+    paddingRight: spacing.xs,
   },
   location: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.slateMuted,
   },
   metaRow: {
@@ -223,17 +230,29 @@ const styles = StyleSheet.create({
     color: colors.slate,
     fontWeight: '500',
   },
-  deposit: {
-    fontSize: 13,
+  depositInline: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
     color: colors.slateLight,
-    marginBottom: spacing.md,
+    marginRight: spacing.sm,
+  },
+  ctaSpacer: {
+    flex: 1,
+  },
+  ctaLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
   },
   ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
+    justifyContent: 'space-between',
+    gap: spacing.sm,
     paddingTop: spacing.sm,
+    marginTop: spacing.xs,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },

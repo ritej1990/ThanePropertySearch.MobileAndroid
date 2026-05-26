@@ -8,12 +8,14 @@ import {
   RefreshControl,
   type FlatList as FlatListType,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { PropertyListCard } from '../components/property/PropertyListCard';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { getFloatingRailHeight } from '../components/layout/FloatingSupportChat';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { HomeSearchToolbar } from '../components/search/HomeSearchToolbar';
 import { PropertySearchStickyBar } from '../components/search/PropertySearchStickyBar';
@@ -28,7 +30,7 @@ import { propertiesApi } from '../api/singleton';
 import type { PropertyResponse } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
-import { colors, radius, spacing } from '../theme';
+import { colors, gradients, radius, spacing } from '../theme';
 import {
   applyPropertySearch,
   countActiveFilters,
@@ -53,8 +55,16 @@ export default function HomeScreen({ navigation }: Props) {
   const [filters, setFilters] = useState<PropertySearchFilters>(defaultSearchFilters);
   const [viewMode, setViewMode] = useState<SearchViewMode>('list');
   const [filtersSheetVisible, setFiltersSheetVisible] = useState(false);
-  const { compactHeaderVisible, onScroll, resetCompactHeader } =
+  const { compactHeaderVisible, goToTopVisible, onScroll, resetCompactHeader } =
     useScrollCompactHeader();
+
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    resetCompactHeader();
+  }, [resetCompactHeader]);
+
+  /** Matches AuthenticatedScreenLayout legalFooterInset when showLegalFooter is true */
+  const legalFooterHeight = 52;
 
   const load = useCallback(
     async (place?: SelectedPlace | null) => {
@@ -117,6 +127,15 @@ export default function HomeScreen({ navigation }: Props) {
     [items, filters, searchText]
   );
 
+  const showScrollToTopFab =
+    viewMode === 'list' && !loading && !error && filtered.length > 0 && goToTopVisible;
+
+  const listBottomInset =
+    Math.max(insets.bottom, spacing.sm) +
+    spacing.lg +
+    getFloatingRailHeight(showScrollToTopFab) +
+    legalFooterHeight;
+
   const activeFilterCount = countActiveFilters(filters);
   const isOwner = isOwnerRole(profile?.role);
   const showPlan = isUserRole(profile?.role);
@@ -154,8 +173,15 @@ export default function HomeScreen({ navigation }: Props) {
   const listHeader = useMemo(() => {
     if (!selectedPlace) return null;
     return (
-      <View style={styles.placeBanner}>
-        <Ionicons name="location" size={16} color="#0d9488" />
+      <LinearGradient
+        colors={['#ecfdf5', '#f0fdfa']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.placeBanner}
+      >
+        <View style={styles.placeBannerIcon}>
+          <Ionicons name="location" size={16} color={colors.tealDark} />
+        </View>
         <Text style={styles.placeBannerText} numberOfLines={2}>
           Within {DEFAULT_SEARCH_RADIUS_KM} km of{' '}
           <Text style={styles.placeBannerBold}>{selectedPlace.label}</Text>
@@ -164,10 +190,11 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={clearPlaceSearch}
           hitSlop={8}
           accessibilityLabel="Clear area search"
+          style={styles.placeBannerClose}
         >
-          <Ionicons name="close-circle" size={20} color={colors.slateLight} />
+          <Ionicons name="close" size={16} color={colors.tealDark} />
         </Pressable>
-      </View>
+      </LinearGradient>
     );
   }, [selectedPlace, clearPlaceSearch]);
 
@@ -194,8 +221,20 @@ export default function HomeScreen({ navigation }: Props) {
   );
 
   return (
-    <AuthenticatedScreenLayout headerDensity="compact">
-      <View style={styles.wrap}>
+    <AuthenticatedScreenLayout
+      headerDensity="compact"
+      scrollToTop={
+        viewMode === 'list' && !loading && !error && filtered.length > 0
+          ? { visible: goToTopVisible, onPress: scrollToTop }
+          : undefined
+      }
+    >
+      <LinearGradient
+        colors={[...gradients.page]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.wrap}
+      >
         {searchToolbar}
 
         {viewMode === 'list' && compactHeaderVisible ? (
@@ -266,7 +305,7 @@ export default function HomeScreen({ navigation }: Props) {
             contentContainerStyle={[
               styles.listContent,
               filtered.length === 0 && styles.listEmpty,
-              { paddingBottom: insets.bottom + spacing.lg },
+              { paddingBottom: listBottomInset },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -284,7 +323,7 @@ export default function HomeScreen({ navigation }: Props) {
           onClearAll={() => setFilters(defaultSearchFilters())}
           resultCount={filtered.length}
         />
-      </View>
+      </LinearGradient>
     </AuthenticatedScreenLayout>
   );
 }
@@ -292,7 +331,7 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
-    backgroundColor: colors.surfaceMuted,
+    position: 'relative',
   },
   mapWrap: {
     flex: 1,
@@ -303,10 +342,26 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.md,
     padding: spacing.md,
-    backgroundColor: '#ecfdf5',
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: '#a7f3d0',
+    borderColor: colors.tealBorder,
+    overflow: 'hidden',
+  },
+  placeBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeBannerClose: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   placeBannerText: {
     flex: 1,
@@ -319,8 +374,8 @@ const styles = StyleSheet.create({
     color: '#0f766e',
   },
   listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
   },
   listEmpty: {
     flexGrow: 1,
