@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme';
 
@@ -10,42 +11,89 @@ type Props = {
   onChange: (mode: SearchViewMode) => void;
   mapDisabled?: boolean;
   compact?: boolean;
+  gradientActive?: boolean;
 };
 
-export function SearchViewToggle({ mode, onChange, mapDisabled, compact }: Props) {
+function TabContent({
+  icon,
+  label,
+  active,
+  compact,
+  gradientActive,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  active: boolean;
+  compact?: boolean;
+  gradientActive?: boolean;
+}) {
+  const iconColor = active ? colors.heroText : colors.slateMuted;
+  const textStyle = [
+    styles.tabText,
+    compact && styles.tabTextCompact,
+    active && styles.tabTextOn,
+  ];
+
+  const inner = (
+    <>
+      <Ionicons name={icon} size={compact ? 14 : 16} color={iconColor} />
+      <Text style={textStyle}>{label}</Text>
+    </>
+  );
+
+  if (active && gradientActive) {
+    return (
+      <LinearGradient
+        colors={['#0d9488', '#0f766e']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.tab, compact && styles.tabCompact, styles.tabOnGrad]}
+      >
+        {inner}
+      </LinearGradient>
+    );
+  }
+
+  return (
+    <View style={[styles.tab, compact && styles.tabCompact, active && styles.tabOn]}>
+      {inner}
+    </View>
+  );
+}
+
+export function SearchViewToggle({
+  mode,
+  onChange,
+  mapDisabled,
+  compact,
+  gradientActive,
+}: Props) {
   return (
     <View style={[styles.wrap, compact && styles.wrapCompact]}>
       <Pressable
-        style={[styles.tab, compact && styles.tabCompact, mode === 'list' && styles.tabOn]}
+        style={styles.tabPress}
         onPress={() => onChange('list')}
       >
-        <Ionicons
-          name="list"
-          size={compact ? 14 : 16}
-          color={mode === 'list' ? colors.heroText : colors.slateMuted}
+        <TabContent
+          icon="list"
+          label="List"
+          active={mode === 'list'}
+          compact={compact}
+          gradientActive={gradientActive}
         />
-        <Text style={[styles.tabText, compact && styles.tabTextCompact, mode === 'list' && styles.tabTextOn]}>
-          List
-        </Text>
       </Pressable>
       <Pressable
-        style={[
-          styles.tab,
-          compact && styles.tabCompact,
-          mode === 'map' && styles.tabOn,
-          mapDisabled && styles.tabDisabled,
-        ]}
+        style={[styles.tabPress, mapDisabled && styles.tabPressDisabled]}
         onPress={() => !mapDisabled && onChange('map')}
         disabled={mapDisabled}
       >
-        <Ionicons
-          name="map"
-          size={compact ? 14 : 16}
-          color={mode === 'map' ? colors.heroText : colors.slateMuted}
+        <TabContent
+          icon="map"
+          label="Map"
+          active={mode === 'map'}
+          compact={compact}
+          gradientActive={gradientActive}
         />
-        <Text style={[styles.tabText, compact && styles.tabTextCompact, mode === 'map' && styles.tabTextOn]}>
-          Map
-        </Text>
       </Pressable>
     </View>
   );
@@ -54,14 +102,25 @@ export function SearchViewToggle({ mode, onChange, mapDisabled, compact }: Props
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     padding: 3,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    shadowColor: colors.navy,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   wrapCompact: {
     padding: 2,
+  },
+  tabPress: {
+    flex: 1,
+  },
+  tabPressDisabled: {
+    opacity: 0.45,
   },
   tab: {
     flex: 1,
@@ -73,14 +132,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   tabCompact: {
-    paddingVertical: 5,
+    paddingVertical: 6,
     gap: 4,
   },
   tabOn: {
     backgroundColor: '#0d9488',
   },
-  tabDisabled: {
-    opacity: 0.45,
+  tabOnGrad: {
+    shadowColor: '#0d9488',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tabText: {
     fontSize: 13,

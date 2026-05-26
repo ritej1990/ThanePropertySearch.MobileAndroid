@@ -25,6 +25,10 @@ type Props = {
   onPlaceSelected: (place: SelectedPlace | null) => void;
   onSearchSubmit?: () => void;
   compact?: boolean;
+  /** Tighter height for home toolbar */
+  dense?: boolean;
+  /** Soft shadow + white shell for home */
+  elevated?: boolean;
 };
 
 export function PropertyLocationSearch({
@@ -34,6 +38,8 @@ export function PropertyLocationSearch({
   onPlaceSelected,
   onSearchSubmit,
   compact,
+  dense,
+  elevated,
 }: Props) {
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -113,8 +119,22 @@ export function PropertyLocationSearch({
 
   return (
     <View style={[styles.wrap, compact && styles.wrapCompact]}>
-      <View style={[styles.shell, compact && styles.shellCompact]}>
-        <View style={[styles.iconWrap, compact && styles.iconWrapCompact]}>
+      <View
+        style={[
+          styles.shell,
+          compact && styles.shellCompact,
+          dense && styles.shellDense,
+          elevated && styles.shellElevated,
+        ]}
+      >
+        <View
+          style={[
+            styles.iconWrap,
+            compact && styles.iconWrapCompact,
+            dense && styles.iconWrapDense,
+            elevated && styles.iconWrapElevated,
+          ]}
+        >
           {pickLoading || loading ? (
             <ThaneFlatsLogo size={22} animated />
           ) : (
@@ -122,7 +142,11 @@ export function PropertyLocationSearch({
           )}
         </View>
         <TextInput
-          style={[styles.input, compact && styles.inputCompact]}
+          style={[
+            styles.input,
+            compact && styles.inputCompact,
+            dense && styles.inputDense,
+          ]}
           value={value}
           onChangeText={handleChangeText}
           placeholder={
@@ -228,6 +252,14 @@ const styles = StyleSheet.create({
     minHeight: 40,
     borderRadius: radius.sm,
   },
+  shellDense: {
+    minHeight: 36,
+  },
+  shellElevated: {
+    backgroundColor: colors.surface,
+    borderColor: 'rgba(13, 148, 136, 0.25)',
+    borderWidth: 1,
+  },
   iconWrap: {
     width: 46,
     alignItems: 'center',
@@ -241,6 +273,13 @@ const styles = StyleSheet.create({
   iconWrapCompact: {
     width: 38,
   },
+  iconWrapDense: {
+    width: 34,
+  },
+  iconWrapElevated: {
+    backgroundColor: '#ccfbf1',
+    borderRightColor: 'rgba(13, 148, 136, 0.15)',
+  },
   input: {
     flex: 1,
     fontSize: 15,
@@ -252,6 +291,10 @@ const styles = StyleSheet.create({
   inputCompact: {
     fontSize: 14,
     paddingVertical: spacing.sm,
+  },
+  inputDense: {
+    fontSize: 13,
+    paddingVertical: 6,
   },
   clearBtn: {
     paddingHorizontal: spacing.md,

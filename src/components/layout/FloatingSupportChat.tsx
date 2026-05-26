@@ -13,14 +13,26 @@ const FAB_GAP = 10;
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-type Props = {
-  bottomOffset?: number;
+export type ScrollToTopAction = {
+  visible: boolean;
+  onPress: () => void;
 };
 
-/** Small stacked FABs — overlays content; does not affect layout width. */
-export function FloatingSupportChat({ bottomOffset = 0 }: Props) {
+type Props = {
+  bottomOffset?: number;
+  scrollToTop?: ScrollToTopAction;
+};
+
+/** Stacked quick-action FABs (support, chat, optional scroll-to-top). */
+export function getFloatingRailHeight(showScrollToTop: boolean): number {
+  const count = showScrollToTop ? 3 : 2;
+  return FAB_SIZE * count + FAB_GAP * (count - 1) + 12;
+}
+
+export function FloatingSupportChat({ bottomOffset = 0, scrollToTop }: Props) {
   const navigation = useNavigation<Nav>();
   const [messageCount, setMessageCount] = useState(0);
+  const showTop = scrollToTop?.visible === true;
 
   const refreshCount = useCallback(async () => {
     try {
@@ -45,8 +57,31 @@ export function FloatingSupportChat({ bottomOffset = 0 }: Props) {
       <View
         style={styles.stack}
         pointerEvents="box-none"
-        accessibilityLabel="Quick support and chat actions"
+        accessibilityLabel="Quick actions"
       >
+        {showTop && scrollToTop ? (
+          <Pressable
+            onPress={scrollToTop.onPress}
+            style={({ pressed }) => [
+              styles.fab,
+              styles.fabTop,
+              pressed && styles.pressed,
+            ]}
+            accessibilityLabel="Back to top"
+            accessibilityRole="button"
+            hitSlop={8}
+          >
+            <LinearGradient
+              colors={['#0d9488', '#0f766e']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.fabInner}
+            >
+              <Ionicons name="arrow-up" size={18} color={colors.heroText} />
+            </LinearGradient>
+          </Pressable>
+        ) : null}
+
         <Pressable
           onPress={() => navigation.navigate('SupportTickets')}
           style={({ pressed }) => [styles.fab, styles.fabSupport, pressed && styles.pressed]}
@@ -103,7 +138,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
-    paddingRight: spacing.xs,
+    paddingRight: spacing.md,
   },
   stack: {
     alignItems: 'center',
@@ -116,9 +151,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.28,
     shadowRadius: 6,
     elevation: 10,
+  },
+  fabTop: {
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
   },
   fabSupport: {
     borderWidth: 2,
