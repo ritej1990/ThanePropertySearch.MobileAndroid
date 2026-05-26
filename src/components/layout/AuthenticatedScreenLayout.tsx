@@ -11,6 +11,7 @@ type Props = {
   children: React.ReactNode;
   showBack?: boolean;
   onBack?: () => void;
+  headerDensity?: 'default' | 'compact';
   showFloatingActions?: boolean;
   floatingBottomOffset?: number;
   showLegalFooter?: boolean;
@@ -21,6 +22,7 @@ export function AuthenticatedScreenLayout({
   children,
   showBack,
   onBack,
+  headerDensity = 'default',
   showFloatingActions = true,
   floatingBottomOffset = 0,
   showLegalFooter = true,
@@ -35,7 +37,7 @@ export function AuthenticatedScreenLayout({
 
   return (
     <View style={styles.screen}>
-      <AppProfileHeader showBack={showBack} onBack={onBack} />
+      <AppProfileHeader showBack={showBack} onBack={onBack} density={headerDensity} />
       <View style={styles.body}>{children}</View>
       {showLegalFooter ? <LegalFooter variant="onLight" /> : null}
       <EmailVerificationReminder />

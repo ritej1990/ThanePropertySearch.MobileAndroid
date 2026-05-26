@@ -48,20 +48,39 @@ function StatTile({
   icon,
   value,
   label,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   value: string;
   label: string;
+  onPress?: () => void;
 }) {
-  return (
-    <View style={styles.statTile}>
+  const body = (
+    <>
       <View style={styles.statIconWrap}>
         <Ionicons name={icon} size={18} color="#0d9488" />
       </View>
       <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
+      <Text style={[styles.statLabel, onPress ? styles.statLabelLink : null]}>
+        {label}
+      </Text>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.statTile, pressed && styles.statTilePressed]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${value}, ${label}. Go to ratings and reviews`}
+      >
+        {body}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.statTile}>{body}</View>;
 }
 
 export default function PropertyDetailsScreen({ route, navigation }: Props) {
@@ -72,6 +91,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const scrollContentRef = useRef<View>(null);
   const nextStepsRef = useRef<View>(null);
+  const ratingsRef = useRef<View>(null);
   const [item, setItem] = useState<PropertyResponse | null>(null);
   const [similar, setSimilar] = useState<PropertyResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,6 +167,24 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     item.ownerId != null &&
     profile?.userId != null &&
     item.ownerId === profile.userId;
+
+  function scrollToSection(targetRef: React.RefObject<View | null>) {
+    const content = scrollContentRef.current;
+    const target = targetRef.current;
+    if (!content || !target) return;
+    target.measureLayout(
+      content,
+      (_x, y) => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, y - 12),
+          animated: true,
+        });
+      },
+      () => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }
+    );
+  }
 
   const overviewPanel = (
     <View>
@@ -307,6 +345,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
                     ? `${item.ratingCount} review${item.ratingCount === 1 ? '' : 's'}`
                     : 'No reviews yet'
                 }
+                onPress={() => scrollToSection(ratingsRef)}
               />
               <StatTile
                 icon="resize-outline"
@@ -346,7 +385,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
           </View>
         ) : null}
 
-        <View style={styles.ratingsSection}>
+        <View ref={ratingsRef} collapsable={false} style={styles.ratingsSection}>
           <Text style={styles.sectionHeading}>Ratings & reviews</Text>
           <PropertyRatingSection
             propertyId={propertyId}
@@ -417,22 +456,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
               });
               return;
             }
-            const content = scrollContentRef.current;
-            const target = nextStepsRef.current;
-            if (content && target) {
-              target.measureLayout(
-                content,
-                (_x, y) => {
-                  scrollRef.current?.scrollTo({
-                    y: Math.max(0, y - 12),
-                    animated: true,
-                  });
-                },
-                () => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
-                }
-              );
-            }
+            scrollToSection(nextStepsRef);
           }}
           hasMap={hasMap}
           latitude={item.latitude ?? undefined}
@@ -587,6 +611,10 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     alignItems: 'center',
   },
+  statTilePressed: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#5eead4',
+  },
   statIconWrap: {
     marginBottom: 6,
   },
@@ -601,6 +629,11 @@ const styles = StyleSheet.create({
     color: colors.slateLight,
     marginTop: 2,
     textAlign: 'center',
+  },
+  statLabelLink: {
+    color: '#0f766e',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   ownerCard: {
     flexDirection: 'row',
