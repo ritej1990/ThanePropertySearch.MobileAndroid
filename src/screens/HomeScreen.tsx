@@ -11,18 +11,18 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { PropertyListCard } from '../components/property/PropertyListCard';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
-import { PropertySearchPanel } from '../components/search/PropertySearchPanel';
+import { HomeSearchToolbar } from '../components/search/HomeSearchToolbar';
 import { PropertySearchStickyBar } from '../components/search/PropertySearchStickyBar';
 import { PropertySearchMap } from '../components/search/PropertySearchMap';
+import { PropertyFiltersSheet } from '../components/search/PropertyFiltersSheet';
 import { SearchEmptyState } from '../components/search/SearchEmptyState';
-import { PlanTopButton } from '../components/search/PlanTopButton';
-import { BuildersNavButton } from '../components/search/BuildersNavButton';
-import { SearchViewToggle, type SearchViewMode } from '../components/search/SearchViewToggle';
+import type { SearchViewMode } from '../components/search/SearchViewToggle';
 import type { SelectedPlace } from '../services/googlePlaces';
-import { DEFAULT_SEARCH_RADIUS_KM, hasGoogleMapsKey } from '../config/env';
+import { DEFAULT_SEARCH_RADIUS_KM } from '../config/env';
 import type { RootStackParamList } from '../navigation/types';
 import { propertiesApi } from '../api/singleton';
 import type { PropertyResponse } from '../api/types';
@@ -52,7 +52,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
   const [filters, setFilters] = useState<PropertySearchFilters>(defaultSearchFilters);
   const [viewMode, setViewMode] = useState<SearchViewMode>('list');
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [filtersSheetVisible, setFiltersSheetVisible] = useState(false);
   const { compactHeaderVisible, onScroll, resetCompactHeader } =
     useScrollCompactHeader();
 
@@ -99,7 +99,7 @@ export default function HomeScreen({ navigation }: Props) {
     setSearchText('');
     setSelectedPlace(null);
     setFilters(defaultSearchFilters());
-    setFiltersExpanded(false);
+    setFiltersSheetVisible(false);
     resetCompactHeader();
     setLoading(true);
     load(null);
@@ -109,14 +109,6 @@ export default function HomeScreen({ navigation }: Props) {
     setViewMode(mode);
     if (mode === 'map') {
       resetCompactHeader();
-    }
-  }
-
-  function scrollToSearchTop(expandFilters = false) {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    resetCompactHeader();
-    if (expandFilters) {
-      setFiltersExpanded(true);
     }
   }
 
@@ -133,6 +125,14 @@ export default function HomeScreen({ navigation }: Props) {
     navigation.navigate('EssentialService');
   }, [navigation]);
 
+  const openBuilders = useCallback(() => {
+    navigation.navigate('BuilderProjects');
+  }, [navigation]);
+
+  const openFilters = useCallback(() => {
+    setFiltersSheetVisible(true);
+  }, []);
+
   function openProperty(item: PropertyResponse) {
     navigation.navigate('PropertyDetails', {
       propertyId: item.id,
@@ -147,46 +147,32 @@ export default function HomeScreen({ navigation }: Props) {
     });
   }, [navigation]);
 
-  const listHeader = useMemo(
-    () => (
-      <PropertySearchPanel
-        searchText={searchText}
-        onSearchTextChange={setSearchText}
-        selectedPlace={selectedPlace}
-        onPlaceSelected={handlePlaceSelected}
-        filters={filters}
-        onFiltersChange={setFilters}
-        resultCount={filtered.length}
-        totalLoaded={items.length}
-        onClearAll={clearSearchAndFilters}
-        showOwnerLink={isOwner}
-        onOwnerDashboard={isOwner ? goOwnerDashboard : undefined}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
-        filtersExpanded={filtersExpanded}
-        onFiltersExpandedChange={setFiltersExpanded}
-        embedded
-        hideViewToggle
-      />
-    ),
-    [
-      searchText,
-      selectedPlace,
-      filters,
-      filtered.length,
-      items.length,
-      isOwner,
-      viewMode,
-      filtersExpanded,
-      goOwnerDashboard,
-      handlePlaceSelected,
-      clearSearchAndFilters,
-      handleViewModeChange,
-    ]
-  );
+  const clearPlaceSearch = useCallback(() => {
+    handlePlaceSelected(null);
+  }, [handlePlaceSelected]);
 
-  const mapSearchPanel = (
-    <PropertySearchPanel
+  const listHeader = useMemo(() => {
+    if (!selectedPlace) return null;
+    return (
+      <View style={styles.placeBanner}>
+        <Ionicons name="location" size={16} color="#0d9488" />
+        <Text style={styles.placeBannerText} numberOfLines={2}>
+          Within {DEFAULT_SEARCH_RADIUS_KM} km of{' '}
+          <Text style={styles.placeBannerBold}>{selectedPlace.label}</Text>
+        </Text>
+        <Pressable
+          onPress={clearPlaceSearch}
+          hitSlop={8}
+          accessibilityLabel="Clear area search"
+        >
+          <Ionicons name="close-circle" size={20} color={colors.slateLight} />
+        </Pressable>
+      </View>
+    );
+  }, [selectedPlace, clearPlaceSearch]);
+
+  const searchToolbar = (
+    <HomeSearchToolbar
       searchText={searchText}
       onSearchTextChange={setSearchText}
       selectedPlace={selectedPlace}
@@ -195,36 +181,22 @@ export default function HomeScreen({ navigation }: Props) {
       onFiltersChange={setFilters}
       resultCount={filtered.length}
       totalLoaded={items.length}
-      onClearAll={clearSearchAndFilters}
-      showOwnerLink={isOwner}
-      onOwnerDashboard={isOwner ? goOwnerDashboard : undefined}
       viewMode={viewMode}
       onViewModeChange={handleViewModeChange}
-      filtersExpanded={filtersExpanded}
-      onFiltersExpandedChange={setFiltersExpanded}
-      hideViewToggle
+      activeFilterCount={activeFilterCount}
+      onOpenFilters={openFilters}
+      onOpenBuilders={openBuilders}
+      showPlan={showPlan}
+      onOpenPlan={openPlans}
+      showOwnerLink={isOwner}
+      onOwnerDashboard={isOwner ? goOwnerDashboard : undefined}
     />
   );
 
-  const viewToggleBar = (
-    <View style={styles.viewBar}>
-      <View style={styles.viewBarToggle}>
-        <SearchViewToggle
-          mode={viewMode}
-          onChange={handleViewModeChange}
-          mapDisabled={!hasGoogleMapsKey()}
-          compact
-        />
-      </View>
-      <BuildersNavButton onPress={() => navigation.navigate('BuilderProjects')} />
-      {showPlan ? <PlanTopButton onPress={openPlans} /> : null}
-    </View>
-  );
-
   return (
-    <AuthenticatedScreenLayout>
+    <AuthenticatedScreenLayout headerDensity="compact">
       <View style={styles.wrap}>
-        {viewToggleBar}
+        {searchToolbar}
 
         {viewMode === 'list' && compactHeaderVisible ? (
           <PropertySearchStickyBar
@@ -232,8 +204,8 @@ export default function HomeScreen({ navigation }: Props) {
             selectedPlace={selectedPlace}
             resultCount={filtered.length}
             activeFilterCount={activeFilterCount}
-            onPressSearch={() => scrollToSearchTop(false)}
-            onPressFilters={() => scrollToSearchTop(true)}
+            onPressSearch={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
+            onPressFilters={openFilters}
             showPlanButton={showPlan}
             onPressPlan={openPlans}
           />
@@ -241,7 +213,6 @@ export default function HomeScreen({ navigation }: Props) {
 
         {viewMode === 'map' ? (
           <View style={styles.mapWrap}>
-            {mapSearchPanel}
             {loading && items.length === 0 ? (
               <BrandLoading message="Loading homes…" />
             ) : error ? (
@@ -276,7 +247,6 @@ export default function HomeScreen({ navigation }: Props) {
             data={filtered}
             keyExtractor={(item) => String(item.id)}
             ListHeaderComponent={listHeader}
-            stickyHeaderIndices={undefined}
             onScroll={onScroll}
             scrollEventThrottle={16}
             ListEmptyComponent={
@@ -305,6 +275,15 @@ export default function HomeScreen({ navigation }: Props) {
             )}
           />
         )}
+
+        <PropertyFiltersSheet
+          visible={filtersSheetVisible}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClose={() => setFiltersSheetVisible(false)}
+          onClearAll={() => setFilters(defaultSearchFilters())}
+          resultCount={filtered.length}
+        />
       </View>
     </AuthenticatedScreenLayout>
   );
@@ -314,31 +293,34 @@ const styles = StyleSheet.create({
   wrap: {
     flex: 1,
     backgroundColor: colors.surfaceMuted,
-    overflow: 'visible',
   },
   mapWrap: {
     flex: 1,
-    overflow: 'visible',
   },
-  viewBar: {
+  placeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    zIndex: 30,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: '#ecfdf5',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
   },
-  viewBarToggle: {
+  placeBannerText: {
     flex: 1,
-    minWidth: 0,
+    fontSize: 13,
+    color: colors.slateMuted,
+    lineHeight: 18,
+  },
+  placeBannerBold: {
+    fontWeight: '800',
+    color: '#0f766e',
   },
   listContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
+    paddingTop: spacing.sm,
   },
   listEmpty: {
     flexGrow: 1,

@@ -31,6 +31,8 @@ import { colors, radius, spacing } from '../../theme';
 type Props = {
   showBack?: boolean;
   onBack?: () => void;
+  /** Slim header for home — logo row only; shortcuts live in search toolbar & menu */
+  density?: 'default' | 'compact';
 };
 
 function HeaderIconButton({
@@ -61,7 +63,7 @@ function HeaderIconButton({
   );
 }
 
-export function AppProfileHeader({ showBack, onBack }: Props) {
+export function AppProfileHeader({ showBack, onBack, density = 'default' }: Props) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile, logout } = useAuth();
@@ -138,7 +140,8 @@ export function AppProfileHeader({ showBack, onBack }: Props) {
     }
   }
 
-  const compact = showBack && onBack;
+  const backMode = showBack && onBack;
+  const slimHome = density === 'compact' && !backMode;
 
   return (
     <View style={styles.wrap}>
@@ -148,12 +151,12 @@ export function AppProfileHeader({ showBack, onBack }: Props) {
         end={{ x: 1, y: 1 }}
         style={[
           styles.gradient,
-          compact ? styles.gradientCompact : null,
-          { paddingTop: insets.top + (compact ? 4 : spacing.xs) },
+          backMode || slimHome ? styles.gradientCompact : null,
+          { paddingTop: insets.top + (backMode || slimHome ? 4 : spacing.xs) },
         ]}
       >
         <View style={styles.mainRow}>
-          {compact ? (
+          {backMode ? (
             <Pressable
               onPress={onBack}
               style={styles.backBtn}
@@ -169,14 +172,14 @@ export function AppProfileHeader({ showBack, onBack }: Props) {
             onPress={() => handleMenuNavigate('home')}
             accessibilityLabel="Go to home"
           >
-            <ThaneFlatsLogo size={compact ? 28 : 34} showWordmark onDark />
-            {!compact ? (
+            <ThaneFlatsLogo size={backMode || slimHome ? 28 : 34} showWordmark onDark />
+            {!backMode && !slimHome ? (
               <Text style={styles.tagline}>Thane property search</Text>
             ) : null}
           </Pressable>
 
           <View style={styles.actions}>
-            {!compact ? (
+            {!backMode ? (
               <HeaderIconButton
                 icon="chatbubbles-outline"
                 label="My chats"
@@ -208,7 +211,16 @@ export function AppProfileHeader({ showBack, onBack }: Props) {
           </View>
         </View>
 
-        {!compact ? (
+        {slimHome ? (
+          <Text style={styles.slimGreeting} numberOfLines={1}>
+            Hi, {firstName}
+            {emailConfirmed ? ' · Verified' : ''}
+            {' · '}
+            {getRoleLabel(profile?.role)}
+          </Text>
+        ) : null}
+
+        {!backMode && !slimHome ? (
           <View style={styles.welcomeRow}>
             <View style={styles.welcomeText}>
               <Text style={styles.welcomeHi}>Hi, {firstName}</Text>
@@ -227,7 +239,7 @@ export function AppProfileHeader({ showBack, onBack }: Props) {
           </View>
         ) : null}
 
-        {!compact && quickNav.length > 0 ? (
+        {!backMode && !slimHome && quickNav.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -406,6 +418,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: colors.heroText,
+  },
+  slimGreeting: {
+    marginTop: spacing.xs,
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(248, 250, 252, 0.82)',
+    letterSpacing: 0.2,
   },
   welcomeRow: {
     marginTop: spacing.md,
