@@ -13,3 +13,4 @@ ios/
 /.vs/slnx.sqlite
 /.gitignore
 /.vs/VSWorkspaceState.json
+*.vsidx
