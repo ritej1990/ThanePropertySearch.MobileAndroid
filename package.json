@@ -1,6 +1,6 @@
 {
   "name": "thane-property-search-mobile",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -11,6 +11,7 @@
     "android:apk": "powershell -ExecutionPolicy Bypass -File ./scripts/build-release-apk.ps1",
     "setup:java": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-java.ps1",
     "ios": "expo run:ios",
+    "ios:ipa": "bash ./scripts/build-ios-ipa.sh",
     "web": "expo start --web",
     "generate:icons": "node scripts/generate-brand-assets.mjs"
   },
