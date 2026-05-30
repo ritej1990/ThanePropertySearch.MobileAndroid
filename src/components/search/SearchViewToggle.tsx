@@ -1,6 +1,5 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme';
 
@@ -10,150 +9,142 @@ type Props = {
   mode: SearchViewMode;
   onChange: (mode: SearchViewMode) => void;
   mapDisabled?: boolean;
+  /** Icon-only — for compact sticky bars. */
   compact?: boolean;
-  gradientActive?: boolean;
 };
 
-function TabContent({
-  icon,
-  label,
-  active,
-  compact,
-  gradientActive,
-}: {
+type SegmentProps = {
+  selected: boolean;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  active: boolean;
+  a11yLabel?: string;
+  onPress: () => void;
+  disabled?: boolean;
   compact?: boolean;
-  gradientActive?: boolean;
-}) {
-  const iconColor = active ? colors.heroText : colors.slateMuted;
-  const textStyle = [
-    styles.tabText,
-    compact && styles.tabTextCompact,
-    active && styles.tabTextOn,
-  ];
+};
 
-  const inner = (
-    <>
-      <Ionicons name={icon} size={compact ? 14 : 16} color={iconColor} />
-      <Text style={textStyle}>{label}</Text>
-    </>
-  );
-
-  if (active && gradientActive) {
-    return (
-      <LinearGradient
-        colors={['#0d9488', '#0f766e']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.tab, compact && styles.tabCompact, styles.tabOnGrad]}
-      >
-        {inner}
-      </LinearGradient>
-    );
-  }
-
+function Segment({
+  selected,
+  icon,
+  label,
+  a11yLabel,
+  onPress,
+  disabled,
+  compact,
+}: SegmentProps) {
   return (
-    <View style={[styles.tab, compact && styles.tabCompact, active && styles.tabOn]}>
-      {inner}
-    </View>
+    <Pressable
+      style={[
+        styles.segment,
+        compact && styles.segmentCompact,
+        selected && styles.segmentOn,
+        disabled && styles.segmentDisabled,
+      ]}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="tab"
+      accessibilityState={{ selected, disabled: disabled ?? false }}
+      accessibilityLabel={a11yLabel ?? label}
+    >
+      <Ionicons
+        name={icon}
+        size={compact ? 14 : 13}
+        color={selected ? colors.heroText : colors.navy}
+      />
+      {!compact ? (
+        <Text style={[styles.segmentLabel, selected && styles.segmentLabelOn]}>
+          {label}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 
+/** List ↔ Map switch — one clear control, obvious selected state. */
 export function SearchViewToggle({
   mode,
   onChange,
   mapDisabled,
   compact,
-  gradientActive,
 }: Props) {
   return (
-    <View style={[styles.wrap, compact && styles.wrapCompact]}>
-      <Pressable
-        style={styles.tabPress}
+    <View
+      style={[styles.track, compact && styles.trackCompact]}
+      accessibilityRole="tablist"
+      accessibilityLabel="Search view mode"
+    >
+      <Segment
+        selected={mode === 'list'}
+        icon={mode === 'list' ? 'list' : 'list-outline'}
+        label="List"
+        a11yLabel="List view"
         onPress={() => onChange('list')}
-      >
-        <TabContent
-          icon="list"
-          label="List"
-          active={mode === 'list'}
-          compact={compact}
-          gradientActive={gradientActive}
-        />
-      </Pressable>
-      <Pressable
-        style={[styles.tabPress, mapDisabled && styles.tabPressDisabled]}
-        onPress={() => !mapDisabled && onChange('map')}
+        compact={compact}
+      />
+      <Segment
+        selected={mode === 'map'}
+        icon={mode === 'map' ? 'map' : 'map-outline'}
+        label="Map"
+        a11yLabel={mapDisabled ? 'Map view unavailable' : 'Map view'}
+        onPress={() => onChange('map')}
         disabled={mapDisabled}
-      >
-        <TabContent
-          icon="map"
-          label="Map"
-          active={mode === 'map'}
-          compact={compact}
-          gradientActive={gradientActive}
-        />
-      </Pressable>
+        compact={compact}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  track: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    shadowColor: colors.navy,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  wrapCompact: {
+    backgroundColor: '#e2e8f0',
+    borderRadius: radius.sm,
     padding: 2,
+    gap: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  tabPress: {
-    flex: 1,
+  trackCompact: {
+    padding: 1,
+    borderRadius: 6,
   },
-  tabPressDisabled: {
-    opacity: 0.45,
-  },
-  tab: {
+  segment: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: radius.sm,
-  },
-  tabCompact: {
-    paddingVertical: 6,
     gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    minWidth: 58,
   },
-  tabOn: {
+  segmentCompact: {
+    flex: 0,
+    minWidth: 34,
+    width: 34,
+    height: 28,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  segmentOn: {
     backgroundColor: '#0d9488',
+    shadowColor: '#0f766e',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  tabOnGrad: {
-    shadowColor: '#0d9488',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
+  segmentDisabled: {
+    opacity: 0.4,
   },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.slateMuted,
-  },
-  tabTextCompact: {
+  segmentLabel: {
     fontSize: 11,
+    fontWeight: '700',
+    color: colors.navy,
+    letterSpacing: 0.1,
   },
-  tabTextOn: {
+  segmentLabelOn: {
     color: colors.heroText,
   },
 });

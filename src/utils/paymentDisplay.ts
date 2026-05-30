@@ -4,6 +4,8 @@ const PRODUCT_LABELS: Record<string, string> = {
   UserEssential: 'Essential plan',
   UserContactPack: 'Contact reveal pack',
   OwnerListing: 'Owner listing',
+  AgentListingPublish: 'Agent listing publish',
+  AgentLeadCredits: 'Agent lead pack',
   BuilderProjectUpload: 'Builder project upload',
   BuilderLeadCredits: 'Builder lead credits',
 };
@@ -50,8 +52,39 @@ export function paymentStatusTone(
   return 'neutral';
 }
 
+const INVOICE_ELIGIBLE_PRODUCTS = new Set([
+  'useressential',
+  'usercontactpack',
+  'builderprojectupload',
+  'builderleadcredits',
+  'agentlistingpublish',
+  'agentleadcredits',
+]);
+
+export function paymentInvoiceEligible(item: PaymentTransaction): boolean {
+  const product = (item.productType ?? '').toLowerCase();
+  if (!INVOICE_ELIGIBLE_PRODUCTS.has(product)) {
+    return false;
+  }
+  return paymentStatusTone(item.status) === 'success';
+}
+
+export function showInvoiceDownload(item: PaymentTransaction): boolean {
+  if (item.canDownloadInvoice === true || item.hasInvoice === true) {
+    return true;
+  }
+  return paymentInvoiceEligible(item);
+}
+
 export function filterEssentialPayments(rows: PaymentTransaction[]): PaymentTransaction[] {
   return rows.filter(
     (r) => r.productType?.toLowerCase() === 'useressential'
   );
+}
+
+export function filterAgentPayments(rows: PaymentTransaction[]): PaymentTransaction[] {
+  return rows.filter((r) => {
+    const p = (r.productType ?? '').toLowerCase();
+    return p === 'agentlistingpublish' || p === 'agentleadcredits';
+  });
 }

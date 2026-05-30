@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
 import type { RootStackParamList } from './src/navigation/types';
 import { colors } from './src/theme';
-import { isBuilderRole, isOwnerRole } from './src/utils/roles';
+import { isBuilderRole, isOwnerRole, isAgentRole } from './src/utils/roles';
 import LoginScreen from './src/screens/LoginScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -33,6 +33,11 @@ import MyPaymentsScreen from './src/screens/MyPaymentsScreen';
 import VisitRequestsScreen from './src/screens/VisitRequestsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import BuilderLeadsScreen from './src/screens/BuilderLeadsScreen';
+import AgentDashboardScreen from './src/screens/AgentDashboardScreen';
+import AgentPendingApprovalScreen from './src/screens/AgentPendingApprovalScreen';
+import AgentPaymentsScreen from './src/screens/AgentPaymentsScreen';
+import BuilderPaymentsScreen from './src/screens/BuilderPaymentsScreen';
+import InvoiceViewerScreen from './src/screens/InvoiceViewerScreen';
 import PolicyScreen from './src/screens/PolicyScreen';
 import { linking } from './src/navigation/linking';
 
@@ -44,13 +49,22 @@ function AppNavigator() {
   const isAuthed = token != null;
   const isOwner = isOwnerRole(profile?.role);
   const isBuilder = isBuilderRole(profile?.role);
+  const isAgent = isAgentRole(profile?.role);
 
-  const authedKey = isBuilder ? 'authed-builder' : isOwner ? 'authed-owner' : 'authed-user';
-  const initialAuthedRoute = isBuilder
-    ? 'BuilderDashboard'
-    : isOwner
-      ? 'OwnerDashboard'
-      : 'Home';
+  const authedKey = isAgent
+    ? 'authed-agent'
+    : isBuilder
+      ? 'authed-builder'
+      : isOwner
+        ? 'authed-owner'
+        : 'authed-user';
+  const initialAuthedRoute = isAgent
+    ? 'AgentDashboard'
+    : isBuilder
+      ? 'BuilderDashboard'
+      : isOwner
+        ? 'OwnerDashboard'
+        : 'Home';
 
   return (
     <AppBootGate>
@@ -95,7 +109,13 @@ function AppNavigator() {
         </>
       ) : (
         <>
-          {isBuilder ? (
+          {isAgent ? (
+            <Stack.Screen
+              name="AgentDashboard"
+              component={AgentDashboardScreen}
+              options={{ headerShown: false }}
+            />
+          ) : isBuilder ? (
             <Stack.Screen
               name="BuilderDashboard"
               component={BuilderDashboardScreen}
@@ -241,6 +261,33 @@ function AppNavigator() {
             component={BuilderLeadsScreen}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="AgentPendingApproval"
+            component={AgentPendingApprovalScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AgentPayments"
+            component={AgentPaymentsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="BuilderPayments"
+            component={BuilderPaymentsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="InvoiceViewer"
+            component={InvoiceViewerScreen}
+            options={{ headerShown: false }}
+          />
+          {!isAgent && (
+            <Stack.Screen
+              name="AgentDashboard"
+              component={AgentDashboardScreen}
+              options={{ headerShown: false, title: 'Agent dashboard' }}
+            />
+          )}
         </>
       )}
     </Stack.Navigator>

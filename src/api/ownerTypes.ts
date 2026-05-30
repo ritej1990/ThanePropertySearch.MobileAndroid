@@ -8,7 +8,15 @@ export type OwnerDashboardItem = {
   listingDurationDays: number;
   listingPeriodEndUtc: string | null;
   isFeaturedInSearch: boolean;
+  isForRent?: boolean;
+  isForSale?: boolean;
+  isForPg?: boolean;
+  isHiddenFromSearch?: boolean;
+  ownerAvailabilityOutcome?: string | null;
   daysRemaining: number | null;
   totalRequests: number;
   pendingRequests: number;
+  viewCount?: number;
 };
+
+export type OwnerAvailabilityOutcome = '' | 'Rented' | 'Sold';

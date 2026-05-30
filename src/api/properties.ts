@@ -10,10 +10,10 @@ import type {
   OwnerContact,
   PropertyInquirySummary,
 } from './inquiryTypes';
-import type { OwnerDashboardItem } from './ownerTypes';
 import type { PropertyRatingItem } from './ratingTypes';
 import type { VisitRequest } from './visitTypes';
 import type { PropertyResponse } from './types';
+import { normalizeOwnerDashboard } from './normalizeOwnerDashboard';
 import { normalizeProperties, normalizeProperty } from './normalizeProperty';
 
 type LocalImage = {
@@ -74,8 +74,9 @@ export function createPropertiesApi(client: ReturnType<typeof createApiClient>) 
     },
 
     /** Owner dashboard summary — GET /api/properties/owner-dashboard */
-    ownerDashboard() {
-      return client.get<OwnerDashboardItem[]>('/api/properties/owner-dashboard');
+    async ownerDashboard() {
+      const data = await client.get<unknown[]>('/api/properties/owner-dashboard');
+      return normalizeOwnerDashboard(Array.isArray(data) ? data : []);
     },
 
     /** POST /api/properties — owner create listing */
@@ -184,6 +185,26 @@ export function createPropertiesApi(client: ReturnType<typeof createApiClient>) 
       return client.post<{ message: string }>(
         `/api/properties/inquiries/${inquiryId}/status`,
         { status }
+      );
+    },
+
+    setOwnerAvailabilityOutcome(propertyId: number, outcome: string | null) {
+      return client.post<{ message: string; outcome: string | null }>(
+        `/api/properties/${propertyId}/owner-availability`,
+        { outcome: outcome ?? '' }
+      );
+    },
+
+    setOwnerHideFromSearch(propertyId: number, hidden: boolean) {
+      return client.post<{ message: string; hidden: boolean }>(
+        `/api/properties/${propertyId}/owner-hide-from-search`,
+        { hidden }
+      );
+    },
+
+    deleteOwnerListing(propertyId: number) {
+      return client.delete<{ message: string }>(
+        `/api/properties/${propertyId}/owner-listing`
       );
     },
   };

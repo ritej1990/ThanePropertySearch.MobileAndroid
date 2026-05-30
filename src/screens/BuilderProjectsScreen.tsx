@@ -1,12 +1,13 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type FlatList as FlatListType,
 } from 'react-native';
+import { AnimatedFlatList } from '../components/ui/AnimatedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,16 +16,33 @@ import type { BuilderProjectSummary } from '../api/builderTypes';
 import { builderProjectsApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { DashboardCompactBar } from '../components/layout/DashboardCompactBar';
 import { BuilderProjectCard } from '../components/builder/BuilderProjectCard';
 import { BuilderProjectsBanner } from '../components/builder/BuilderProjectsBanner';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { ScrollChromeBar } from '../components/ui/ScrollChromeBar';
+import { scrollLinkedHostStyle } from '../components/ui/ScrollLinkedOverlay';
+import { useListScrollChrome, useScrollCollapseEligibility } from '../hooks/useListScrollChrome';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BuilderProjects'>;
 
-export default function BuilderProjectsScreen({ navigation }: Props) {
+export default function BuilderProjectsScreen(props: Props) {
+  return (
+    <AuthenticatedScreenLayout
+      headerDensity="compact"
+      showBack
+      onBack={() => props.navigation.goBack()}
+    >
+      <BuilderProjectsContent {...props} />
+    </AuthenticatedScreenLayout>
+  );
+}
+
+function BuilderProjectsContent({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatListType<BuilderProjectSummary>>(null);
   const [items, setItems] = useState<BuilderProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,6 +89,16 @@ export default function BuilderProjectsScreen({ navigation }: Props) {
     });
   }, [items, searchText]);
 
+  const { canCollapse, bindScrollMetrics } = useScrollCollapseEligibility();
+  const { scrollY, onScroll, scrollToTop } = useListScrollChrome({
+    scrollRef: listRef,
+    scrollToTopActive: filtered.length > 0,
+    collapseEnabled: canCollapse && filtered.length > 0,
+  });
+
+  const searchSummary =
+    searchText.trim().length > 0 ? searchText.trim() : 'All builder projects';
+
   const listHeader = (
     <View style={styles.header}>
       <BuilderProjectsBanner projectCount={filtered.length} />
@@ -112,7 +140,16 @@ export default function BuilderProjectsScreen({ navigation }: Props) {
   );
 
   return (
-    <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
+    <View style={scrollLinkedHostStyle}>
+      <ScrollChromeBar scrollY={scrollY} revealAt={200} overlay>
+        <DashboardCompactBar
+          title="Builder projects"
+          subtitle={`${filtered.length} projects · ${searchSummary}`}
+          onPress={scrollToTop}
+          variant="builder"
+        />
+      </ScrollChromeBar>
+
       {loading && items.length === 0 ? (
         <BrandLoading message="Loading builder projects…" />
       ) : error ? (
@@ -127,10 +164,15 @@ export default function BuilderProjectsScreen({ navigation }: Props) {
           </Pressable>
         </View>
       ) : (
-        <FlatList
+        <AnimatedFlatList
+          ref={listRef}
           data={filtered}
           keyExtractor={(item) => String(item.id)}
           ListHeaderComponent={listHeader}
+          {...bindScrollMetrics}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          bounces={canCollapse && filtered.length > 0}
           contentContainerStyle={[
             styles.list,
             { paddingBottom: insets.bottom + spacing.lg },
@@ -165,7 +207,7 @@ export default function BuilderProjectsScreen({ navigation }: Props) {
           )}
         />
       )}
-    </AuthenticatedScreenLayout>
+    </View>
   );
 }
 
@@ -186,6 +228,7 @@ function TrustChip({
 
 const styles = StyleSheet.create({
   header: {
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
   },

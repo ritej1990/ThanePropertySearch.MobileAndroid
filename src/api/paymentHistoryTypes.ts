@@ -10,4 +10,7 @@ export type PaymentTransaction = {
   payerReferenceNote: string | null;
   createdAtUtc: string;
   completedAtUtc: string | null;
+  hasInvoice?: boolean;
+  invoiceNumber?: string | null;
+  canDownloadInvoice?: boolean;
 };

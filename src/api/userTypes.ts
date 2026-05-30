@@ -8,4 +8,5 @@ export type UserProfile = {
   authProvider: string;
   emailConfirmed: boolean;
   phoneNumberConfirmed: boolean;
+  gstNumber?: string | null;
 };

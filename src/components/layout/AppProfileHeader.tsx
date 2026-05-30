@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,7 +16,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useResendEmailVerification } from '../../hooks/useResendEmailVerification';
+import { paymentsApi } from '../../api/singleton';
+import type { EssentialStatus } from '../../api/paymentTypes';
+import { EssentialUsageBar } from '../plans/EssentialUsageBar';
+import { isUserRole } from '../../utils/roles';
 import { SignOutConfirmModal } from '../auth/SignOutConfirmModal';
+import { ScrollRevealPanel } from '../ui/ScrollRevealPanel';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
 import type { RootStackParamList } from '../../navigation/types';
 import { AppNavMenu, type NavMenuTarget } from './AppNavMenu';
@@ -33,6 +39,8 @@ type Props = {
   onBack?: () => void;
   /** Slim header for home — logo row only; shortcuts live in search toolbar & menu */
   density?: 'default' | 'compact';
+  /** Scroll-linked visibility 1 = expanded, 0 = collapsed. */
+  chromeVisible?: Animated.Value | Animated.AnimatedInterpolation<number>;
 };
 
 function HeaderIconButton({
@@ -63,16 +71,22 @@ function HeaderIconButton({
   );
 }
 
-export function AppProfileHeader({ showBack, onBack, density = 'default' }: Props) {
+export function AppProfileHeader({
+  showBack,
+  onBack,
+  density = 'default',
+  chromeVisible,
+}: Props) {
+  const headerChrome = chromeVisible;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile, logout } = useAuth();
   const { resend, sending, email, emailConfirmed } = useResendEmailVerification();
+  const [essentialStatus, setEssentialStatus] = useState<EssentialStatus | null>(null);
   const [signOutVisible, setSignOutVisible] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [unreadChats, setUnreadChats] = useState(0);
-
   const firstName = getProfileFirstName(profile?.fullName);
   const initials = getProfileInitials(profile?.fullName);
   const quickNav = buildQuickNavItems(profile?.role);
@@ -90,6 +104,25 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
     useCallback(() => {
       refreshUnread();
     }, [refreshUnread])
+  );
+
+  const refreshEssential = useCallback(async () => {
+    if (!isUserRole(profile?.role)) {
+      setEssentialStatus(null);
+      return;
+    }
+    try {
+      const status = await paymentsApi.getEssentialStatus();
+      setEssentialStatus(status);
+    } catch {
+      setEssentialStatus(null);
+    }
+  }, [profile?.role]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshEssential();
+    }, [refreshEssential])
   );
 
   function handleMenuNavigate(target: NavMenuTarget) {
@@ -124,6 +157,15 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
       case 'postProperty':
         navigation.navigate('PostProperty');
         break;
+      case 'agentDashboard':
+        navigation.navigate('AgentDashboard');
+        break;
+      case 'agentPayments':
+        navigation.navigate('AgentPayments');
+        break;
+      case 'builderPayments':
+        navigation.navigate('BuilderPayments');
+        break;
       default:
         break;
     }
@@ -142,6 +184,7 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
 
   const backMode = showBack && onBack;
   const slimHome = density === 'compact' && !backMode;
+  const showPlanUsage = isUserRole(profile?.role) && essentialStatus && essentialStatus.usageMax > 0;
 
   return (
     <View style={styles.wrap}>
@@ -226,7 +269,42 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
           />
         ) : null}
 
-        {!backMode && !slimHome ? (
+        {showPlanUsage && headerChrome ? (
+          <ScrollRevealPanel progress={headerChrome} maxHeight={62}>
+            <EssentialUsageBar
+              status={essentialStatus!}
+              compact={slimHome || Boolean(backMode)}
+              onPress={() => navigation.navigate('EssentialService', undefined)}
+            />
+          </ScrollRevealPanel>
+        ) : showPlanUsage ? (
+          <EssentialUsageBar
+            status={essentialStatus!}
+            compact={slimHome || Boolean(backMode)}
+            onPress={() => navigation.navigate('EssentialService', undefined)}
+          />
+        ) : null}
+
+        {!backMode && !slimHome && headerChrome ? (
+          <ScrollRevealPanel progress={headerChrome} maxHeight={88}>
+            <View style={styles.welcomeRow}>
+              <View style={styles.welcomeText}>
+                <Text style={styles.welcomeHi}>Hi, {firstName}</Text>
+                <View style={styles.welcomeMeta}>
+                  <View style={styles.roleChip}>
+                    <Text style={styles.roleChipText}>{getRoleLabel(profile?.role)}</Text>
+                  </View>
+                  {emailConfirmed ? (
+                    <View style={styles.verifiedChip}>
+                      <Ionicons name="checkmark-circle" size={12} color="#6ee7b7" />
+                      <Text style={styles.verifiedText}>Verified</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+            </View>
+          </ScrollRevealPanel>
+        ) : !backMode && !slimHome ? (
           <View style={styles.welcomeRow}>
             <View style={styles.welcomeText}>
               <Text style={styles.welcomeHi}>Hi, {firstName}</Text>
@@ -245,7 +323,42 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
           </View>
         ) : null}
 
-        {!backMode && !slimHome && quickNav.length > 0 ? (
+        {!backMode && !slimHome && quickNav.length > 0 && headerChrome ? (
+          <ScrollRevealPanel progress={headerChrome} maxHeight={52}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickNav}
+            >
+              {quickNav.map((item) => (
+                <Pressable
+                  key={item.key}
+                  style={styles.quickPill}
+                  onPress={() => handleMenuNavigate(item.key)}
+                >
+                  <Ionicons name={item.icon} size={15} color={colors.heroText} />
+                  <Text style={styles.quickPillText}>{item.label}</Text>
+                  {item.key === 'myChats' && unreadChats > 0 ? (
+                    <View style={styles.quickBadge}>
+                      <Text style={styles.quickBadgeText}>
+                        {unreadChats > 9 ? '9+' : unreadChats}
+                      </Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              ))}
+              <Pressable
+                style={[styles.quickPill, styles.quickPillMore]}
+                onPress={() => setMenuVisible(true)}
+              >
+                <Ionicons name="grid-outline" size={15} color={colors.goldAccent} />
+                <Text style={[styles.quickPillText, styles.quickPillMoreText]}>
+                  More
+                </Text>
+              </Pressable>
+            </ScrollView>
+          </ScrollRevealPanel>
+        ) : !backMode && !slimHome && quickNav.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -281,12 +394,31 @@ export function AppProfileHeader({ showBack, onBack, density = 'default' }: Prop
         ) : null}
       </LinearGradient>
 
-      {!emailConfirmed && email ? (
-        <Pressable
-          style={styles.emailBanner}
-          onPress={resend}
-          disabled={sending}
-        >
+      {!emailConfirmed && email && headerChrome ? (
+        <ScrollRevealPanel progress={headerChrome} maxHeight={56} collapseFromTop>
+          <Pressable
+            style={styles.emailBanner}
+            onPress={resend}
+            disabled={sending}
+          >
+            {sending ? (
+              <ActivityIndicator size="small" color={colors.goldAccent} />
+            ) : (
+              <Ionicons name="mail-unread" size={18} color={colors.goldAccent} />
+            )}
+            <View style={styles.emailBannerText}>
+              <Text style={styles.emailBannerTitle} numberOfLines={1}>
+                Verify your email
+              </Text>
+              <Text style={styles.emailBannerSub} numberOfLines={1}>
+                {email} · Tap to resend
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.goldAccent} />
+          </Pressable>
+        </ScrollRevealPanel>
+      ) : !emailConfirmed && email ? (
+        <Pressable style={styles.emailBanner} onPress={resend} disabled={sending}>
           {sending ? (
             <ActivityIndicator size="small" color={colors.goldAccent} />
           ) : (

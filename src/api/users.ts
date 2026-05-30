@@ -5,6 +5,7 @@ export type UpdateProfileBody = {
   fullName: string;
   phoneNumber: string;
   marketIntent?: string | null;
+  gstNumber?: string | null;
 };
 
 export function createUsersApi(client: ReturnType<typeof createApiClient>) {

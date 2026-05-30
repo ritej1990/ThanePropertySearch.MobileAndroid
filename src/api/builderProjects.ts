@@ -1,9 +1,11 @@
 import type { createApiClient } from './client';
 import type {
+  BuilderDashboardStats,
   BuilderLead,
   BuilderLeadBody,
   BuilderProjectDetail,
   BuilderProjectSummary,
+  PagedResult,
 } from './builderTypes';
 import {
   enrichBuilderProject,
@@ -12,38 +14,52 @@ import {
 
 export type BuilderProjectListParams = {
   search?: string;
-  area?: string;
+  page?: number;
+  pageSize?: number;
 };
 
 function queryString(params?: BuilderProjectListParams): string {
   if (!params) return '';
   const q = new URLSearchParams();
   if (params.search?.trim()) q.set('search', params.search.trim());
-  if (params.area?.trim()) q.set('area', params.area.trim());
+  if (params.page != null) q.set('page', String(params.page));
+  if (params.pageSize != null) q.set('pageSize', String(params.pageSize));
   const s = q.toString();
   return s ? `?${s}` : '';
+}
+
+function mapPagedItems(data: PagedResult<BuilderProjectSummary> | BuilderProjectSummary[]) {
+  const items = Array.isArray(data) ? data : (data.items ?? []);
+  return items.map((p) => enrichBuilderProject(p));
 }
 
 export function createBuilderProjectsApi(client: ReturnType<typeof createApiClient>) {
   return {
     async list(params?: BuilderProjectListParams) {
-      const data = await client.get<BuilderProjectSummary[]>(
+      const data = await client.get<PagedResult<BuilderProjectSummary>>(
         `/api/builder-projects${queryString(params)}`,
         { auth: false }
       );
-      return data.map((p) => enrichBuilderProject(p));
+      return mapPagedItems(data);
     },
 
-    /** Builder-owned projects (requires Builder role JWT). */
-    async listMine() {
-      const data = await client.get<BuilderProjectSummary[]>(
-        '/api/builder-projects?mine=true'
+    /** Builder-owned projects — GET /api/builder-projects/mine */
+    async listMine(params?: Pick<BuilderProjectListParams, 'search' | 'page'>) {
+      const q = new URLSearchParams();
+      if (params?.search?.trim()) q.set('search', params.search.trim());
+      if (params?.page != null) q.set('page', String(params.page));
+      const qs = q.toString();
+      const data = await client.get<PagedResult<BuilderProjectSummary>>(
+        `/api/builder-projects/mine${qs ? `?${qs}` : ''}`
       );
-      return data.map((p) => enrichBuilderProject(p));
+      return mapPagedItems(data);
+    },
+
+    getMineStats() {
+      return client.get<BuilderDashboardStats>('/api/builder-projects/mine/stats');
     },
 
     async getById(id: number) {
-      // Send JWT when logged in (matches web Details) so builders see pending media too.
       const detail = await client.get<BuilderProjectDetail>(
         `/api/builder-projects/${id}`,
         { auth: true }

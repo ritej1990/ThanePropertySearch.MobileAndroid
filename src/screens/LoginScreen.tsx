@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LoginBackdrop } from '../components/auth/LoginBackdrop';
-import { LoginHeader } from '../components/auth/LoginHeader';
+import { ThaneFlatsLogo } from '../components/ui/ThaneFlatsLogo';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
 import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext';
 import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { RootStackParamList } from '../navigation/types';
 import { LegalFooter } from '../components/layout/LegalFooter';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -66,15 +67,25 @@ export default function LoginScreen({ navigation }: Props) {
 
   const body = (
     <>
-      <LoginHeader compact={isWeb} />
+      <View style={styles.topBrand} pointerEvents="none">
+        <ThaneFlatsLogo size={44} showWordmark animated onDark />
+        <Text style={styles.topTagline}>Sign in to continue</Text>
+      </View>
+
       <View style={isWeb ? styles.formAreaWeb : styles.formArea}>
         <View style={styles.card}>
           <View style={styles.cardAccent} pointerEvents="none" />
-          <Text style={styles.eyebrow}>Account access</Text>
-          <Text style={styles.cardTitle}>Sign in to continue</Text>
-          <Text style={styles.cardSub}>
-            Use your Thane Flats username and password.
-          </Text>
+          <View style={styles.cardIconRow}>
+            <View style={styles.cardIcon}>
+              <Ionicons name="log-in-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.cardIconText}>
+              <Text style={styles.cardTitle}>Welcome back</Text>
+              <Text style={styles.cardSub}>
+                Enter your username and password to access your account.
+              </Text>
+            </View>
+          </View>
 
           <AuthTextField
             label="Username"
@@ -117,6 +128,13 @@ export default function LoginScreen({ navigation }: Props) {
             loading={loading}
             onPress={handleLogin}
           />
+
+          <View style={styles.trustRow}>
+            <Ionicons name="shield-checkmark" size={15} color="#0f766e" />
+            <Text style={styles.trustText}>
+              Secure login · Same account as thaneflats.com
+            </Text>
+          </View>
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
@@ -185,6 +203,20 @@ const styles = StyleSheet.create({
   formArea: {
     flex: 1,
     justifyContent: 'center',
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  topBrand: {
+    alignItems: 'center',
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  topTagline: {
+    marginTop: spacing.sm,
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(248,250,252,0.82)',
   },
   formAreaWeb: {
     marginTop: spacing.md,
@@ -212,11 +244,23 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: colors.gold,
   },
-  eyebrow: {
-    ...typography.eyebrow,
-    color: colors.gold,
-    marginBottom: spacing.xs,
+  cardIconRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
+  cardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  cardIconText: { flex: 1, minWidth: 0 },
   cardTitle: {
     ...typography.cardTitle,
     color: colors.navy,
@@ -225,8 +269,23 @@ const styles = StyleSheet.create({
   cardSub: {
     fontSize: 14,
     color: colors.slateLight,
-    marginBottom: spacing.lg,
     lineHeight: 20,
+  },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  trustText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.slateMuted,
+    lineHeight: 17,
   },
   forgot: {
     alignSelf: 'flex-end',

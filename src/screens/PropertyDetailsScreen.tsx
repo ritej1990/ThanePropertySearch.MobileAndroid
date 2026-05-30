@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { propertiesApi } from '../api/singleton';
+import { agentListingsApi, propertiesApi } from '../api/singleton';
 import type { PropertyResponse } from '../api/types';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
@@ -20,6 +20,7 @@ import { PropertyDetailStickyBar } from '../components/property/PropertyDetailSt
 import { PropertyDetailTabs } from '../components/property/PropertyDetailTabs';
 import { PropertyGallery } from '../components/property/PropertyGallery';
 import { SimilarPropertyCard } from '../components/property/SimilarPropertyCard';
+import { PropertyKeySpecsPanel, type KeySpecItem } from '../components/property/PropertyKeySpecsPanel';
 import { SpecRow } from '../components/property/SpecRow';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, gradients, radius, spacing, typography } from '../theme';
@@ -33,9 +34,13 @@ import { PropertyNextStepsPanel } from '../components/property/PropertyNextSteps
 import { PropertyPlanCreditsBar } from '../components/property/PropertyPlanCreditsBar';
 import { PropertyRatingSection } from '../components/property/PropertyRatingSection';
 import { useAuth } from '../context/AuthContext';
-import { useScrollCompactHeader } from '../hooks/useScrollCompactHeader';
+import { useAuthenticatedScroll, useRegisterScrollToTop } from '../context/AuthenticatedScrollContext';
 import { getPrimaryPrice } from '../utils/propertyDisplay';
-import { isOwnerRole, isUserRole } from '../utils/roles';
+import { normalizeAgentListing } from '../utils/normalizeAgentListing';
+import { resolveListingRera, shouldShowListingRera, isNewListing } from '../utils/listingRera';
+import { ReraBadge } from '../components/property/ReraBadge';
+import { NewListingRibbon } from '../components/property/NewListingRibbon';
+import { isAgentRole, isOwnerRole, isUserRole } from '../utils/roles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyDetails'>;
 
@@ -86,16 +91,11 @@ function StatTile({
 }
 
 export default function PropertyDetailsScreen({ route, navigation }: Props) {
-  const { propertyId } = route.params;
-  const insets = useSafeAreaInsets();
+  const { propertyId, listingSource = 'property' } = route.params;
+  const isAgentListing = listingSource === 'agent';
   const { profile } = useAuth();
-  const { goToTopVisible, onScroll, resetCompactHeader } = useScrollCompactHeader();
   const showUserActions = isUserRole(profile?.role);
   const showOwnerActions = isOwnerRole(profile?.role);
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollContentRef = useRef<View>(null);
-  const nextStepsRef = useRef<View>(null);
-  const ratingsRef = useRef<View>(null);
   const [item, setItem] = useState<PropertyResponse | null>(null);
   const [similar, setSimilar] = useState<PropertyResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,10 +106,10 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     setError(null);
     if (!silent) setLoading(true);
     try {
-      const [detail, list] = await Promise.all([
-        propertiesApi.getById(propertyId),
-        propertiesApi.list().catch(() => [] as PropertyResponse[]),
-      ]);
+      const detail = isAgentListing
+        ? normalizeAgentListing(await agentListingsApi.resolveById(propertyId))
+        : await propertiesApi.getById(propertyId);
+      const list = await propertiesApi.list().catch(() => [] as PropertyResponse[]);
       setItem(detail);
       setSimilar(list.filter((p) => p.id !== propertyId).slice(0, 8));
     } catch (e) {
@@ -121,7 +121,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     load();
-  }, [propertyId]);
+  }, [propertyId, isAgentListing]);
 
   const meta = useMemo(
     () => parseRichMetadata(item?.richMetadataJson),
@@ -134,11 +134,6 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     if (urls.length === 0 && item.imageUrl) return [item.imageUrl];
     return urls;
   }, [item]);
-
-  const scrollToTop = useCallback(() => {
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
-    resetCompactHeader();
-  }, [resetCompactHeader]);
 
   if (loading) {
     return (
@@ -168,9 +163,79 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     );
   }
 
+  return (
+    <AuthenticatedScreenLayout
+      showBack
+      onBack={() => navigation.goBack()}
+    >
+      <PropertyDetailsContent
+        navigation={navigation}
+        propertyId={propertyId}
+        isAgentListing={isAgentListing}
+        item={item}
+        similar={similar}
+        meta={meta}
+        gallery={gallery}
+        profile={profile}
+        showUserActions={showUserActions}
+        showOwnerActions={showOwnerActions}
+        creditsRefreshKey={creditsRefreshKey}
+        setCreditsRefreshKey={setCreditsRefreshKey}
+        onReload={load}
+      />
+    </AuthenticatedScreenLayout>
+  );
+}
+
+type PropertyDetailsContentProps = {
+  navigation: Props['navigation'];
+  propertyId: number;
+  isAgentListing: boolean;
+  item: PropertyResponse;
+  similar: PropertyResponse[];
+  meta: ReturnType<typeof parseRichMetadata>;
+  gallery: string[];
+  profile: ReturnType<typeof useAuth>['profile'];
+  showUserActions: boolean;
+  showOwnerActions: boolean;
+  creditsRefreshKey: number;
+  setCreditsRefreshKey: React.Dispatch<React.SetStateAction<number>>;
+  onReload: (silent?: boolean) => void;
+};
+
+function PropertyDetailsContent({
+  navigation,
+  propertyId,
+  isAgentListing,
+  item,
+  similar,
+  meta,
+  gallery,
+  profile,
+  showUserActions,
+  showOwnerActions,
+  creditsRefreshKey,
+  setCreditsRefreshKey,
+  onReload,
+}: PropertyDetailsContentProps) {
+  const { goToTopVisible, onScroll, resetCompactHeader } = useAuthenticatedScroll();
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollContentRef = useRef<View>(null);
+  const nextStepsRef = useRef<View>(null);
+  const ratingsRef = useRef<View>(null);
+
+  const scrollToTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    resetCompactHeader();
+  }, [resetCompactHeader]);
+
+  useRegisterScrollToTop({ visible: goToTopVisible, onPress: scrollToTop });
+
   const chips = listingTypeChips(item);
   const price = getPrimaryPrice(item);
   const hasMap = Boolean(item.latitude && item.longitude);
+  const rera = resolveListingRera(item);
+  const showRera = shouldShowListingRera(item) || (isAgentListing && Boolean(rera));
   const isOwnListing =
     showOwnerActions &&
     item.ownerId != null &&
@@ -195,26 +260,88 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     );
   }
 
+  const keySpecItems = useMemo(() => {
+    const rows: KeySpecItem[] = [
+      {
+        key: 'builtup',
+        label: 'Built-up',
+        value: `${item.builtupSqft} sq.ft`,
+        icon: 'resize-outline',
+      },
+      {
+        key: 'config',
+        label: 'Configuration',
+        value: item.bhkConfiguration?.trim() || '—',
+        icon: 'bed-outline',
+      },
+    ];
+
+    if (item.isForRent) {
+      rows.push({
+        key: 'rent',
+        label: 'Rent',
+        value: `${formatInr(item.rentAmount)} / month`,
+        icon: 'key-outline',
+        tone: 'blue',
+      });
+    }
+
+    if (item.isForSale) {
+      rows.push({
+        key: 'sale',
+        label: 'Sale price',
+        value: item.sellPrice != null ? formatInr(item.sellPrice) : '—',
+        icon: 'pricetag-outline',
+        tone: 'violet',
+      });
+    }
+
+    rows.push(
+      {
+        key: 'deposit',
+        label: 'Deposit',
+        value: formatInr(item.depositAmount),
+        icon: 'wallet-outline',
+      },
+      {
+        key: 'area',
+        label: 'Area',
+        value: item.areaName,
+        icon: 'location-outline',
+      }
+    );
+
+    if (showRera && rera) {
+      rows.push({
+        key: 'rera',
+        label: 'RERA ID',
+        value: rera,
+        icon: 'shield-checkmark-outline',
+        tone: 'teal',
+      });
+    }
+
+    rows.push(
+      {
+        key: 'status',
+        label: 'Status',
+        value: item.reviewStatus,
+        icon: 'checkmark-circle-outline',
+      },
+      {
+        key: 'listed',
+        label: 'Listed',
+        value: formatListingDate(item.createdAtUtc),
+        icon: 'calendar-outline',
+      }
+    );
+
+    return rows;
+  }, [item, rera, showRera]);
+
   const overviewPanel = (
     <View>
-      <Text style={styles.panelHeading}>Key specifications</Text>
-      <View style={styles.specCard}>
-        <SpecRow label="Built-up" value={`${item.builtupSqft} sq.ft`} />
-        <SpecRow label="Configuration" value={item.bhkConfiguration || '—'} />
-        {item.isForRent && (
-          <SpecRow label="Rent" value={`${formatInr(item.rentAmount)} / month`} />
-        )}
-        {item.isForSale && (
-          <SpecRow
-            label="Sale price"
-            value={item.sellPrice != null ? formatInr(item.sellPrice) : '—'}
-          />
-        )}
-        <SpecRow label="Deposit" value={formatInr(item.depositAmount)} />
-        <SpecRow label="Area" value={item.areaName} />
-        <SpecRow label="Status" value={item.reviewStatus} />
-        <SpecRow label="Listed" value={formatListingDate(item.createdAtUtc)} last />
-      </View>
+      <PropertyKeySpecsPanel items={keySpecItems} />
       {meta.highlights && meta.highlights.length > 0 && (
         <LinearGradient
           colors={['#eff6ff', '#f8fafc']}
@@ -273,13 +400,8 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
   );
 
   return (
-    <AuthenticatedScreenLayout
-      showBack
-      onBack={() => navigation.goBack()}
-      scrollToTop={{ visible: goToTopVisible, onPress: scrollToTop }}
-    >
-      <View style={styles.screen}>
-      <ScrollView
+    <View style={styles.screen}>
+      <Animated.ScrollView
         ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.pageContent}
@@ -294,6 +416,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
             autoRotate={gallery.length > 1}
             compact
           />
+          {isNewListing(item.createdAtUtc) ? <NewListingRibbon /> : null}
         </View>
 
         {showUserActions ? (
@@ -317,6 +440,9 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
               {chips.map((c) => (
                 <PropertyChip key={c.label} label={c.label} tone={c.tone} />
               ))}
+              {isAgentListing || item.isPostedByAgent ? (
+                <PropertyChip label="Agent listing" tone="featured" />
+              ) : null}
               {item.bhkConfiguration ? (
                 <PropertyChip label={item.bhkConfiguration} tone="bhk" />
               ) : null}
@@ -343,6 +469,12 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
               <Ionicons name="location" size={18} color="#0d9488" />
               <Text style={styles.address}>{item.address || item.areaName}</Text>
             </View>
+
+            {showRera && rera ? (
+              <View style={styles.reraRow}>
+                <ReraBadge rera={rera} />
+              </View>
+            ) : null}
 
             <View style={styles.statsGrid}>
               <StatTile
@@ -387,7 +519,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
           about={aboutPanel}
         />
 
-        {showUserActions ? (
+        {showUserActions && !isAgentListing ? (
           <View ref={nextStepsRef} collapsable={false}>
             <PropertyNextStepsPanel
               propertyId={propertyId}
@@ -397,6 +529,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
           </View>
         ) : null}
 
+        {!isAgentListing ? (
         <View ref={ratingsRef} collapsable={false} style={styles.ratingsSection}>
           <Text style={styles.sectionHeading}>Ratings & reviews</Text>
           <PropertyRatingSection
@@ -404,9 +537,10 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
             averageRating={item.averageRating}
             ratingCount={item.ratingCount}
             canSubmit={showUserActions}
-            onRated={() => load(true)}
+            onRated={() => onReload(true)}
           />
         </View>
+        ) : null}
 
         {similar.length > 0 && (
           <View style={styles.similarSection}>
@@ -421,6 +555,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
                     navigation.push('PropertyDetails', {
                       propertyId: p.id,
                       title: p.title,
+                      listingSource: p.isPostedByAgent ? 'agent' : 'property',
                     })
                   }
                 />
@@ -441,9 +576,9 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
           </View>
         </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {(showUserActions || isOwnListing) && (
+      {(showUserActions || isOwnListing) && !isAgentListing ? (
         <PropertyDetailStickyBar
           primaryLabel={isOwnListing ? 'View inquiries' : 'Contact owner'}
           primaryIcon={
@@ -474,9 +609,8 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
           latitude={item.latitude ?? undefined}
           longitude={item.longitude ?? undefined}
         />
-      )}
+      ) : null}
       </View>
-    </AuthenticatedScreenLayout>
   );
 }
 
@@ -600,6 +734,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  reraRow: {
+    marginBottom: spacing.md,
   },
   address: {
     flex: 1,

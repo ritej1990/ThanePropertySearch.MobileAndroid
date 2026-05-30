@@ -2,7 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { SelectedPlace } from '../../services/googlePlaces';
+import { hasGoogleMapsKey } from '../../config/env';
 import { PlanTopButton } from './PlanTopButton';
+import { SearchViewToggle, type SearchViewMode } from './SearchViewToggle';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
@@ -14,6 +16,8 @@ type Props = {
   onPressFilters: () => void;
   showPlanButton?: boolean;
   onPressPlan?: () => void;
+  viewMode: SearchViewMode;
+  onViewModeChange: (mode: SearchViewMode) => void;
 };
 
 export function PropertySearchStickyBar({
@@ -25,7 +29,10 @@ export function PropertySearchStickyBar({
   onPressFilters,
   showPlanButton,
   onPressPlan,
+  viewMode,
+  onViewModeChange,
 }: Props) {
+  const mapsEnabled = hasGoogleMapsKey();
   const label =
     selectedPlace?.label ??
     (searchText.trim() ? searchText.trim() : 'Search area in Thane…');
@@ -47,6 +54,13 @@ export function PropertySearchStickyBar({
           </View>
         ) : null}
       </Pressable>
+
+      <SearchViewToggle
+        mode={viewMode}
+        onChange={onViewModeChange}
+        mapDisabled={!mapsEnabled}
+        compact
+      />
 
       {showPlanButton && onPressPlan ? (
         <PlanTopButton onPress={onPressPlan} compact />

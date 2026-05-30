@@ -31,13 +31,14 @@ import {
   buildUsernameCandidatesFromFullName,
   sanitizeUsername,
 } from '../utils/username';
+import { isValidOptionalGst, normalizeGst } from '../utils/gstNumber';
 import type { RootStackParamList } from '../navigation/types';
 import { LegalFooter } from '../components/layout/LegalFooter';
 import { colors, radius, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
-const roles = ['User', 'Owner', 'Builder'] as const;
+const roles = ['User', 'Owner', 'Builder', 'Agent'] as const;
 const intents = ['Buy', 'Rent', 'Sell', 'Invest', 'BuilderProjects'] as const;
 
 const ROLE_OPTIONS = [
@@ -64,6 +65,14 @@ const ROLE_OPTIONS = [
     icon: 'business' as const,
     accent: '#7c3aed',
     accentSoft: '#ede9fe',
+  },
+  {
+    value: 'Agent' as const,
+    label: 'Agent / broker',
+    description: 'RERA-verified listings & lead packages',
+    icon: 'briefcase' as const,
+    accent: '#2563eb',
+    accentSoft: '#dbeafe',
   },
 ] as const;
 
@@ -94,10 +103,19 @@ export default function RegisterScreen({ navigation }: Props) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [role, setRole] = useState<(typeof roles)[number]>('User');
   const [marketIntent, setMarketIntent] = useState<(typeof intents)[number]>('Buy');
+  const [companyName, setCompanyName] = useState('');
+  const [reraNumber, setReraNumber] = useState('');
+  const [gstNumber, setGstNumber] = useState('');
+
+  const showGst = role !== 'Owner';
+  const showAgentFields = role === 'Agent';
 
   const visibleIntents = useMemo(() => {
     if (role === 'Builder') {
       return INTENT_OPTIONS.filter((o) => o.value === 'BuilderProjects');
+    }
+    if (role === 'Agent') {
+      return INTENT_OPTIONS.filter((o) => o.value === 'Sell' || o.value === 'Invest');
     }
     if (role === 'Owner') {
       return INTENT_OPTIONS.filter((o) => o.value === 'Sell' || o.value === 'Invest');
@@ -108,6 +126,8 @@ export default function RegisterScreen({ navigation }: Props) {
   useEffect(() => {
     if (role === 'Builder') {
       setMarketIntent('BuilderProjects');
+    } else if (role === 'Agent') {
+      setMarketIntent((prev) => (prev === 'Sell' || prev === 'Invest' ? prev : 'Sell'));
     } else if (role === 'Owner') {
       setMarketIntent((prev) => (prev === 'Sell' || prev === 'Invest' ? prev : 'Sell'));
     } else {
@@ -185,8 +205,22 @@ export default function RegisterScreen({ navigation }: Props) {
       !usernameAvailable ||
       !email.trim() ||
       !password.trim() ||
-      phoneNumber.length !== 10,
-    [email, fullName, password, phoneNumber, username, usernameAvailable]
+      phoneNumber.length !== 10 ||
+      (showAgentFields && (!companyName.trim() || !reraNumber.trim())) ||
+      (showGst && gstNumber.trim().length > 0 && !isValidOptionalGst(gstNumber)),
+    [
+      email,
+      fullName,
+      password,
+      phoneNumber,
+      username,
+      usernameAvailable,
+      companyName,
+      reraNumber,
+      showAgentFields,
+      showGst,
+      gstNumber,
+    ]
   );
 
   function handleUsernameChange(value: string) {
@@ -225,6 +259,9 @@ export default function RegisterScreen({ navigation }: Props) {
         role,
         marketIntent:
           marketIntent === 'BuilderProjects' ? 'Builder projects' : marketIntent,
+        gstNumber: showGst && gstNumber.trim() ? normalizeGst(gstNumber) : null,
+        companyName: showAgentFields ? companyName.trim() : null,
+        reraNumber: showAgentFields ? reraNumber.trim().toUpperCase() : null,
       });
 
       setSuccessMessage(
@@ -413,6 +450,37 @@ export default function RegisterScreen({ navigation }: Props) {
             returnKeyType="done"
             onSubmitEditing={handleRegister}
           />
+
+          {showAgentFields ? (
+            <>
+              <AuthTextField
+                label="Company / agency"
+                icon="business-outline"
+                placeholder="Agency name"
+                value={companyName}
+                onChangeText={setCompanyName}
+              />
+              <AuthTextField
+                label="RERA number"
+                icon="shield-checkmark-outline"
+                placeholder="MahaRERA ID"
+                autoCapitalize="characters"
+                value={reraNumber}
+                onChangeText={setReraNumber}
+              />
+            </>
+          ) : null}
+
+          {showGst ? (
+            <AuthTextField
+              label="GSTIN (optional)"
+              icon="receipt-outline"
+              placeholder="15-character GSTIN"
+              autoCapitalize="characters"
+              value={gstNumber}
+              onChangeText={(v) => setGstNumber(v.slice(0, 15))}
+            />
+          ) : null}
 
           <GradientButton
             label="Create account"

@@ -222,8 +222,6 @@ export function HomeSearchToolbar({
             mode={viewMode}
             onChange={onViewModeChange}
             mapDisabled={!mapsEnabled}
-            compact
-            gradientActive
           />
         </View>
 
@@ -406,7 +404,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   viewToggleWrap: {
-    width: 124,
+    width: 116,
     flexShrink: 0,
   },
   shortcuts: {

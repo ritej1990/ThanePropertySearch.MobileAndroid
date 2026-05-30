@@ -1,46 +1,66 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   Pressable,
   StyleSheet,
   RefreshControl,
+  ScrollView,
+  type FlatList as FlatListType,
 } from 'react-native';
+import { AnimatedFlatList } from '../components/ui/AnimatedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackParamList } from '../navigation/types';
-import type { OwnerDashboardItem } from '../api/ownerTypes';
+import type { OwnerAvailabilityOutcome, OwnerDashboardItem } from '../api/ownerTypes';
+import {
+  readApiHidden,
+  readApiMessage,
+  readApiOutcome,
+} from '../api/normalizeOwnerDashboard';
 import { propertiesApi } from '../api/singleton';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { DashboardCompactBar } from '../components/layout/DashboardCompactBar';
+import { useListScrollChrome, useScrollCollapseEligibility } from '../hooks/useListScrollChrome';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { ScrollChromeBar } from '../components/ui/ScrollChromeBar';
+import { scrollLinkedHostStyle } from '../components/ui/ScrollLinkedOverlay';
 import { OwnerDashboardHeader } from '../components/owner/OwnerDashboardHeader';
 import { OwnerListingCard } from '../components/owner/OwnerListingCard';
 import { colors, gradients, radius, spacing } from '../theme';
-import { computeOwnerStats } from '../utils/ownerDashboard';
+import {
+  OWNER_LIST_FILTERS,
+  computeOwnerStats,
+  filterOwnerListings,
+  type OwnerListFilter,
+} from '../utils/ownerDashboard';
 import { isOwnerRole } from '../utils/roles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OwnerDashboard'>;
-type ListFilter = 'all' | 'inquiries' | 'featured';
 
-const FILTERS: { key: ListFilter; label: string }[] = [
-  { key: 'all', label: 'All listings' },
-  { key: 'inquiries', label: 'Has inquiries' },
-  { key: 'featured', label: 'Featured' },
-];
+export default function OwnerDashboardScreen(props: Props) {
+  return (
+    <AuthenticatedScreenLayout headerDensity="compact">
+      <OwnerDashboardContent {...props} />
+    </AuthenticatedScreenLayout>
+  );
+}
 
-export default function OwnerDashboardScreen({ navigation }: Props) {
+function OwnerDashboardContent({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatListType<OwnerDashboardItem>>(null);
   const { profile } = useAuth();
+  const { showToast } = useToast();
   const [rows, setRows] = useState<OwnerDashboardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [listFilter, setListFilter] = useState<ListFilter>('all');
+  const [listFilter, setListFilter] = useState<OwnerListFilter>('all');
 
   const isOwner = isOwnerRole(profile?.role);
 
@@ -77,21 +97,106 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
 
   const stats = useMemo(() => computeOwnerStats(rows), [rows]);
 
-  const filtered = useMemo(() => {
-    if (listFilter === 'inquiries') {
-      return rows.filter((r) => r.pendingRequests > 0);
-    }
-    if (listFilter === 'featured') {
-      return rows.filter((r) => r.isFeaturedInSearch);
-    }
-    return rows;
-  }, [rows, listFilter]);
+  const filtered = useMemo(
+    () => filterOwnerListings(rows, listFilter),
+    [rows, listFilter]
+  );
+
+  const { canCollapse, bindScrollMetrics } = useScrollCollapseEligibility();
+  const { scrollY, onScroll, scrollToTop } = useListScrollChrome({
+    scrollRef: listRef,
+    scrollToTopActive: filtered.length > 0,
+    collapseEnabled: canCollapse && filtered.length > 0,
+  });
+
+  const patchListing = useCallback((id: number, patch: Partial<OwnerDashboardItem>) => {
+    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  }, []);
+
+  const handleOutcomeChange = useCallback(
+    async (item: OwnerDashboardItem, outcome: OwnerAvailabilityOutcome) => {
+      const previous = {
+        ownerAvailabilityOutcome: item.ownerAvailabilityOutcome ?? null,
+        isHiddenFromSearch: item.isHiddenFromSearch === true,
+      };
+      const optimisticOutcome = outcome || null;
+      patchListing(item.id, {
+        ownerAvailabilityOutcome: optimisticOutcome,
+        isHiddenFromSearch: outcome ? previous.isHiddenFromSearch : false,
+      });
+      try {
+        const res = await propertiesApi.setOwnerAvailabilityOutcome(item.id, optimisticOutcome);
+        patchListing(item.id, {
+          ownerAvailabilityOutcome: readApiOutcome(res) ?? optimisticOutcome,
+          isHiddenFromSearch: outcome ? previous.isHiddenFromSearch : false,
+        });
+        showToast({
+          message: readApiMessage(res) || 'Unit status updated',
+          variant: 'success',
+        });
+      } catch (e) {
+        patchListing(item.id, previous);
+        showToast({
+          message: e instanceof ApiError ? e.message : 'Could not update unit status',
+          variant: 'error',
+        });
+        throw e;
+      }
+    },
+    [patchListing, showToast]
+  );
+
+  const handleHideToggle = useCallback(
+    async (item: OwnerDashboardItem, hidden: boolean) => {
+      const previousHidden = item.isHiddenFromSearch === true;
+      patchListing(item.id, { isHiddenFromSearch: hidden });
+      try {
+        const res = await propertiesApi.setOwnerHideFromSearch(item.id, hidden);
+        patchListing(item.id, { isHiddenFromSearch: readApiHidden(res) });
+        showToast({
+          message: readApiMessage(res) || (hidden ? 'Hidden from search' : 'Visible in search'),
+          variant: 'success',
+        });
+      } catch (e) {
+        patchListing(item.id, { isHiddenFromSearch: previousHidden });
+        showToast({
+          message: e instanceof ApiError ? e.message : 'Could not update visibility',
+          variant: 'error',
+        });
+        throw e;
+      }
+    },
+    [patchListing, showToast]
+  );
+
+  const handleDelete = useCallback(
+    async (item: OwnerDashboardItem) => {
+      try {
+        const res = await propertiesApi.deleteOwnerListing(item.id);
+        setRows((prev) => prev.filter((row) => row.id !== item.id));
+        showToast({
+          message: readApiMessage(res) || 'Listing deleted',
+          variant: 'success',
+        });
+      } catch (e) {
+        showToast({
+          message: e instanceof ApiError ? e.message : 'Could not delete listing',
+          variant: 'error',
+        });
+        throw e;
+      }
+    },
+    [showToast]
+  );
 
   if (!isOwner) {
     return (
       <BrandLoading message="Loading…" />
     );
   }
+
+  const filterLabel =
+    OWNER_LIST_FILTERS.find((f) => f.key === listFilter)?.label ?? 'All';
 
   const listHeader = (
     <View>
@@ -100,20 +205,24 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
         style={styles.bgGlow}
         pointerEvents="none"
       />
+
       <OwnerDashboardHeader
         stats={stats}
         onBrowse={() => navigation.navigate('Home')}
         onPostProperty={() => navigation.navigate('PostProperty')}
-        onMyPayments={() => navigation.navigate('MyPayments', undefined)}
       />
 
       <Text style={styles.sectionTitle}>Your listings</Text>
       <Text style={styles.sectionSub}>
-        Tap a listing to view details or open inquiries and chat in the app
+        Update unit status, hide from search, or delete — same as the web owner dashboard
       </Text>
 
-      <View style={styles.filterRow}>
-        {FILTERS.map((f) => (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+      >
+        {OWNER_LIST_FILTERS.map((f) => (
           <Pressable
             key={f.key}
             onPress={() => setListFilter(f.key)}
@@ -129,7 +238,7 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
             </Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
       <Text style={styles.resultCount}>
         {filtered.length} {filtered.length === 1 ? 'listing' : 'listings'}
@@ -139,8 +248,15 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
   );
 
   return (
-    <AuthenticatedScreenLayout>
-      <View style={styles.wrap}>
+    <View style={[styles.wrap, scrollLinkedHostStyle]}>
+      <ScrollChromeBar scrollY={scrollY} revealAt={220} overlay>
+        <DashboardCompactBar
+          title="Owner dashboard"
+          subtitle={`${filtered.length} listings · ${filterLabel}`}
+          onPress={scrollToTop}
+        />
+      </ScrollChromeBar>
+
       {loading && rows.length === 0 ? (
         <BrandLoading message="Loading your dashboard…" />
       ) : error ? (
@@ -152,9 +268,14 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
           </Pressable>
         </View>
       ) : (
-        <FlatList
+        <AnimatedFlatList
+          ref={listRef}
           data={filtered}
           keyExtractor={(item) => String(item.id)}
+          {...bindScrollMetrics}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          bounces={canCollapse && filtered.length > 0}
           ListHeaderComponent={listHeader}
           refreshControl={
             <RefreshControl
@@ -218,12 +339,14 @@ export default function OwnerDashboardScreen({ navigation }: Props) {
                   title: item.title,
                 });
               }}
+              onOutcomeChange={(outcome) => handleOutcomeChange(item, outcome)}
+              onHideToggle={(hidden) => handleHideToggle(item, hidden)}
+              onDelete={() => handleDelete(item)}
             />
           )}
         />
       )}
       </View>
-    </AuthenticatedScreenLayout>
   );
 }
 
@@ -254,9 +377,9 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    paddingRight: spacing.md,
   },
   filterChip: {
     paddingVertical: 8,
