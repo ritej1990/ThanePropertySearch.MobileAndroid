@@ -6,8 +6,11 @@ import type { PropertyResponse } from '../../api/types';
 import { PropertyChip } from './PropertyChip';
 import { PropertyImage } from './PropertyImage';
 import { colors, radius, spacing } from '../../theme';
-import { formatInr, listingTypeChips } from '../../utils/propertyFormat';
+import { formatInr, listingTypeChips, parseRichMetadata } from '../../utils/propertyFormat';
 import { formatRating, getPrimaryPrice } from '../../utils/propertyDisplay';
+import { resolveListingRera, shouldShowListingRera, isNewListing } from '../../utils/listingRera';
+import { ReraBadge } from './ReraBadge';
+import { NewListingRibbon } from './NewListingRibbon';
 
 type Props = {
   item: PropertyResponse;
@@ -17,6 +20,17 @@ type Props = {
 export function PropertyListCard({ item, onPress }: Props) {
   const chips = listingTypeChips(item);
   const price = getPrimaryPrice(item);
+  const rich = parseRichMetadata(item.richMetadataJson);
+  const possessionLabel =
+    rich.possessionStatus?.trim() ||
+    rich.society?.possessionDetail?.trim() ||
+    null;
+  const isNew = isNewListing(item.createdAtUtc);
+  const descSnippet = item.description?.trim()
+    ? item.description.trim().slice(0, 90) + (item.description.length > 90 ? '…' : '')
+    : null;
+  const rera = resolveListingRera(item);
+  const showRera = shouldShowListingRera(item);
 
   return (
     <Pressable
@@ -25,6 +39,7 @@ export function PropertyListCard({ item, onPress }: Props) {
     >
       <View style={styles.media}>
         <PropertyImage uri={item.imageUrl} style={styles.image} />
+        {isNew ? <NewListingRibbon /> : null}
         <LinearGradient
           colors={['transparent', 'rgba(15, 23, 42, 0.75)']}
           style={styles.mediaGradient}
@@ -34,6 +49,12 @@ export function PropertyListCard({ item, onPress }: Props) {
           {chips.map((c) => (
             <PropertyChip key={c.label} label={c.label} tone={c.tone} small />
           ))}
+          {item.isPostedByAgent ? (
+            <PropertyChip label="Agent" tone="agent" small />
+          ) : null}
+          {item.isNegotiable ? (
+            <PropertyChip label="Negotiable" tone="bhk" small />
+          ) : null}
           {item.isFeaturedInSearch && (
             <PropertyChip label="Featured" tone="featured" small />
           )}
@@ -73,17 +94,38 @@ export function PropertyListCard({ item, onPress }: Props) {
           </Text>
         </View>
 
+        {descSnippet ? (
+          <Text style={styles.descSnippet} numberOfLines={2}>
+            {descSnippet}
+          </Text>
+        ) : null}
+
+        <View style={styles.factsRow}>
+          {showRera && rera ? <ReraBadge rera={rera} compact /> : null}
+          {possessionLabel ? (
+            <View style={styles.possessionChip}>
+              <Ionicons name="calendar-outline" size={12} color="#0d9488" />
+              <Text style={styles.possessionText} numberOfLines={1}>
+                {possessionLabel}
+              </Text>
+            </View>
+          ) : null}
+          {item.builtupSqft > 0 ? (
+            <Text style={styles.factText}>{item.builtupSqft} sq.ft</Text>
+          ) : null}
+        </View>
+
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
             <Ionicons name="star" size={14} color={colors.gold} />
             <Text style={styles.metaText}>{formatRating(item)}</Text>
           </View>
-          {item.builtupSqft > 0 && (
-            <View style={styles.metaItem}>
-              <Ionicons name="resize-outline" size={14} color={colors.slateLight} />
-              <Text style={styles.metaText}>{item.builtupSqft} sq.ft</Text>
+          {item.ratingCount > 0 ? (
+            <View style={styles.ratingPill}>
+              <Ionicons name="chatbubble-ellipses-outline" size={12} color="#92400e" />
+              <Text style={styles.ratingPillText}>{item.ratingCount} reviews</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.ctaRow}>
@@ -125,6 +167,7 @@ const styles = StyleSheet.create({
   media: {
     height: 176,
     backgroundColor: colors.borderLight,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
@@ -214,6 +257,42 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.slateMuted,
   },
+  descSnippet: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.slateLight,
+    marginBottom: spacing.sm,
+  },
+  factsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  possessionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: '100%',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#99f6e4',
+  },
+  possessionText: {
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0f766e',
+  },
+  factText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.slateLight,
+  },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -229,6 +308,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.slate,
     fontWeight: '500',
+  },
+  ratingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  ratingPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#92400e',
   },
   depositInline: {
     flex: 1,

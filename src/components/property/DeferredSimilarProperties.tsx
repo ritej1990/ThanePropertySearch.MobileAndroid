@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { propertiesApi } from '../../api/singleton';
 import type { PropertyResponse } from '../../api/types';
-import { LazyMount } from '../ui/LazyMount';
 import { SimilarPropertyCard } from './SimilarPropertyCard';
 import { colors, spacing } from '../../theme';
 
@@ -55,7 +54,7 @@ export function DeferredSimilarProperties({ propertyId, areaName, onSelect }: Pr
       <Text style={styles.heading}>Similar properties</Text>
       <Text style={styles.sub}>You may also like these in Thane</Text>
       {loading ? (
-        <LazyMount minHeight={168} delayMs={0} showPlaceholder />
+        <View style={styles.loadingPlaceholder} />
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {similar.map((p) => (
@@ -81,5 +80,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.slateLight,
     marginBottom: spacing.md,
+  },
+  loadingPlaceholder: {
+    height: 168,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
   },
 });

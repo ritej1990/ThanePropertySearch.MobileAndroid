@@ -1,4 +1,5 @@
 import type { createApiClient } from './client';
+import type { AgentPaymentSummaryResponse } from './agentTypes';
 import type { PaymentTransaction } from './paymentHistoryTypes';
 import type {
   ActivateContactPackResponse,
@@ -64,6 +65,78 @@ export function createPaymentsApi(client: ReturnType<typeof createApiClient>) {
 
     getMyTransactions() {
       return client.get<PaymentTransaction[]>('/api/payments/my');
+    },
+
+    getBuilderSummary() {
+      return client.get<Record<string, unknown>>('/api/payments/builder/summary');
+    },
+
+    getAgentSummary() {
+      return client.get<AgentPaymentSummaryResponse>('/api/payments/agent/summary');
+    },
+
+    createBuilderProjectUploadOrder(tierCode: string, returnUrl: string) {
+      return client.post<CashfreeOrderResponse>(
+        '/api/payments/cashfree/create-builder-project-upload-order',
+        { tierCode, returnUrl }
+      );
+    },
+
+    createBuilderLeadCreditsOrder(tierCode: string, returnUrl: string) {
+      return client.post<CashfreeOrderResponse>(
+        '/api/payments/cashfree/create-builder-lead-credits-order',
+        { tierCode, returnUrl }
+      );
+    },
+
+    createAgentListingPublishOrder(tierCode: string, returnUrl: string) {
+      return client.post<CashfreeOrderResponse>(
+        '/api/payments/cashfree/create-agent-listing-publish-order',
+        { tierCode, returnUrl }
+      );
+    },
+
+    createAgentLeadCreditsOrder(tierCode: string, returnUrl: string) {
+      return client.post<CashfreeOrderResponse>(
+        '/api/payments/cashfree/create-agent-lead-credits-order',
+        { tierCode, returnUrl }
+      );
+    },
+
+    activateBuilderProjectUpload(tierCode: string, orderId: string, amountInr: number) {
+      return client.post<{ message: string }>(
+        '/api/payments/builder-project-upload/purchase',
+        {
+          tierCode,
+          paymentMethod: 'Cashfree',
+          paymentReference: orderId,
+          paymentAmountDeclared: amountInr,
+        }
+      );
+    },
+
+    activateAgentListingPublish(tierCode: string, orderId: string, amountInr: number) {
+      return client.post<{ message: string }>(
+        '/api/payments/agent-listing-publish/purchase',
+        {
+          tierCode,
+          paymentMethod: 'Cashfree',
+          paymentReference: orderId,
+          paymentAmountDeclared: amountInr,
+        }
+      );
+    },
+
+    activateAgentLeadCredits(packageCode: string, orderId: string, amountInr: number) {
+      return client.post<{ message: string }>(
+        '/api/payments/agent-lead-credits/purchase',
+        {
+          packageCode,
+          paymentMethod: 'Cashfree',
+          paymentReference: orderId,
+          paymentAmountDeclared: amountInr,
+        }
+      );
     },
   };
 }

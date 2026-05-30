@@ -17,5 +17,6 @@ export function getProfileFirstName(fullName?: string | null): string {
 export function getRoleLabel(role?: string | null): string {
   if (isOwnerRole(role)) return 'Owner';
   if (isBuilderRole(role)) return 'Builder';
+  if (role?.trim().toLowerCase() === 'agent') return 'Agent';
   return 'User';
 }

@@ -1,6 +1,7 @@
 import { hasGoogleMapsKey, THANE_MAP_CENTER } from '../config/env';
 import { isWithinThaneBounds } from './mapHelpers';
 import type { CreatePropertyRequest } from '../api/createPropertyTypes';
+import type { CreateAgentListingRequest } from '../api/agentTypes';
 import type { SelectedPlace } from '../services/googlePlaces';
 
 export const BHK_OPTIONS = ['1 RK', '1 BHK', '2 BHK', '3 BHK'] as const;
@@ -140,6 +141,66 @@ export function listingTypeSummary(form: PostPropertyFormState): string {
   if (form.isForSale) parts.push('Sale');
   if (form.isForPg) parts.push('PG');
   return parts.join(' · ') || '—';
+}
+
+export function deriveListingCategory(form: PostPropertyFormState): string {
+  if (form.isForPg) return 'PG';
+  if (form.isForSale && !form.isForRent) return 'Sale';
+  return 'Rent';
+}
+
+/** Maps agent publish tier codes (A30, A60, A90) to duration days. */
+export function listingDurationFromTier(tierCode: string | null | undefined): number {
+  const code = (tierCode ?? '').toUpperCase();
+  if (code.includes('90')) return 90;
+  if (code.includes('60')) return 60;
+  return 30;
+}
+
+export function buildCreateAgentListingRequest(
+  form: PostPropertyFormState,
+  imageUrls: string[],
+  listingDurationDays = 30
+): CreateAgentListingRequest {
+  const rent = parseDecimal(form.rentAmount)!;
+  const deposit = parseDecimal(form.depositAmount)!;
+  const sqft = parseDecimal(form.builtupSqft)!;
+  const sellRaw = parseDecimal(form.sellPrice);
+  const sellPrice = form.isForSale && sellRaw != null ? sellRaw : null;
+
+  const lat = form.selectedPlace?.latitude ?? THANE_MAP_CENTER.latitude;
+  const lng = form.selectedPlace?.longitude ?? THANE_MAP_CENTER.longitude;
+
+  const deduped = [...new Set(imageUrls.filter(Boolean))];
+  const cover = deduped[0] ?? null;
+  const gallery = cover ? deduped.filter((u) => u !== cover) : deduped;
+
+  const availableFrom =
+    (form.isForRent || form.isForPg) && form.availableFrom.trim()
+      ? form.availableFrom.trim()
+      : null;
+
+  return {
+    title: form.title.trim(),
+    description: form.description.trim(),
+    listingCategory: deriveListingCategory(form),
+    rentAmount: rent,
+    sellPrice,
+    depositAmount: deposit,
+    builtupSqft: sqft,
+    bhkConfiguration: form.bhkConfiguration,
+    address: form.address.trim(),
+    areaName: form.areaName.trim(),
+    pincode: form.pincode.trim() || null,
+    latitude: lat,
+    longitude: lng,
+    coverImageUrl: cover,
+    imageUrls: gallery.length > 0 ? gallery : null,
+    isPublished: true,
+    listingDurationDays,
+    isNegotiable: false,
+    availableFrom,
+  };
 }
 
 export function buildCreatePropertyRequest(

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { PropertyImage } from '../property/PropertyImage';
@@ -8,7 +8,7 @@ import { colors, gradients } from '../../theme';
 type Props = {
   uri?: string | null;
   projectName?: string;
-  style?: StyleProp<ViewStyle>;
+  style?: StyleProp<ImageStyle>;
   compact?: boolean;
 };
 

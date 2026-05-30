@@ -13,17 +13,12 @@ import { paymentsApi } from '../api/singleton';
 import type { PaymentTransaction } from '../api/paymentHistoryTypes';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { PaymentHistoryRow } from '../components/payments/PaymentHistoryRow';
 import { PageHero } from '../components/ui/PageHero';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
-import {
-  filterEssentialPayments,
-  formatPaymentAmount,
-  formatPaymentDate,
-  paymentProductLabel,
-  paymentStatusTone,
-} from '../utils/paymentDisplay';
+import { filterEssentialPayments, showInvoiceDownload } from '../utils/paymentDisplay';
 import { isUserRole } from '../utils/roles';
 import { colors, radius, spacing } from '../theme';
 
@@ -130,51 +125,23 @@ export default function MyPaymentsScreen({ navigation, route }: Props) {
               </View>
             }
             renderItem={({ item }) => (
-              <PaymentRow item={item} />
+              <PaymentHistoryRow
+                item={item}
+                onInvoice={
+                  showInvoiceDownload(item)
+                    ? () =>
+                        navigation.navigate('InvoiceViewer', {
+                          paymentTransactionId: item.id,
+                          invoiceNumber: item.invoiceNumber ?? undefined,
+                        })
+                    : undefined
+                }
+              />
             )}
           />
         )}
       </View>
     </AuthenticatedScreenLayout>
-  );
-}
-
-function PaymentRow({ item }: { item: PaymentTransaction }) {
-  const tone = paymentStatusTone(item.status);
-  const statusColors = {
-    success: { bg: colors.successSoft, text: colors.success },
-    pending: { bg: colors.warningSoft, text: colors.warning },
-    failed: { bg: colors.errorSoft, text: colors.error },
-    neutral: { bg: colors.surfaceMuted, text: colors.slateMuted },
-  }[tone];
-
-  return (
-    <View style={styles.row}>
-      <View style={styles.rowTop}>
-        <Text style={styles.rowProduct}>{paymentProductLabel(item.productType)}</Text>
-        <Text style={styles.rowAmount}>
-          {formatPaymentAmount(item.amount, item.currency)}
-        </Text>
-      </View>
-      <View style={styles.rowMeta}>
-        <View style={[styles.statusPill, { backgroundColor: statusColors.bg }]}>
-          <Text style={[styles.statusText, { color: statusColors.text }]}>
-            {item.status}
-          </Text>
-        </View>
-        {item.tierCode ? (
-          <Text style={styles.tier}>{item.tierCode}</Text>
-        ) : null}
-      </View>
-      <Text style={styles.date}>
-        {formatPaymentDate(item.completedAtUtc ?? item.createdAtUtc)}
-      </Text>
-      {item.payerReferenceNote ? (
-        <Text style={styles.ref} numberOfLines={1}>
-          Ref: {item.payerReferenceNote}
-        </Text>
-      ) : null}
-    </View>
   );
 }
 
@@ -201,42 +168,6 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 12, fontWeight: '700', color: colors.primary },
   filterTextOn: { color: colors.heroText },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
-  row: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  rowTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  rowProduct: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.navy,
-  },
-  rowAmount: { fontSize: 16, fontWeight: '800', color: colors.tealDark },
-  rowMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  statusPill: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: radius.pill,
-  },
-  statusText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
-  tier: { fontSize: 11, fontWeight: '600', color: colors.slateLight },
-  date: { fontSize: 12, color: colors.slateLight, marginTop: spacing.sm },
-  ref: { fontSize: 11, color: colors.slateLight, marginTop: 4 },
   empty: { alignItems: 'center', padding: spacing.xxxl },
   emptyTitle: {
     fontSize: 17,

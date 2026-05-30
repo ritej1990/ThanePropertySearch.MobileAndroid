@@ -1,4 +1,5 @@
 import type { PolicyKind } from '../content/policies';
+import type { PaymentProduct } from '../services/paymentActivation';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -8,11 +9,16 @@ export type RootStackParamList = {
   Home: undefined;
   OwnerDashboard: undefined;
   PostProperty: undefined;
-  PropertyDetails: { propertyId: number; title?: string };
+  PropertyDetails: {
+    propertyId: number;
+    title?: string;
+    /** When set to `agent`, loads `/api/agent-listings/{id}` instead of owner property. */
+    listingSource?: 'property' | 'agent';
+  };
   EssentialService: { returnPropertyId?: number } | undefined;
   ContactPackPurchase: { returnPropertyId?: number } | undefined;
   CashfreeCheckout: {
-    product: 'essential' | 'contact_pack';
+    product: 'essential' | 'contact_pack' | 'agent_publish' | 'builder_upload' | 'builder_leads' | 'agent_leads';
     paymentSessionId: string;
     orderId: string;
     environment: 'sandbox' | 'production';
@@ -32,7 +38,7 @@ export type RootStackParamList = {
   PaymentReturn: {
     orderId?: string;
     order_id?: string;
-    product?: 'essential' | 'contact_pack';
+    product?: PaymentProduct;
     tierCode?: string;
     amountInr?: number;
     returnPropertyId?: number;
@@ -47,4 +53,9 @@ export type RootStackParamList = {
   VisitRequests: { propertyId: number; title?: string };
   Profile: undefined;
   BuilderLeads: { projectId: number; projectName?: string };
+  AgentDashboard: undefined;
+  AgentPendingApproval: undefined;
+  AgentPayments: undefined;
+  BuilderPayments: undefined;
+  InvoiceViewer: { paymentTransactionId: number; invoiceNumber?: string };
 };

@@ -2,12 +2,12 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   Pressable,
   StyleSheet,
   RefreshControl,
   type FlatList as FlatListType,
 } from 'react-native';
+import { AnimatedFlatList } from '../components/ui/AnimatedFlatList';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { PropertyListCard } from '../components/property/PropertyListCard';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { ScrollChromeBar } from '../components/ui/ScrollChromeBar';
 import { getFloatingRailHeight } from '../components/layout/FloatingSupportChat';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { HomeSearchToolbar } from '../components/search/HomeSearchToolbar';
@@ -38,11 +39,20 @@ import {
   type PropertySearchFilters,
 } from '../utils/propertySearchFilters';
 import { isOwnerRole, isUserRole } from '../utils/roles';
-import { useScrollCompactHeader } from '../hooks/useScrollCompactHeader';
+import { useAuthenticatedScroll, useRegisterScrollToTop } from '../context/AuthenticatedScrollContext';
+import { useResponsiveLayout } from '../utils/responsive';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-export default function HomeScreen({ navigation }: Props) {
+export default function HomeScreen(props: Props) {
+  return (
+    <AuthenticatedScreenLayout headerDensity="compact">
+      <HomeScreenContent {...props} />
+    </AuthenticatedScreenLayout>
+  );
+}
+
+function HomeScreenContent({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const listRef = useRef<FlatListType<PropertyResponse>>(null);
@@ -55,8 +65,10 @@ export default function HomeScreen({ navigation }: Props) {
   const [filters, setFilters] = useState<PropertySearchFilters>(defaultSearchFilters);
   const [viewMode, setViewMode] = useState<SearchViewMode>('list');
   const [filtersSheetVisible, setFiltersSheetVisible] = useState(false);
-  const { compactHeaderVisible, goToTopVisible, onScroll, resetCompactHeader } =
-    useScrollCompactHeader();
+  const [toolbarHeight, setToolbarHeight] = useState(360);
+  const { scrollY, goToTopVisible, onScroll, resetCompactHeader } =
+    useAuthenticatedScroll();
+  const { listColumns, contentMaxWidth, horizontalPad } = useResponsiveLayout();
 
   const scrollToTop = useCallback(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -130,6 +142,12 @@ export default function HomeScreen({ navigation }: Props) {
   const showScrollToTopFab =
     viewMode === 'list' && !loading && !error && filtered.length > 0 && goToTopVisible;
 
+  useRegisterScrollToTop(
+    viewMode === 'list' && !loading && !error && filtered.length > 0
+      ? { visible: goToTopVisible, onPress: scrollToTop }
+      : undefined
+  );
+
   const listBottomInset =
     Math.max(insets.bottom, spacing.sm) +
     spacing.lg +
@@ -156,6 +174,7 @@ export default function HomeScreen({ navigation }: Props) {
     navigation.navigate('PropertyDetails', {
       propertyId: item.id,
       title: item.title,
+      listingSource: item.isPostedByAgent ? 'agent' : 'property',
     });
   }
 
@@ -170,9 +189,10 @@ export default function HomeScreen({ navigation }: Props) {
     handlePlaceSelected(null);
   }, [handlePlaceSelected]);
 
+  const stickyRevealAt = Math.max(140, toolbarHeight - 12);
+
   const listHeader = useMemo(() => {
-    if (!selectedPlace) return null;
-    return (
+    const placeBanner = !selectedPlace ? null : (
       <LinearGradient
         colors={['#ecfdf5', '#f0fdfa']}
         start={{ x: 0, y: 0 }}
@@ -196,58 +216,82 @@ export default function HomeScreen({ navigation }: Props) {
         </Pressable>
       </LinearGradient>
     );
-  }, [selectedPlace, clearPlaceSearch]);
 
-  const searchToolbar = (
-    <HomeSearchToolbar
-      searchText={searchText}
-      onSearchTextChange={setSearchText}
-      selectedPlace={selectedPlace}
-      onPlaceSelected={handlePlaceSelected}
-      filters={filters}
-      onFiltersChange={setFilters}
-      resultCount={filtered.length}
-      totalLoaded={items.length}
-      viewMode={viewMode}
-      onViewModeChange={handleViewModeChange}
-      activeFilterCount={activeFilterCount}
-      onOpenFilters={openFilters}
-      onOpenBuilders={openBuilders}
-      showPlan={showPlan}
-      onOpenPlan={openPlans}
-      showOwnerLink={isOwner}
-      onOwnerDashboard={isOwner ? goOwnerDashboard : undefined}
-    />
-  );
+    return (
+      <View>
+        <View
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && Math.abs(h - toolbarHeight) > 2) {
+              setToolbarHeight(h);
+            }
+          }}
+        >
+          <HomeSearchToolbar
+            searchText={searchText}
+            onSearchTextChange={setSearchText}
+            selectedPlace={selectedPlace}
+            onPlaceSelected={handlePlaceSelected}
+            filters={filters}
+            onFiltersChange={setFilters}
+            resultCount={filtered.length}
+            totalLoaded={items.length}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+            activeFilterCount={activeFilterCount}
+            onOpenFilters={openFilters}
+            onOpenBuilders={openBuilders}
+            showPlan={showPlan}
+            onOpenPlan={openPlans}
+            showOwnerLink={isOwner}
+            onOwnerDashboard={isOwner ? goOwnerDashboard : undefined}
+          />
+        </View>
+        {placeBanner}
+      </View>
+    );
+  }, [
+    selectedPlace,
+    clearPlaceSearch,
+    toolbarHeight,
+    searchText,
+    handlePlaceSelected,
+    filters,
+    filtered.length,
+    items.length,
+    viewMode,
+    handleViewModeChange,
+    activeFilterCount,
+    openFilters,
+    openBuilders,
+    showPlan,
+    openPlans,
+    isOwner,
+    goOwnerDashboard,
+  ]);
 
   return (
-    <AuthenticatedScreenLayout
-      headerDensity="compact"
-      scrollToTop={
-        viewMode === 'list' && !loading && !error && filtered.length > 0
-          ? { visible: goToTopVisible, onPress: scrollToTop }
-          : undefined
-      }
-    >
-      <LinearGradient
+    <LinearGradient
         colors={[...gradients.page]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={styles.wrap}
       >
-        {searchToolbar}
-
-        {viewMode === 'list' && compactHeaderVisible ? (
-          <PropertySearchStickyBar
-            searchText={searchText}
-            selectedPlace={selectedPlace}
-            resultCount={filtered.length}
-            activeFilterCount={activeFilterCount}
-            onPressSearch={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
-            onPressFilters={openFilters}
-            showPlanButton={showPlan}
-            onPressPlan={openPlans}
-          />
+        {viewMode === 'list' ? (
+          <ScrollChromeBar scrollY={scrollY} revealAt={stickyRevealAt} overlay>
+            <PropertySearchStickyBar
+              searchText={searchText}
+              selectedPlace={selectedPlace}
+              resultCount={filtered.length}
+              activeFilterCount={activeFilterCount}
+              onPressSearch={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
+              onPressFilters={openFilters}
+              showPlanButton={showPlan}
+              onPressPlan={openPlans}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
+            />
+          </ScrollChromeBar>
         ) : null}
 
         {viewMode === 'map' ? (
@@ -281,13 +325,18 @@ export default function HomeScreen({ navigation }: Props) {
             </Pressable>
           </View>
         ) : (
-          <FlatList
+          <AnimatedFlatList
             ref={listRef}
             data={filtered}
+            key={listColumns}
+            numColumns={listColumns}
             keyExtractor={(item) => String(item.id)}
+            columnWrapperStyle={listColumns > 1 ? styles.listRow : undefined}
             ListHeaderComponent={listHeader}
             onScroll={onScroll}
             scrollEventThrottle={16}
+            bounces
+            decelerationRate="normal"
             ListEmptyComponent={
               <SearchEmptyState onClearFilters={clearSearchAndFilters} />
             }
@@ -304,13 +353,19 @@ export default function HomeScreen({ navigation }: Props) {
             }
             contentContainerStyle={[
               styles.listContent,
+              { maxWidth: contentMaxWidth, alignSelf: 'center', width: '100%' },
               filtered.length === 0 && styles.listEmpty,
-              { paddingBottom: listBottomInset },
+              {
+                paddingHorizontal: horizontalPad,
+                paddingBottom: listBottomInset,
+              },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
-              <PropertyListCard item={item} onPress={() => openProperty(item)} />
+              <View style={listColumns > 1 ? styles.listCell : undefined}>
+                <PropertyListCard item={item} onPress={() => openProperty(item)} />
+              </View>
             )}
           />
         )}
@@ -324,7 +379,6 @@ export default function HomeScreen({ navigation }: Props) {
           resultCount={filtered.length}
         />
       </LinearGradient>
-    </AuthenticatedScreenLayout>
   );
 }
 
@@ -374,8 +428,14 @@ const styles = StyleSheet.create({
     color: '#0f766e',
   },
   listContent: {
-    paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
+  },
+  listRow: {
+    gap: spacing.md,
+  },
+  listCell: {
+    flex: 1,
+    minWidth: 0,
   },
   listEmpty: {
     flexGrow: 1,

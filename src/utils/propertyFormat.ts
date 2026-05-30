@@ -24,6 +24,9 @@ export type PropertyRichMetadata = {
   amenities?: string[];
   furnished?: boolean;
   highlights?: string[];
+  possessionStatus?: string;
+  reraStatus?: string;
+  society?: { possessionDetail?: string };
 };
 
 export function parseRichMetadata(json: string | null | undefined): PropertyRichMetadata {
@@ -32,11 +35,24 @@ export function parseRichMetadata(json: string | null | undefined): PropertyRich
     const data = JSON.parse(json) as Record<string, unknown>;
     const amenities = data.amenities;
     const highlights = data.highlights;
+    const society = data.society as Record<string, unknown> | undefined;
     return {
       societyName:
         typeof data.societyName === 'string' ? data.societyName : undefined,
       societyBlock:
         typeof data.societyBlock === 'string' ? data.societyBlock : undefined,
+      possessionStatus:
+        typeof data.possessionStatus === 'string' ? data.possessionStatus : undefined,
+      reraStatus:
+        typeof data.reraStatus === 'string' ? data.reraStatus : undefined,
+      society: society
+        ? {
+            possessionDetail:
+              typeof society.possessionDetail === 'string'
+                ? society.possessionDetail
+                : undefined,
+          }
+        : undefined,
       furnished: typeof data.furnished === 'boolean' ? data.furnished : undefined,
       amenities: Array.isArray(amenities)
         ? amenities.filter((a): a is string => typeof a === 'string')

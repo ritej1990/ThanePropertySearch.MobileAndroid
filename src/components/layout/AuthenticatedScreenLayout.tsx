@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AuthenticatedScrollProvider, useAuthenticatedScroll } from '../../context/AuthenticatedScrollContext';
 import { AppProfileHeader } from './AppProfileHeader';
 import { EmailVerificationReminder } from './EmailVerificationReminder';
 import {
@@ -21,8 +22,7 @@ type Props = {
   scrollToTop?: ScrollToTopAction;
 };
 
-/** Fixed header + scrollable body; Support/Chat float over content (no layout inset). */
-export function AuthenticatedScreenLayout({
+function AuthenticatedScreenLayoutInner({
   children,
   showBack,
   onBack,
@@ -30,9 +30,11 @@ export function AuthenticatedScreenLayout({
   showFloatingActions = true,
   floatingBottomOffset = 0,
   showLegalFooter = true,
-  scrollToTop,
+  scrollToTop: scrollToTopProp,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { chromeVisible, scrollToTop: scrollToTopCtx } = useAuthenticatedScroll();
+  const scrollToTop = scrollToTopProp ?? scrollToTopCtx;
   const legalFooterInset = showLegalFooter ? 52 : 0;
   const floatBottom =
     Math.max(insets.bottom, spacing.sm) +
@@ -42,7 +44,12 @@ export function AuthenticatedScreenLayout({
 
   return (
     <View style={styles.screen}>
-      <AppProfileHeader showBack={showBack} onBack={onBack} density={headerDensity} />
+      <AppProfileHeader
+        showBack={showBack}
+        onBack={onBack}
+        density={headerDensity}
+        chromeVisible={chromeVisible}
+      />
       <View style={styles.body}>{children}</View>
       {showLegalFooter ? <LegalFooter variant="onLight" /> : null}
       <EmailVerificationReminder />
@@ -52,6 +59,15 @@ export function AuthenticatedScreenLayout({
         </View>
       ) : null}
     </View>
+  );
+}
+
+/** Fixed header + scrollable body; Support/Chat float over content (no layout inset). */
+export function AuthenticatedScreenLayout(props: Props) {
+  return (
+    <AuthenticatedScrollProvider>
+      <AuthenticatedScreenLayoutInner {...props} />
+    </AuthenticatedScrollProvider>
   );
 }
 

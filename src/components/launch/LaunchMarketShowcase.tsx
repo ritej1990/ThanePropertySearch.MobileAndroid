@@ -254,7 +254,9 @@ export function LaunchMarketShowcase({ entrance }: Props) {
         },
       ]}
     >
-      <View style={styles.pillRow}>
+      <View style={styles.glassPanel}>
+        <Text style={styles.panelEyebrow}>What would you like to do?</Text>
+        <View style={styles.pillRow}>
         {MARKET_INTENTS.map((intent, i) => (
           <IntentPill
             key={intent.key}
@@ -343,6 +345,7 @@ export function LaunchMarketShowcase({ entrance }: Props) {
           <LaunchTagChip key={word} label={word} delay={i * 80} entrance={entrance} />
         ))}
       </View>
+      </View>
     </Animated.View>
   );
 }
@@ -405,7 +408,30 @@ function LaunchTagChip({
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
-    marginVertical: spacing.sm,
+    marginVertical: spacing.xs,
+  },
+  glassPanel: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.xl,
+    backgroundColor: 'rgba(15, 23, 42, 0.68)',
+    borderWidth: 1,
+    borderColor: 'rgba(94, 234, 212, 0.16)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  panelEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(248, 250, 252, 0.55)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: spacing.sm,
   },
   pillRow: {
     flexDirection: 'row',
@@ -435,11 +461,12 @@ const styles = StyleSheet.create({
     opacity: 0.88,
   },
   heroOuter: {
-    width: 168,
-    height: 168,
+    width: 176,
+    height: 176,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
+    marginTop: spacing.xs,
   },
   orbitRing: {
     ...StyleSheet.absoluteFillObject,
@@ -463,14 +490,19 @@ const styles = StyleSheet.create({
     borderRadius: 65,
   },
   heroCard: {
-    width: 140,
+    width: 148,
     alignItems: 'center',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.xl,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.62)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
   },
   heroIconRing: {
     width: 64,

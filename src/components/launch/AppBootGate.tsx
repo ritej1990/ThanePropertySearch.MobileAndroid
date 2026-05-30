@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { colors } from '../../theme';
-import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
 import { AppLaunchScreen } from './AppLaunchScreen';
 import { AppWelcomeScreen } from './AppWelcomeScreen';
+import { LaunchHoldScreen } from './LaunchHoldScreen';
 
 type BootStep = 'hold' | 'welcome' | 'launch' | 'done';
 
@@ -36,11 +34,7 @@ export function AppBootGate({ children }: Props) {
   }, []);
 
   if (!ready || step === 'hold') {
-    return (
-      <View style={styles.hold}>
-        <ThaneFlatsLogo size={48} showWordmark animated onDark />
-      </View>
-    );
+    return <LaunchHoldScreen />;
   }
 
   if (step === 'welcome') {
@@ -58,13 +52,3 @@ export function AppBootGate({ children }: Props) {
 
   return <>{children}</>;
 }
-
-const styles = StyleSheet.create({
-  hold: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.navyDeep,
-    padding: 24,
-  },
-});

@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
 import { LaunchAnimatedBackdrop } from './LaunchAnimatedBackdrop';
 import { LaunchMarketShowcase } from './LaunchMarketShowcase';
-import { colors, gradients, radius, spacing, typography } from '../../theme';
+import { colors, radius, spacing, typography } from '../../theme';
 import { USE_NATIVE_DRIVER } from '../../utils/animation';
 
 const MIN_VISIBLE_MS = 2800;
@@ -21,16 +21,43 @@ const EXIT_MS = 420;
 const LAUNCH_SAFETY_MS = MIN_VISIBLE_MS + EXIT_MS + 800;
 
 const STATUS_LINES = [
-  'Buy · Rent · Sell · PG in Thane…',
-  'Verified listings & live maps…',
-  'Search homes or post your property…',
+  'Loading verified listings across Thane…',
+  'Preparing maps & neighbourhood filters…',
+  'Almost ready — your home search starts here…',
 ] as const;
 
-const TRUST_ITEMS = [
-  { icon: 'shield-checkmark' as const, label: 'Verified' },
-  { icon: 'location' as const, label: 'Thane local' },
-  { icon: 'flash' as const, label: 'Fast search' },
+const FEATURE_HIGHLIGHTS = [
+  {
+    icon: 'search' as const,
+    title: 'Smart search',
+    desc: 'Filter by area & budget',
+    tint: '#2563eb',
+    border: 'rgba(37, 99, 235, 0.45)',
+  },
+  {
+    icon: 'map' as const,
+    title: 'Live maps',
+    desc: 'Explore Thane visually',
+    tint: '#0d9488',
+    border: 'rgba(45, 212, 191, 0.4)',
+  },
+  {
+    icon: 'chatbubbles' as const,
+    title: 'Direct chat',
+    desc: 'Talk to owners instantly',
+    tint: '#c9a227',
+    border: 'rgba(252, 211, 77, 0.4)',
+  },
+  {
+    icon: 'add-circle' as const,
+    title: 'Post listing',
+    desc: 'Sell or rent in minutes',
+    tint: '#7c3aed',
+    border: 'rgba(167, 139, 250, 0.4)',
+  },
 ] as const;
+
+const LOADING_STEPS = ['Profile', 'Listings', 'Maps'] as const;
 
 type Props = {
   authReady: boolean;
@@ -46,7 +73,7 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const headerEntrance = useRef(new Animated.Value(0)).current;
   const showcaseEntrance = useRef(new Animated.Value(0)).current;
-  const trustEntrance = useRef(new Animated.Value(0)).current;
+  const featuresEntrance = useRef(new Animated.Value(0)).current;
   const statusOpacity = useRef(new Animated.Value(1)).current;
   const loadProgress = useRef(new Animated.Value(0)).current;
   const logoGlow = useRef(new Animated.Value(0)).current;
@@ -57,22 +84,22 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
   }, []);
 
   useEffect(() => {
-    Animated.stagger(100, [
+    Animated.stagger(90, [
       Animated.timing(headerEntrance, {
         toValue: 1,
-        duration: 500,
+        duration: 520,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
       Animated.timing(showcaseEntrance, {
         toValue: 1,
-        duration: 680,
+        duration: 640,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
-      Animated.timing(trustEntrance, {
+      Animated.timing(featuresEntrance, {
         toValue: 1,
-        duration: 460,
+        duration: 480,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: USE_NATIVE_DRIVER,
       }),
@@ -103,7 +130,7 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
     );
     glowLoop.start();
     return () => glowLoop.stop();
-  }, [headerEntrance, loadProgress, logoGlow, showcaseEntrance, trustEntrance]);
+  }, [featuresEntrance, headerEntrance, loadProgress, logoGlow, showcaseEntrance]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -120,7 +147,7 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
         }),
       ]).start();
       setStatusIndex((i) => (i + 1) % STATUS_LINES.length);
-    }, 1300);
+    }, 1400);
     return () => clearInterval(interval);
   }, [statusOpacity]);
 
@@ -160,15 +187,15 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
 
   const headerTranslateY = headerEntrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [20, 0],
+    outputRange: [24, 0],
   });
-  const trustOpacity = trustEntrance.interpolate({
+  const featuresOpacity = featuresEntrance.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
   });
-  const trustTranslateY = trustEntrance.interpolate({
+  const featuresTranslateY = featuresEntrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [14, 0],
+    outputRange: [16, 0],
   });
   const progressWidth = loadProgress.interpolate({
     inputRange: [0, 1],
@@ -176,17 +203,21 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
   });
   const logoScale = logoGlow.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.04],
+    outputRange: [1, 1.05],
   });
+  const activeStep = Math.min(
+    LOADING_STEPS.length - 1,
+    Math.floor(statusIndex)
+  );
 
   return (
     <Animated.View style={[styles.screen, { opacity: screenOpacity }]}>
       <StatusBar style="light" />
       <LaunchAnimatedBackdrop />
       <LinearGradient
-        colors={[...gradients.hero]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={['rgba(12, 24, 41, 0.35)', 'rgba(15, 40, 62, 0.25)', 'rgba(12, 24, 41, 0.5)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
         style={[StyleSheet.absoluteFill, styles.heroTint]}
         pointerEvents="none"
       />
@@ -195,23 +226,30 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
         style={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.lg,
-            paddingBottom: insets.bottom + spacing.lg,
+            paddingTop: insets.top + spacing.md,
+            paddingBottom: insets.bottom + spacing.md,
           },
         ]}
       >
         <Animated.View
-          style={{
-            opacity: headerEntrance,
-            transform: [{ translateY: headerTranslateY }],
-          }}
+          style={[
+            styles.headerCard,
+            {
+              opacity: headerEntrance,
+              transform: [{ translateY: headerTranslateY }],
+            },
+          ]}
         >
           <Animated.View style={{ transform: [{ scale: logoScale }] }}>
-            <ThaneFlatsLogo size={56} showWordmark animated onDark />
+            <ThaneFlatsLogo size={52} showWordmark animated onDark />
           </Animated.View>
+          <View style={styles.locationChip}>
+            <Ionicons name="location" size={12} color={colors.goldAccent} />
+            <Text style={styles.locationText}>Thane · Maharashtra</Text>
+          </View>
           <Text style={styles.tagline}>Your Thane property companion</Text>
           <Text style={styles.lead} numberOfLines={2}>
-            Buy, rent, sell & list in Thane
+            Buy, rent, sell & list — all in one app
           </Text>
         </Animated.View>
 
@@ -219,22 +257,50 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
 
         <Animated.View
           style={[
-            styles.trustRow,
+            styles.featureGrid,
             {
-              opacity: trustOpacity,
-              transform: [{ translateY: trustTranslateY }],
+              opacity: featuresOpacity,
+              transform: [{ translateY: featuresTranslateY }],
             },
           ]}
         >
-          {TRUST_ITEMS.map((item) => (
-            <View key={item.label} style={styles.trustPill}>
-              <Ionicons name={item.icon} size={14} color={colors.goldAccent} />
-              <Text style={styles.trustText}>{item.label}</Text>
+          {FEATURE_HIGHLIGHTS.map((item) => (
+            <View
+              key={item.title}
+              style={[styles.featureCard, { borderColor: item.border }]}
+            >
+              <View style={[styles.featureIcon, { backgroundColor: item.tint }]}>
+                <Ionicons name={item.icon} size={16} color={colors.heroText} />
+              </View>
+              <Text style={styles.featureTitle}>{item.title}</Text>
+              <Text style={styles.featureDesc} numberOfLines={1}>
+                {item.desc}
+              </Text>
             </View>
           ))}
         </Animated.View>
 
         <View style={styles.footer}>
+          <View style={styles.stepRow}>
+            {LOADING_STEPS.map((step, i) => (
+              <View key={step} style={styles.stepItem}>
+                <View
+                  style={[
+                    styles.stepDot,
+                    i <= activeStep && styles.stepDotActive,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    i <= activeStep && styles.stepLabelActive,
+                  ]}
+                >
+                  {step}
+                </Text>
+              </View>
+            ))}
+          </View>
           <View style={styles.progressTrack}>
             <Animated.View style={[styles.progressFill, { width: progressWidth }]}>
               <LinearGradient
@@ -248,14 +314,6 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
           <Animated.Text style={[styles.status, { opacity: statusOpacity }]}>
             {STATUS_LINES[statusIndex]}
           </Animated.Text>
-          <View style={styles.dots}>
-            {STATUS_LINES.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i === statusIndex && styles.dotActive]}
-              />
-            ))}
-          </View>
         </View>
       </View>
     </Animated.View>
@@ -268,86 +326,162 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navyDeep,
   },
   heroTint: {
-    opacity: 0.42,
+    opacity: 1,
   },
   content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
     justifyContent: 'space-between',
   },
+  headerCard: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.xl,
+    backgroundColor: 'rgba(15, 23, 42, 0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(94, 234, 212, 0.18)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  locationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: spacing.sm,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(201, 162, 39, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(252, 211, 77, 0.32)',
+  },
+  locationText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.goldSoft,
+    letterSpacing: 0.2,
+  },
   tagline: {
     marginTop: spacing.sm,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: colors.heroText,
     letterSpacing: -0.3,
+    textAlign: 'center',
   },
   lead: {
     ...typography.heroLead,
-    color: 'rgba(248, 250, 252, 0.88)',
+    color: 'rgba(248, 250, 252, 0.82)',
     marginTop: spacing.xs,
-    maxWidth: 320,
-    lineHeight: 21,
-    fontSize: 14,
+    maxWidth: 300,
+    lineHeight: 20,
+    fontSize: 13,
+    textAlign: 'center',
   },
-  trustRow: {
+  featureGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
     justifyContent: 'center',
   },
-  trustPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+  featureCard: {
+    width: '47%',
+    maxWidth: 168,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  trustText: {
-    fontSize: 11,
-    fontWeight: '700',
+  featureIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  featureTitle: {
+    fontSize: 12,
+    fontWeight: '800',
     color: colors.heroText,
-    opacity: 0.92,
+  },
+  featureDesc: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(148, 163, 184, 0.95)',
+    marginTop: 2,
   },
   footer: {
     alignItems: 'center',
     gap: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.xs,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(7, 15, 28, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(94, 234, 212, 0.12)',
+  },
+  stepRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    width: '100%',
+    maxWidth: 280,
+  },
+  stepItem: {
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  stepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(248, 250, 252, 0.2)',
+  },
+  stepDotActive: {
+    backgroundColor: colors.goldAccent,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  stepLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(248, 250, 252, 0.45)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  stepLabelActive: {
+    color: 'rgba(248, 250, 252, 0.88)',
+    fontWeight: '800',
   },
   progressTrack: {
     width: '100%',
     maxWidth: 280,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(248, 250, 252, 0.15)',
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(248, 250, 252, 0.12)',
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   status: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(248, 250, 252, 0.82)',
+    color: 'rgba(248, 250, 252, 0.78)',
     textAlign: 'center',
-  },
-  dots: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(248, 250, 252, 0.25)',
-  },
-  dotActive: {
-    width: 18,
-    backgroundColor: colors.goldAccent,
+    lineHeight: 17,
+    paddingHorizontal: spacing.sm,
   },
 });

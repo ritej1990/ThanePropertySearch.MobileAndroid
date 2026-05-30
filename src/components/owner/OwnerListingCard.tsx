@@ -2,16 +2,21 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { OwnerDashboardItem } from '../../api/ownerTypes';
+import type { OwnerAvailabilityOutcome, OwnerDashboardItem } from '../../api/ownerTypes';
 import { colors, radius, spacing } from '../../theme';
 import {
+  isOwnerClosedOutcome,
   listingVisibilityProgress,
   reviewStatusTone,
 } from '../../utils/ownerDashboard';
+import { OwnerListingManageSection } from './OwnerListingManageSection';
 
 type Props = {
   item: OwnerDashboardItem;
   onPress: () => void;
+  onOutcomeChange: (outcome: OwnerAvailabilityOutcome) => Promise<void>;
+  onHideToggle: (hidden: boolean) => Promise<void>;
+  onDelete: () => Promise<void>;
 };
 
 const STATUS_STYLES = {
@@ -41,19 +46,27 @@ const STATUS_STYLES = {
   },
 } as const;
 
-export function OwnerListingCard({ item, onPress }: Props) {
+export function OwnerListingCard({
+  item,
+  onPress,
+  onOutcomeChange,
+  onHideToggle,
+  onDelete,
+}: Props) {
   const tone = reviewStatusTone(item.reviewStatus);
   const statusStyle = STATUS_STYLES[tone];
   const visibility = listingVisibilityProgress(item);
   const hasPending = item.pendingRequests > 0;
+  const closedOut = isOwnerClosedOutcome(item.ownerAvailabilityOutcome);
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={onPress}
-    >
+    <View style={[styles.card, closedOut && styles.cardClosed]}>
       <View style={[styles.accent, { backgroundColor: statusStyle.bar }]} />
       <View style={styles.body}>
+        <Pressable
+          style={({ pressed }) => [pressed && styles.cardPressed]}
+          onPress={onPress}
+        >
         <View style={styles.titleRow}>
           <View style={styles.titleCol}>
             <Text style={styles.title} numberOfLines={2}>
@@ -89,6 +102,32 @@ export function OwnerListingCard({ item, onPress }: Props) {
               <Text style={styles.featuredText}>Featured</Text>
             </View>
           )}
+          {item.isForRent ? (
+            <View style={styles.typeChipRent}>
+              <Text style={styles.typeChipTextRent}>Rent</Text>
+            </View>
+          ) : null}
+          {item.isForSale ? (
+            <View style={styles.typeChipSale}>
+              <Text style={styles.typeChipTextSale}>Sale</Text>
+            </View>
+          ) : null}
+          {item.isForPg ? (
+            <View style={styles.typeChipPg}>
+              <Text style={styles.typeChipTextPg}>PG</Text>
+            </View>
+          ) : null}
+          {item.isHiddenFromSearch ? (
+            <View style={styles.hiddenChip}>
+              <Ionicons name="eye-off" size={11} color={colors.slateMuted} />
+              <Text style={styles.hiddenText}>Hidden</Text>
+            </View>
+          ) : null}
+          {closedOut ? (
+            <View style={styles.closedChip}>
+              <Text style={styles.closedText}>{item.ownerAvailabilityOutcome}</Text>
+            </View>
+          ) : null}
           {item.ownerListingTier ? (
             <View style={styles.tierChip}>
               <Text style={styles.tierText}>{item.ownerListingTier}</Text>
@@ -123,11 +162,19 @@ export function OwnerListingCard({ item, onPress }: Props) {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerCta}>Manage listing</Text>
+          <Text style={styles.footerCta}>View inquiries & listing</Text>
           <Ionicons name="arrow-forward" size={16} color={colors.primary} />
         </View>
+        </Pressable>
+
+        <OwnerListingManageSection
+          item={item}
+          onOutcomeChange={onOutcomeChange}
+          onHideToggle={onHideToggle}
+          onDelete={onDelete}
+        />
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -146,9 +193,12 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 5,
   },
+  cardClosed: {
+    opacity: 0.96,
+    backgroundColor: '#f8fafc',
+  },
   cardPressed: {
     opacity: 0.96,
-    transform: [{ scale: 0.995 }],
   },
   accent: {
     width: 5,
@@ -230,6 +280,59 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.slateMuted,
+  },
+  typeChipRent: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#86efac',
+  },
+  typeChipTextRent: { fontSize: 11, fontWeight: '700', color: '#166534' },
+  typeChipSale: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fdba74',
+  },
+  typeChipTextSale: { fontSize: 11, fontWeight: '700', color: '#9a3412' },
+  typeChipPg: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: '#f5f3ff',
+    borderWidth: 1,
+    borderColor: '#c4b5fd',
+  },
+  typeChipTextPg: { fontSize: 11, fontWeight: '700', color: '#5b21b6' },
+  hiddenChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  hiddenText: { fontSize: 11, fontWeight: '700', color: colors.slateMuted },
+  closedChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#93c5fd',
+  },
+  closedText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1e40af',
+    textTransform: 'uppercase',
   },
   metricsRow: {
     flexDirection: 'row',

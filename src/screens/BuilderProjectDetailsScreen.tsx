@@ -26,7 +26,9 @@ import {
   formatPossessionDate,
   parseAmenities,
   RERA_VERIFY_URL,
+  shouldShowBuilderRera,
 } from '../utils/builderFormat';
+import { ReraBadge } from '../components/property/ReraBadge';
 import { splitBuilderMedia } from '../utils/builderMedia';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BuilderProjectDetails'>;
@@ -146,6 +148,8 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
     );
   }
 
+  const showRera = shouldShowBuilderRera(item.reraNumber);
+
   return (
     <AuthenticatedScreenLayout
       showBack
@@ -171,13 +175,15 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
               <View style={styles.statusDot} />
               <Text style={styles.statusText}>{item.projectStatus}</Text>
             </View>
-            {item.reraNumber ? (
+            {showRera ? (
               <Pressable
                 style={styles.reraPill}
                 onPress={() => Linking.openURL(RERA_VERIFY_URL)}
               >
                 <Ionicons name="shield-checkmark" size={12} color={colors.goldSoft} />
-                <Text style={styles.reraPillText}>RERA</Text>
+                <Text style={styles.reraPillText} numberOfLines={1}>
+                  RERA {item.reraNumber}
+                </Text>
               </Pressable>
             ) : null}
           </View>
@@ -211,6 +217,12 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
             <Ionicons name="location" size={18} color={colors.builder} />
             <Text style={styles.address}>{item.address}</Text>
           </View>
+
+          {showRera ? (
+            <View style={styles.reraBanner}>
+              <ReraBadge rera={item.reraNumber!} />
+            </View>
+          ) : null}
 
           <View style={styles.statsRow}>
             <StatTile icon="business-outline" value={String(item.towerCount)} label="Towers" accent="violet" />
@@ -438,6 +450,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    maxWidth: '58%',
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -446,6 +459,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(252, 211, 77, 0.5)',
   },
   reraPillText: {
+    flexShrink: 1,
     fontSize: 10,
     fontWeight: '800',
     color: colors.goldSoft,
@@ -545,6 +559,9 @@ const styles = StyleSheet.create({
     color: colors.slateMuted,
     lineHeight: 20,
     fontWeight: '500',
+  },
+  reraBanner: {
+    marginBottom: spacing.lg,
   },
   statsRow: {
     flexDirection: 'row',

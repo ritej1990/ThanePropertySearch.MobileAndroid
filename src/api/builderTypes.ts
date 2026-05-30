@@ -76,3 +76,27 @@ export type BuilderLead = {
   message: string;
   createdAtUtc: string;
 };
+
+export type PagedResult<T> = {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type BuilderDashboardStats = {
+  totalProjects: number;
+  liveProjects: number;
+  pendingReviewProjects: number;
+  draftProjects: number;
+  totalUnits: number;
+  availableUnits: number;
+  totalLeads: number;
+  portfolioValueEstimate: number;
+  featuredProjectId: number | null;
+  featuredProjectName: string | null;
+  topLeadProjectId: number | null;
+  topLeadProjectName: string | null;
+  topLeadCount: number;
+};

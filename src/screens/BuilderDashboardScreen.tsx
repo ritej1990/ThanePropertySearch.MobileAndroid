@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type FlatList as FlatListType,
 } from 'react-native';
+import { AnimatedFlatList } from '../components/ui/AnimatedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,9 +15,13 @@ import type { BuilderProjectSummary } from '../api/builderTypes';
 import { builderProjectsApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { DashboardCompactBar } from '../components/layout/DashboardCompactBar';
 import { BuilderProjectCard } from '../components/builder/BuilderProjectCard';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { PageHero } from '../components/ui/PageHero';
+import { ScrollChromeBar } from '../components/ui/ScrollChromeBar';
+import { scrollLinkedHostStyle } from '../components/ui/ScrollLinkedOverlay';
+import { useListScrollChrome, useScrollCollapseEligibility } from '../hooks/useListScrollChrome';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -25,16 +30,26 @@ import { formatBuilderPrice } from '../utils/builderFormat';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BuilderDashboard'>;
 
-export default function BuilderDashboardScreen({ navigation }: Props) {
+export default function BuilderDashboardScreen(props: Props) {
+  return (
+    <AuthenticatedScreenLayout headerDensity="compact">
+      <BuilderDashboardContent {...props} />
+    </AuthenticatedScreenLayout>
+  );
+}
+
+function BuilderDashboardContent({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { profile } = useAuth();
+  const listRef = useRef<FlatListType<BuilderProjectSummary>>(null);
+  const { profile, ready } = useAuth();
   const isBuilder = isBuilderRole(profile?.role);
 
   useEffect(() => {
+    if (!ready) return;
     if (!isBuilder) {
       navigation.replace('BuilderProjects');
     }
-  }, [isBuilder, navigation]);
+  }, [isBuilder, navigation, ready]);
   const [rows, setRows] = useState<BuilderProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,10 +74,10 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      if (!isBuilder) return;
+      if (!ready || !isBuilder) return;
       setLoading(true);
       load();
-    }, [load, isBuilder])
+    }, [load, isBuilder, ready])
   );
 
   const stats = useMemo(() => {
@@ -71,6 +86,13 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
     const published = rows.filter((r) => r.isPublished).length;
     return { totalLeads, totalAvailable, published, count: rows.length };
   }, [rows]);
+
+  const { canCollapse, bindScrollMetrics } = useScrollCollapseEligibility();
+  const { scrollY, onScroll, scrollToTop } = useListScrollChrome({
+    scrollRef: listRef,
+    scrollToTopActive: rows.length > 0,
+    collapseEnabled: canCollapse && rows.length > 0,
+  });
 
   const listHeader = (
     <View style={styles.header}>
@@ -95,14 +117,33 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
         <Text style={styles.browseBtnText}>Browse all builder projects</Text>
       </Pressable>
 
+      <Pressable
+        style={styles.paymentsBtn}
+        onPress={() => navigation.navigate('BuilderPayments')}
+      >
+        <Ionicons name="card-outline" size={18} color={colors.builder} />
+        <Text style={styles.paymentsBtnText}>Plans & upload credits</Text>
+      </Pressable>
+
       <Text style={styles.sectionLabel}>Your projects</Text>
     </View>
   );
 
   return (
-    <AuthenticatedScreenLayout>
-      {loading && rows.length === 0 ? (
+    <View style={[styles.wrap, scrollLinkedHostStyle]}>
+      <ScrollChromeBar scrollY={scrollY} revealAt={260} overlay>
+        <DashboardCompactBar
+          title="Builder dashboard"
+          subtitle={`${stats.count} projects · ${stats.totalLeads} leads`}
+          onPress={scrollToTop}
+          variant="builder"
+        />
+      </ScrollChromeBar>
+
+      {!ready || (loading && rows.length === 0) ? (
         <BrandLoading message="Loading builder dashboard…" />
+      ) : !isBuilder ? (
+        <BrandLoading message="Redirecting…" />
       ) : error ? (
         <View style={styles.centered}>
           <Text style={styles.errTitle}>Dashboard unavailable</Text>
@@ -112,10 +153,15 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
           </Pressable>
         </View>
       ) : (
-        <FlatList
+        <AnimatedFlatList
+          ref={listRef}
           data={rows}
           keyExtractor={(item) => String(item.id)}
           ListHeaderComponent={listHeader}
+          {...bindScrollMetrics}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          bounces={canCollapse && rows.length > 0}
           contentContainerStyle={[
             styles.list,
             { paddingBottom: insets.bottom + spacing.lg },
@@ -171,7 +217,7 @@ export default function BuilderDashboardScreen({ navigation }: Props) {
           )}
         />
       )}
-    </AuthenticatedScreenLayout>
+    </View>
   );
 }
 
@@ -194,6 +240,10 @@ function StatCard({
 }
 
 const styles = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    backgroundColor: colors.surfaceMuted,
+  },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
@@ -246,6 +296,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#0f766e',
+  },
+  paymentsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.builderSoft,
+    borderWidth: 1,
+    borderColor: colors.builderBorder,
+  },
+  paymentsBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.builder,
   },
   sectionLabel: {
     fontSize: 16,

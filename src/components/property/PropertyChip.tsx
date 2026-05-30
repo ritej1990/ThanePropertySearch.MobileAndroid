@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius } from '../../theme';
 
-export type ChipTone = 'rent' | 'sale' | 'pg' | 'neutral' | 'bhk' | 'featured';
+export type ChipTone = 'rent' | 'sale' | 'pg' | 'neutral' | 'bhk' | 'featured' | 'agent';
 
 type Props = {
   label: string;
@@ -22,6 +22,8 @@ function getToneStyles(tone: ChipTone) {
       return { box: chipStyles.chipBhk, text: chipStyles.textBhk };
     case 'featured':
       return { box: chipStyles.chipFeatured, text: chipStyles.textFeatured };
+    case 'agent':
+      return { box: chipStyles.chipAgent, text: chipStyles.textAgent };
     default:
       return { box: chipStyles.chipNeutral, text: chipStyles.textNeutral };
   }
@@ -66,4 +68,6 @@ const chipStyles = StyleSheet.create({
   textBhk: { color: colors.slate },
   chipFeatured: { backgroundColor: '#fef3c7', borderColor: '#fcd34d' },
   textFeatured: { color: '#92400e' },
+  chipAgent: { backgroundColor: '#eff6ff', borderColor: '#93c5fd' },
+  textAgent: { color: '#1d4ed8' },
 });

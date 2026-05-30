@@ -35,6 +35,11 @@ export type RegisterBody = {
   phoneNumber: string;
   role: string;
   marketIntent: string | null;
+  gstNumber?: string | null;
+  companyName?: string | null;
+  reraNumber?: string | null;
+  whatsAppNumber?: string | null;
+  operatingLocalities?: string | null;
 };
 
 /** Matches PropertyResponse (subset used by lists — extend as needed) */
@@ -66,4 +71,8 @@ export type PropertyResponse = {
   isFeaturedInSearch: boolean;
   listingPeriodEndUtc: string | null;
   ownerId: string | null;
+  isNegotiable?: boolean;
+  isPostedByAgent?: boolean;
+  /** MahaRERA registration (agent listings, builder projects). */
+  reraNumber?: string | null;
 };

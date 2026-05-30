@@ -10,3 +10,7 @@ export function isUserRole(role: string | null | undefined): boolean {
 export function isBuilderRole(role: string | null | undefined): boolean {
   return role?.trim().toLowerCase() === 'builder';
 }
+
+export function isAgentRole(role: string | null | undefined): boolean {
+  return role?.trim().toLowerCase() === 'agent';
+}

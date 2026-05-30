@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -11,12 +11,14 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/types';
-import { propertiesApi } from '../api/singleton';
+import { agentListingsApi, paymentsApi, propertiesApi } from '../api/singleton';
 import { ApiError } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
@@ -35,13 +37,16 @@ import type { SelectedPlace } from '../services/googlePlaces';
 import { colors, radius, spacing } from '../theme';
 import {
   POST_PROPERTY_STEPS,
+  buildCreateAgentListingRequest,
   buildCreatePropertyRequest,
   initialPostPropertyForm,
+  listingDurationFromTier,
   validatePostPropertyForm,
   validatePostPropertyStep,
   type PostPropertyFormState,
   type PostPropertyStepIndex,
 } from '../utils/postPropertyForm';
+import { isAgentRole, isOwnerRole } from '../utils/roles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostProperty'>;
 
@@ -56,16 +61,45 @@ function ErrorBanner({ message }: { message: string }) {
 
 export default function PostPropertyScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
+  const isAgent = isAgentRole(profile?.role);
+  const isOwner = isOwnerRole(profile?.role);
   const scrollRef = useRef<ScrollView>(null);
   const [step, setStep] = useState<PostPropertyStepIndex>(0);
   const [form, setForm] = useState<PostPropertyFormState>(initialPostPropertyForm);
   const [images, setImages] = useState<PickedImage[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [publishCredits, setPublishCredits] = useState(0);
+  const [activePublishTier, setActivePublishTier] = useState<string | null>(null);
+
+  const loadAgentCredits = useCallback(async () => {
+    if (!isAgent) return;
+    try {
+      const summary = await paymentsApi.getAgentSummary();
+      setPublishCredits(summary.publishCredits);
+      setActivePublishTier(summary.activePublishTier);
+    } catch {
+      setPublishCredits(0);
+    }
+  }, [isAgent]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isAgent && !isOwner) {
+        navigation.replace('Home');
+        return;
+      }
+      loadAgentCredits();
+    }, [isAgent, isOwner, loadAgentCredits, navigation])
+  );
 
   const mapsEnabled = hasGoogleMapsKey();
   const isLastStep = step === 3;
   const stepMeta = POST_PROPERTY_STEPS[step];
+  const canAgentPost = !isAgent || publishCredits > 0;
+  const screenTitle = isAgent ? 'Post agent listing' : 'Post your property';
+  const submitLabel = isAgent ? 'Post listing' : 'Post property';
 
   function patch<K extends keyof PostPropertyFormState>(
     key: K,
@@ -151,6 +185,18 @@ export default function PostPropertyScreen({ navigation }: Props) {
   }
 
   async function handleSubmit() {
+    if (isAgent && publishCredits <= 0) {
+      Alert.alert(
+        'Publish credit required',
+        'Purchase a listing publish plan before posting. One credit is used per listing.',
+        [
+          { text: 'View plans', onPress: () => navigation.navigate('AgentPayments') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
     const validationError = validatePostPropertyForm(form);
     if (validationError) {
       setFormError(validationError);
@@ -169,34 +215,55 @@ export default function PostPropertyScreen({ navigation }: Props) {
           uploadedUrls.push(...galleryRes.imageUrls);
         }
       }
-      const body = buildCreatePropertyRequest(form, uploadedUrls);
-      const created = await propertiesApi.create(body);
-      Alert.alert(
-        'Posted successfully',
-        'Your property is pending approval review. It will appear on your dashboard once reviewed.',
-        [
-          {
-            text: 'View listing',
-            onPress: () =>
-              navigation.replace('PropertyDetails', {
-                propertyId: created.id,
-                title: created.title,
-              }),
-          },
-          {
-            text: 'Back to dashboard',
-            style: 'cancel',
-            onPress: () => navigation.navigate('OwnerDashboard'),
-          },
-        ]
-      );
+
+      if (isAgent) {
+        const duration = listingDurationFromTier(activePublishTier);
+        const body = buildCreateAgentListingRequest(form, uploadedUrls, duration);
+        const created = await agentListingsApi.create(body);
+        Alert.alert(
+          'Listing submitted',
+          'Your agent listing is pending admin review. It will appear on your dashboard once approved.',
+          [
+            {
+              text: 'Agent dashboard',
+              onPress: () => navigation.navigate('AgentDashboard'),
+            },
+            { text: 'OK', style: 'cancel' },
+          ]
+        );
+        void created.id;
+      } else {
+        const body = buildCreatePropertyRequest(form, uploadedUrls);
+        const created = await propertiesApi.create(body);
+        Alert.alert(
+          'Posted successfully',
+          'Your property is pending approval review. It will appear on your dashboard once reviewed.',
+          [
+            {
+              text: 'View listing',
+              onPress: () =>
+                navigation.replace('PropertyDetails', {
+                  propertyId: created.id,
+                  title: created.title,
+                }),
+            },
+            {
+              text: 'Back to dashboard',
+              style: 'cancel',
+              onPress: () => navigation.navigate('OwnerDashboard'),
+            },
+          ]
+        );
+      }
     } catch (e) {
       const message =
         e instanceof ApiError
           ? e.message
           : e instanceof Error
             ? e.message
-            : 'Could not post property';
+            : isAgent
+              ? 'Could not post listing'
+              : 'Could not post property';
       setFormError(message);
     } finally {
       setSubmitting(false);
@@ -395,15 +462,35 @@ export default function PostPropertyScreen({ navigation }: Props) {
       <View style={styles.screen}>
         <View style={styles.stepBar}>
           <View style={styles.stepBarTop}>
-            <Text style={styles.stepBarTitle}>Post your property</Text>
-            <View style={styles.freeBadge}>
-              <Ionicons name="gift-outline" size={13} color="#0f766e" />
-              <Text style={styles.freeBadgeText}>Free</Text>
-            </View>
+            <Text style={styles.stepBarTitle}>{screenTitle}</Text>
+            {isAgent ? (
+              <View style={styles.creditBadge}>
+                <Ionicons name="ticket-outline" size={13} color="#1d4ed8" />
+                <Text style={styles.creditBadgeText}>
+                  {publishCredits} credit{publishCredits === 1 ? '' : 's'}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.freeBadge}>
+                <Ionicons name="gift-outline" size={13} color="#0f766e" />
+                <Text style={styles.freeBadgeText}>Free</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.stepBarSub}>
             Step {step + 1} of {POST_PROPERTY_STEPS.length} · {stepMeta.title}
           </Text>
+          {isAgent && !canAgentPost ? (
+            <Pressable
+              style={styles.creditsBanner}
+              onPress={() => navigation.navigate('AgentPayments')}
+            >
+              <Ionicons name="information-circle" size={18} color={colors.warning} />
+              <Text style={styles.creditsBannerText}>
+                No publish credits — buy a plan to post listings
+              </Text>
+            </Pressable>
+          ) : null}
           <StepProgress current={step} />
         </View>
 
@@ -442,11 +529,11 @@ export default function PostPropertyScreen({ navigation }: Props) {
               submitting
                 ? 'Posting…'
                 : isLastStep
-                  ? 'Post property'
+                  ? submitLabel
                   : 'Continue'
             }
             loading={submitting}
-            disabled={submitting}
+            disabled={submitting || (isAgent && isLastStep && !canAgentPost)}
             onPress={goNext}
             style={[styles.footerPrimary, step === 0 && styles.footerPrimaryFull]}
           />
@@ -498,6 +585,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#0f766e',
+  },
+  creditBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  creditBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1d4ed8',
+  },
+  creditsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  creditsBannerText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.warning,
+    lineHeight: 16,
   },
   stepBarSub: {
     fontSize: 13,

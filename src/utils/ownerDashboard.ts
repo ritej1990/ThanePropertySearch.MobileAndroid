@@ -48,3 +48,79 @@ export function computeOwnerStats(rows: OwnerDashboardItem[]): OwnerDashboardSta
     withPendingInquiries: rows.filter((r) => r.pendingRequests > 0).length,
   };
 }
+
+export type OwnerListFilter =
+  | 'all'
+  | 'approved'
+  | 'pending'
+  | 'rejected'
+  | 'expired'
+  | 'rented'
+  | 'sold'
+  | 'needs-reply';
+
+export const OWNER_LIST_FILTERS: { key: OwnerListFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'needs-reply', label: 'Needs reply' },
+  { key: 'rented', label: 'Rented' },
+  { key: 'sold', label: 'Sold' },
+  { key: 'rejected', label: 'Rejected' },
+  { key: 'expired', label: 'Expired' },
+];
+
+export function isOwnerClosedOutcome(
+  outcome: string | null | undefined
+): boolean {
+  const o = (outcome ?? '').trim().toLowerCase();
+  return o === 'rented' || o === 'sold';
+}
+
+export function isOwnerListingExpired(item: OwnerDashboardItem): boolean {
+  const status = item.reviewStatus?.trim() ?? '';
+  if (status.toLowerCase() === 'expired') return true;
+  return (
+    status.toLowerCase() === 'approved' &&
+    item.daysRemaining != null &&
+    item.daysRemaining <= 0
+  );
+}
+
+export function ownerListingFilterTags(item: OwnerDashboardItem): OwnerListFilter[] {
+  const tags: OwnerListFilter[] = [];
+  const review = (item.reviewStatus ?? '').trim().toLowerCase();
+
+  if (review.includes('approv') && !isOwnerListingExpired(item)) {
+    tags.push('approved');
+  } else if (review.includes('pend') || review.includes('inprogress') || review.includes('awaiting')) {
+    tags.push('pending');
+  } else if (review.includes('reject') || review.includes('declin')) {
+    tags.push('rejected');
+  }
+
+  if (isOwnerListingExpired(item)) {
+    tags.push('expired');
+  }
+
+  const outcome = (item.ownerAvailabilityOutcome ?? '').trim().toLowerCase();
+  if (outcome === 'rented') tags.push('rented');
+  if (outcome === 'sold') tags.push('sold');
+  if (item.pendingRequests > 0) tags.push('needs-reply');
+
+  return tags;
+}
+
+export function filterOwnerListings(
+  rows: OwnerDashboardItem[],
+  filter: OwnerListFilter
+): OwnerDashboardItem[] {
+  if (filter === 'all') return rows;
+  return rows.filter((item) => ownerListingFilterTags(item).includes(filter));
+}
+
+export function ownerOutcomeLabel(outcome: string | null | undefined): string {
+  const o = (outcome ?? '').trim();
+  if (!o) return 'On market';
+  return o;
+}

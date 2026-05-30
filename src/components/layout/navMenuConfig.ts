@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { isBuilderRole, isOwnerRole, isUserRole } from '../../utils/roles';
+import { isBuilderRole, isOwnerRole, isUserRole, isAgentRole } from '../../utils/roles';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -13,7 +13,10 @@ export type NavMenuTarget =
   | 'profile'
   | 'myPayments'
   | 'essentialPlan'
-  | 'postProperty';
+  | 'postProperty'
+  | 'agentDashboard'
+  | 'agentPayments'
+  | 'builderPayments';
 
 export type NavMenuItem = {
   key: NavMenuTarget;
@@ -88,6 +91,38 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
     );
   }
 
+  if (isAgentRole(role)) {
+    items.push(
+      {
+        key: 'agentDashboard',
+        label: 'Agent dashboard',
+        subtitle: 'Listings, leads & profile',
+        icon: 'briefcase',
+        section: 'explore',
+        accent: MENU_COLORS.primary,
+        accentBg: '#eff6ff',
+      },
+      {
+        key: 'postProperty',
+        label: 'Post listing',
+        subtitle: 'Rent, sale, or PG — uses publish credit',
+        icon: 'add-circle',
+        section: 'explore',
+        accent: MENU_COLORS.gold,
+        accentBg: MENU_COLORS.goldSoft,
+      },
+      {
+        key: 'agentPayments',
+        label: 'Agent plans',
+        subtitle: 'Publish & lead packages',
+        icon: 'card',
+        section: 'account',
+        accent: MENU_COLORS.primary,
+        accentBg: '#eff6ff',
+      }
+    );
+  }
+
   if (isBuilderRole(role)) {
     items.push({
       key: 'builderDashboard',
@@ -98,7 +133,16 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
       accent: MENU_COLORS.builder,
       accentBg: MENU_COLORS.builderSoft,
     });
-  } else if (!isOwnerRole(role)) {
+    items.push({
+      key: 'builderPayments',
+      label: 'Builder plans',
+      subtitle: 'Upload credits & leads',
+      icon: 'cloud-upload',
+      section: 'account',
+      accent: MENU_COLORS.builder,
+      accentBg: MENU_COLORS.builderSoft,
+    });
+  } else if (!isOwnerRole(role) && !isAgentRole(role)) {
     items.push({
       key: 'ownerDashboard',
       label: 'List your property',
@@ -122,17 +166,18 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
     });
   }
 
-  items.push(
-    {
-      key: 'profile',
-      label: 'My profile',
-      subtitle: 'Account & contact details',
-      icon: 'person',
-      section: 'account',
-      accent: MENU_COLORS.navy,
-      accentBg: MENU_COLORS.surfaceMuted,
-    },
-    {
+  items.push({
+    key: 'profile',
+    label: 'My profile',
+    subtitle: 'Account & contact details',
+    icon: 'person',
+    section: 'account',
+    accent: MENU_COLORS.navy,
+    accentBg: MENU_COLORS.surfaceMuted,
+  });
+
+  if (!isOwnerRole(role)) {
+    items.push({
       key: 'myPayments',
       label: 'My payments',
       subtitle: 'Plans & transaction history',
@@ -140,8 +185,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
       section: 'account',
       accent: MENU_COLORS.primary,
       accentBg: '#eff6ff',
-    }
-  );
+    });
+  }
 
   if (isUserRole(role) || isOwnerRole(role)) {
     items.push({
@@ -169,6 +214,21 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
 }
 
 export function buildQuickNavItems(role: string | null | undefined): QuickNavItem[] {
+  if (isBuilderRole(role)) {
+    return [
+      { key: 'builderDashboard', label: 'Dashboard', icon: 'grid' },
+      { key: 'builders', label: 'Directory', icon: 'business' },
+      { key: 'builderPayments', label: 'Plans', icon: 'card' },
+    ];
+  }
+  if (isAgentRole(role)) {
+    return [
+      { key: 'agentDashboard', label: 'Dashboard', icon: 'briefcase' },
+      { key: 'postProperty', label: 'Post', icon: 'add' },
+      { key: 'agentPayments', label: 'Plans', icon: 'card' },
+    ];
+  }
+
   const quick: QuickNavItem[] = [
     { key: 'home', label: 'Search', icon: 'search' },
     { key: 'builders', label: 'Builders', icon: 'business' },
@@ -177,8 +237,6 @@ export function buildQuickNavItems(role: string | null | undefined): QuickNavIte
   if (isOwnerRole(role)) {
     quick.push({ key: 'ownerDashboard', label: 'Listings', icon: 'home' });
     quick.push({ key: 'postProperty', label: 'Post', icon: 'add' });
-  } else if (isBuilderRole(role)) {
-    quick.push({ key: 'builderDashboard', label: 'Dashboard', icon: 'grid' });
   } else if (isUserRole(role)) {
     quick.push({ key: 'essentialPlan', label: 'Plans', icon: 'flash' });
   }
@@ -186,4 +244,42 @@ export function buildQuickNavItems(role: string | null | undefined): QuickNavIte
   quick.push({ key: 'myChats', label: 'Chats', icon: 'chatbubbles' });
 
   return quick;
+}
+
+export function buildQuickMenuKeys(role: string | null | undefined): NavMenuTarget[] {
+  if (isBuilderRole(role)) {
+    return ['builderDashboard', 'builders', 'builderPayments'];
+  }
+  if (isAgentRole(role)) {
+    return ['agentDashboard', 'postProperty', 'agentPayments'];
+  }
+  if (isOwnerRole(role)) {
+    return ['ownerDashboard', 'home', 'myChats'];
+  }
+  return ['home', 'builders', 'myChats'];
+}
+
+export function quickMenuLabel(key: NavMenuTarget): string {
+  switch (key) {
+    case 'home':
+      return 'Search';
+    case 'builders':
+      return 'Projects';
+    case 'builderDashboard':
+      return 'Dashboard';
+    case 'builderPayments':
+      return 'Plans';
+    case 'agentDashboard':
+      return 'Dashboard';
+    case 'postProperty':
+      return 'Post';
+    case 'agentPayments':
+      return 'Plans';
+    case 'ownerDashboard':
+      return 'Listings';
+    case 'myChats':
+      return 'Chats';
+    default:
+      return 'Open';
+  }
 }

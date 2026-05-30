@@ -8,6 +8,7 @@ import { colors, radius, spacing } from '../../theme';
 import {
   formatBuilderPrice,
   formatPossessionDate,
+  shouldShowBuilderRera,
 } from '../../utils/builderFormat';
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export function BuilderProjectCard({ item, onPress }: Props) {
+  const showRera = shouldShowBuilderRera(item.reraNumber);
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -38,10 +40,12 @@ export function BuilderProjectCard({ item, onPress }: Props) {
             <View style={styles.statusDot} />
             <Text style={styles.statusText}>{item.projectStatus}</Text>
           </View>
-          {item.reraNumber ? (
+          {showRera ? (
             <View style={styles.reraPill}>
               <Ionicons name="shield-checkmark" size={11} color={colors.goldSoft} />
-              <Text style={styles.reraPillText}>RERA</Text>
+              <Text style={styles.reraPillText} numberOfLines={1}>
+                RERA {item.reraNumber}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -187,6 +191,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    maxWidth: '72%',
     backgroundColor: 'rgba(15, 23, 42, 0.55)',
     paddingHorizontal: 8,
     paddingVertical: 5,
@@ -195,6 +200,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(252, 211, 77, 0.45)',
   },
   reraPillText: {
+    flexShrink: 1,
     fontSize: 10,
     fontWeight: '800',
     color: colors.goldSoft,

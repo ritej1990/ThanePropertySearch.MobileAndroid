@@ -4,6 +4,8 @@ import type { PropertyResponse } from '../../api/types';
 import { PropertyImage } from './PropertyImage';
 import { colors, radius, spacing } from '../../theme';
 import { getPrimaryPrice } from '../../utils/propertyDisplay';
+import { isNewListing } from '../../utils/listingRera';
+import { NewListingRibbon } from './NewListingRibbon';
 
 type Props = {
   item: PropertyResponse;
@@ -15,7 +17,10 @@ export function SimilarPropertyCard({ item, onPress }: Props) {
 
   return (
     <Pressable style={styles.card} onPress={onPress}>
-      <PropertyImage uri={item.imageUrl} style={styles.image} />
+      <View style={styles.media}>
+        <PropertyImage uri={item.imageUrl} style={styles.image} />
+        {isNewListing(item.createdAtUtc) ? <NewListingRibbon compact /> : null}
+      </View>
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={2}>
           {item.title}
@@ -50,6 +55,10 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 108,
+  },
+  media: {
+    height: 108,
+    overflow: 'hidden',
   },
   body: {
     padding: spacing.md,

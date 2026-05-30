@@ -19,6 +19,8 @@ import { useAuth } from '../context/AuthContext';
 import { useResendEmailVerification } from '../hooks/useResendEmailVerification';
 import type { RootStackParamList } from '../navigation/types';
 import { getRoleLabel } from '../utils/profileDisplay';
+import { isOwnerRole } from '../utils/roles';
+import { isValidOptionalGst, normalizeGst } from '../utils/gstNumber';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -29,6 +31,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [marketIntent, setMarketIntent] = useState('');
+  const [gstNumber, setGstNumber] = useState('');
+  const showGst = !isOwnerRole(profile?.role);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -38,6 +42,7 @@ export default function ProfileScreen({ navigation }: Props) {
       setFullName(me.fullName ?? '');
       setPhone(me.phoneNumber ?? '');
       setMarketIntent(me.marketIntent ?? '');
+      setGstNumber(me.gstNumber ?? '');
       await refreshProfile();
     } catch (e) {
       Alert.alert(
@@ -61,12 +66,17 @@ export default function ProfileScreen({ navigation }: Props) {
       Alert.alert('Missing details', 'Full name and phone are required.');
       return;
     }
+    if (showGst && gstNumber.trim() && !isValidOptionalGst(gstNumber)) {
+      Alert.alert('Invalid GSTIN', 'Enter a valid 15-character GSTIN or leave blank.');
+      return;
+    }
     setSaving(true);
     try {
       await usersApi.updateMe({
         fullName: fullName.trim(),
         phoneNumber: phone.trim(),
         marketIntent: marketIntent.trim() || null,
+        gstNumber: showGst && gstNumber.trim() ? normalizeGst(gstNumber) : null,
       });
       await refreshProfile();
       Alert.alert('Saved', 'Your profile has been updated.');
@@ -143,6 +153,16 @@ export default function ProfileScreen({ navigation }: Props) {
               value={marketIntent}
               onChangeText={setMarketIntent}
             />
+            {showGst ? (
+              <AuthTextField
+                label="GSTIN (optional)"
+                icon="receipt-outline"
+                placeholder="15-character GSTIN for invoices"
+                autoCapitalize="characters"
+                value={gstNumber}
+                onChangeText={setGstNumber}
+              />
+            ) : null}
             <GradientButton
               label="Save changes"
               loading={saving}

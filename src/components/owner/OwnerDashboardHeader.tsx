@@ -10,14 +10,12 @@ type Props = {
   stats: OwnerDashboardStats;
   onBrowse: () => void;
   onPostProperty: () => void;
-  onMyPayments?: () => void;
 };
 
 export function OwnerDashboardHeader({
   stats,
   onBrowse,
   onPostProperty,
-  onMyPayments,
 }: Props) {
   return (
     <View style={styles.wrap}>
@@ -28,7 +26,7 @@ export function OwnerDashboardHeader({
         subtitle="Listings, inquiries & visits"
       >
         <View style={styles.perks}>
-          <Perk icon="reply" label="Reply fast" />
+          <Perk icon="chatbubble-ellipses-outline" label="Reply fast" />
           <Perk icon="calendar" label="Visits" />
           <Perk icon="trending-up" label="Track pending" />
         </View>
@@ -39,14 +37,8 @@ export function OwnerDashboardHeader({
           </Pressable>
           <Pressable style={styles.quickSecondary} onPress={onPostProperty}>
             <Ionicons name="add-circle-outline" size={18} color={colors.heroText} />
-            <Text style={styles.quickSecondaryText}>Post</Text>
+            <Text style={styles.quickSecondaryText}>Post property</Text>
           </Pressable>
-          {onMyPayments ? (
-            <Pressable style={styles.quickSecondary} onPress={onMyPayments}>
-              <Ionicons name="receipt-outline" size={18} color={colors.heroText} />
-              <Text style={styles.quickSecondaryText}>Payments</Text>
-            </Pressable>
-          ) : null}
         </View>
       </PageHero>
 

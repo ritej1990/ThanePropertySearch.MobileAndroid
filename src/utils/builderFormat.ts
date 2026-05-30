@@ -32,3 +32,8 @@ export function parseAmenities(raw: string | null | undefined): string[] {
 
 export const RERA_VERIFY_URL =
   'https://maharerait.mahaonline.gov.in/SearchList/Search';
+
+export function shouldShowBuilderRera(reraNumber: string | null | undefined): boolean {
+  const rera = reraNumber?.trim();
+  return Boolean(rera && rera.toUpperCase() !== 'PENDING');
+}

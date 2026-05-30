@@ -37,35 +37,34 @@ export function ThaneFlatsLogo({
   onDark = false,
   style,
 }: Props) {
-  const pulse = useRef(new Animated.Value(1)).current;
+  const spin = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!animated) {
-      pulse.setValue(1);
+      spin.setValue(0);
       return;
     }
     const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.06,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: USE_NATIVE_DRIVER,
-        }),
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: USE_NATIVE_DRIVER,
-        }),
-      ])
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 1100,
+        easing: Easing.linear,
+        useNativeDriver: USE_NATIVE_DRIVER,
+      })
     );
     loop.start();
     return () => loop.stop();
-  }, [animated, pulse]);
+  }, [animated, spin]);
+
+  const rotate = spin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   const markSize = size;
   const source = markSize >= 64 ? brandMarkLg : brandMark;
+  const ringSize = markSize + 18;
+  const ringWidth = Math.max(2, Math.round(markSize * 0.045));
 
   const mark = (
     <Image
@@ -81,7 +80,26 @@ export function ThaneFlatsLogo({
   );
 
   const animatedMark = animated ? (
-    <Animated.View style={{ transform: [{ scale: pulse }] }}>{mark}</Animated.View>
+    <View
+      style={[
+        styles.spinnerWrap,
+        { width: ringSize, height: ringSize },
+      ]}
+    >
+      <Animated.View
+        style={[
+          styles.spinRing,
+          {
+            width: ringSize,
+            height: ringSize,
+            borderRadius: ringSize / 2,
+            borderWidth: ringWidth,
+            transform: [{ rotate }],
+          },
+        ]}
+      />
+      <View style={styles.markCenter}>{mark}</View>
+    </View>
   ) : (
     mark
   );
@@ -118,6 +136,20 @@ export function ThaneFlatsLogo({
 }
 
 const styles = StyleSheet.create({
+  spinnerWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinRing: {
+    position: 'absolute',
+    borderColor: 'rgba(13, 148, 136, 0.18)',
+    borderTopColor: '#0d9488',
+    borderRightColor: '#14b8a6',
+  },
+  markCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
