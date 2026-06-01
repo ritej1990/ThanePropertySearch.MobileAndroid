@@ -41,6 +41,8 @@ type Props = {
   density?: 'default' | 'compact';
   /** Scroll-linked visibility 1 = expanded, 0 = collapsed. */
   chromeVisible?: Animated.Value | Animated.AnimatedInterpolation<number>;
+  /** True when scroll has collapsed header extras. */
+  chromeCollapsed?: boolean;
 };
 
 function HeaderIconButton({
@@ -76,6 +78,7 @@ export function AppProfileHeader({
   onBack,
   density = 'default',
   chromeVisible,
+  chromeCollapsed = false,
 }: Props) {
   const headerChrome = chromeVisible;
   const insets = useSafeAreaInsets();
@@ -394,47 +397,51 @@ export function AppProfileHeader({
         ) : null}
       </LinearGradient>
 
-      {!emailConfirmed && email && headerChrome ? (
-        <ScrollRevealPanel progress={headerChrome} maxHeight={56} collapseFromTop>
-          <Pressable
-            style={styles.emailBanner}
-            onPress={resend}
-            disabled={sending}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color={colors.goldAccent} />
-            ) : (
-              <Ionicons name="mail-unread" size={18} color={colors.goldAccent} />
-            )}
-            <View style={styles.emailBannerText}>
-              <Text style={styles.emailBannerTitle} numberOfLines={1}>
-                Verify your email
-              </Text>
-              <Text style={styles.emailBannerSub} numberOfLines={1}>
-                {email} · Tap to resend
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.goldAccent} />
-          </Pressable>
-        </ScrollRevealPanel>
-      ) : !emailConfirmed && email ? (
-        <Pressable style={styles.emailBanner} onPress={resend} disabled={sending}>
-          {sending ? (
-            <ActivityIndicator size="small" color={colors.goldAccent} />
-          ) : (
-            <Ionicons name="mail-unread" size={18} color={colors.goldAccent} />
-          )}
-          <View style={styles.emailBannerText}>
-            <Text style={styles.emailBannerTitle} numberOfLines={1}>
-              Verify your email
-            </Text>
-            <Text style={styles.emailBannerSub} numberOfLines={1}>
-              {email} · Tap to resend
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.goldAccent} />
-        </Pressable>
-      ) : null}
+      {!emailConfirmed && email && !chromeCollapsed
+        ? headerChrome
+          ? (
+            <ScrollRevealPanel progress={headerChrome} maxHeight={56} collapseFromTop>
+              <Pressable
+                style={styles.emailBanner}
+                onPress={resend}
+                disabled={sending}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color={colors.goldAccent} />
+                ) : (
+                  <Ionicons name="mail-unread" size={18} color={colors.goldAccent} />
+                )}
+                <View style={styles.emailBannerText}>
+                  <Text style={styles.emailBannerTitle} numberOfLines={1}>
+                    Verify your email
+                  </Text>
+                  <Text style={styles.emailBannerSub} numberOfLines={1}>
+                    {email} · Tap to resend
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.goldAccent} />
+              </Pressable>
+            </ScrollRevealPanel>
+            )
+          : (
+            <Pressable style={styles.emailBanner} onPress={resend} disabled={sending}>
+              {sending ? (
+                <ActivityIndicator size="small" color={colors.goldAccent} />
+              ) : (
+                <Ionicons name="mail-unread" size={18} color={colors.goldAccent} />
+              )}
+              <View style={styles.emailBannerText}>
+                <Text style={styles.emailBannerTitle} numberOfLines={1}>
+                  Verify your email
+                </Text>
+                <Text style={styles.emailBannerSub} numberOfLines={1}>
+                  {email} · Tap to resend
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.goldAccent} />
+            </Pressable>
+            )
+        : null}
 
       <AppNavMenu
         visible={menuVisible}

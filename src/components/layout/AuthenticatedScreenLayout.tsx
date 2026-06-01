@@ -33,7 +33,8 @@ function AuthenticatedScreenLayoutInner({
   scrollToTop: scrollToTopProp,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const { chromeVisible, scrollToTop: scrollToTopCtx } = useAuthenticatedScroll();
+  const { chromeVisible, chromeCollapsed, scrollToTop: scrollToTopCtx } =
+    useAuthenticatedScroll();
   const scrollToTop = scrollToTopProp ?? scrollToTopCtx;
   const legalFooterInset = showLegalFooter ? 52 : 0;
   const floatBottom =
@@ -49,6 +50,7 @@ function AuthenticatedScreenLayoutInner({
         onBack={onBack}
         density={headerDensity}
         chromeVisible={chromeVisible}
+        chromeCollapsed={chromeCollapsed}
       />
       <View style={styles.body}>{children}</View>
       {showLegalFooter ? <LegalFooter variant="onLight" /> : null}
