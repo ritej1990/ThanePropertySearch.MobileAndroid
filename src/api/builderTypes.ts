@@ -85,6 +85,28 @@ export type PagedResult<T> = {
   totalPages: number;
 };
 
+export type UpsertBuilderProjectRequest = {
+  projectName: string;
+  builderName: string;
+  description: string;
+  address: string;
+  areaName: string;
+  latitude: number;
+  longitude: number;
+  towerCount: number;
+  totalUnits: number;
+  projectStatus: string;
+  possessionDate: string | null;
+  reraNumber: string;
+  loanFinanceAvailable: boolean;
+  apfNumberAvailable: boolean;
+  apfNumber: string | null;
+  preferredBank: string | null;
+  amenities: string | null;
+  coverImageUrl: string | null;
+  isPublished: boolean;
+};
+
 export type BuilderDashboardStats = {
   totalProjects: number;
   liveProjects: number;

@@ -81,10 +81,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
     }
     setBusy(plan.code);
     try {
-      const order = await paymentsApi.createAgentListingPublishOrder(
-        plan.code,
-        'thaneproperty://payment-return'
-      );
+      const order = await paymentsApi.createAgentListingPublishOrder(plan.code);
       navigation.navigate('CashfreeCheckout', {
         product: 'agent_publish',
         paymentSessionId: order.paymentSessionId,
@@ -107,10 +104,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
     }
     setBusy(plan.code);
     try {
-      const order = await paymentsApi.createAgentLeadCreditsOrder(
-        plan.code,
-        'thaneproperty://payment-return'
-      );
+      const order = await paymentsApi.createAgentLeadCreditsOrder(plan.code);
       navigation.navigate('CashfreeCheckout', {
         product: 'agent_leads',
         paymentSessionId: order.paymentSessionId,

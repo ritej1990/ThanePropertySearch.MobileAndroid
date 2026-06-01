@@ -42,10 +42,7 @@ export default function BuilderPaymentsScreen({ navigation }: Props) {
   async function buyUpload() {
     setBusy(true);
     try {
-      const order = await paymentsApi.createBuilderProjectUploadOrder(
-        'BUPLOAD1',
-        'thaneproperty://payment-return'
-      );
+      const order = await paymentsApi.createBuilderProjectUploadOrder('BUPLOAD1');
       navigation.navigate('CashfreeCheckout', {
         product: 'builder_upload',
         paymentSessionId: order.paymentSessionId,

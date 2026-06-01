@@ -125,6 +125,14 @@ function BuilderDashboardContent({ navigation }: Props) {
         <Text style={styles.paymentsBtnText}>Plans & upload credits</Text>
       </Pressable>
 
+      <Pressable
+        style={styles.postProjectBtn}
+        onPress={() => navigation.navigate('BuilderProjectForm')}
+      >
+        <Ionicons name="add-circle-outline" size={20} color={colors.heroText} />
+        <Text style={styles.postProjectBtnText}>Post new project</Text>
+      </Pressable>
+
       <Text style={styles.sectionLabel}>Your projects</Text>
     </View>
   );
@@ -176,14 +184,14 @@ function BuilderDashboardContent({ navigation }: Props) {
               <Ionicons name="construct-outline" size={48} color={colors.slateLight} />
               <Text style={styles.emptyTitle}>No projects yet</Text>
               <Text style={styles.emptySub}>
-                Your published projects will appear here. Contact support if you need
-                help setting up your builder profile.
+                Post your first builder project — same fields as the web dashboard.
               </Text>
               <Pressable
                 style={styles.emptyCta}
-                onPress={() => navigation.navigate('SupportTickets')}
+                onPress={() => navigation.navigate('BuilderProjectForm')}
               >
-                <Text style={styles.emptyCtaText}>Contact support</Text>
+                <Ionicons name="add-circle-outline" size={18} color={colors.heroText} />
+                <Text style={styles.emptyCtaText}>Post your first project</Text>
               </Pressable>
             </View>
           }
@@ -195,9 +203,21 @@ function BuilderDashboardContent({ navigation }: Props) {
                   navigation.navigate('BuilderProjectDetails', {
                     projectId: item.id,
                     title: item.projectName,
+                    manage: true,
                   })
                 }
               />
+              <View style={styles.rowActions}>
+                <Pressable
+                  style={styles.editBtn}
+                  onPress={() =>
+                    navigation.navigate('BuilderProjectForm', { projectId: item.id })
+                  }
+                >
+                  <Ionicons name="pencil-outline" size={14} color={colors.builder} />
+                  <Text style={styles.editBtnText}>Edit project</Text>
+                </Pressable>
+              </View>
               <Pressable
                 style={styles.leadStrip}
                 onPress={() =>
@@ -315,6 +335,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.builder,
   },
+  postProjectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.builder,
+  },
+  postProjectBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.heroText,
+  },
   sectionLabel: {
     fontSize: 16,
     fontWeight: '800',
@@ -323,6 +359,28 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: spacing.lg,
+  },
+  rowActions: {
+    flexDirection: 'row',
+    marginTop: -spacing.xs,
+    marginBottom: spacing.xs,
+    marginLeft: spacing.sm,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.builderSoft,
+    borderWidth: 1,
+    borderColor: colors.builderBorder,
+  },
+  editBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.builder,
   },
   leadStrip: {
     flexDirection: 'row',
@@ -382,8 +440,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginTop: spacing.lg,
-    backgroundColor: '#0d9488',
+    backgroundColor: colors.builder,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: radius.md,

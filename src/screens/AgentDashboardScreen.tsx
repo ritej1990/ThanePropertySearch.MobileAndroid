@@ -160,8 +160,8 @@ function AgentDashboardContent({ navigation }: Props) {
                 <Ionicons name="home-outline" size={40} color={colors.slateLight} />
                 <Text style={styles.emptyTitle}>No listings yet</Text>
                 <Text style={styles.emptySub}>
-                  Purchase a publish plan, then post your first agent listing from the web
-                  dashboard or upcoming mobile post flow.
+                  Purchase a publish plan, then post your first agent listing — same flow
+                  as the web dashboard.
                 </Text>
                 {approved ? (
                   <Pressable
@@ -188,31 +188,42 @@ function AgentDashboardContent({ navigation }: Props) {
           renderItem={({ item }) => {
             const statusStyle = reviewStatusStyle(item.reviewStatus);
             return (
-              <Pressable
-                style={styles.row}
-                onPress={() =>
-                  navigation.navigate('PropertyDetails', {
-                    propertyId: item.id,
-                    title: item.title,
-                    listingSource: 'agent',
-                  })
-                }
-              >
-                <View style={styles.rowBody}>
-                  <Text style={styles.rowTitle} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.rowMeta}>{item.areaName}</Text>
-                  <View
-                    style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}
-                  >
-                    <Text style={[styles.statusText, { color: statusStyle.text }]}>
-                      {item.reviewStatus}
+              <View style={styles.row}>
+                <Pressable
+                  style={styles.rowMain}
+                  onPress={() =>
+                    navigation.navigate('PropertyDetails', {
+                      propertyId: item.id,
+                      title: item.title,
+                      listingSource: 'agent',
+                    })
+                  }
+                >
+                  <View style={styles.rowBody}>
+                    <Text style={styles.rowTitle} numberOfLines={2}>
+                      {item.title}
                     </Text>
+                    <Text style={styles.rowMeta}>{item.areaName}</Text>
+                    <View
+                      style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}
+                    >
+                      <Text style={[styles.statusText, { color: statusStyle.text }]}>
+                        {item.reviewStatus}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.slateLight} />
-              </Pressable>
+                  <Ionicons name="chevron-forward" size={20} color={colors.slateLight} />
+                </Pressable>
+                <Pressable
+                  style={styles.editBtn}
+                  onPress={() =>
+                    navigation.navigate('PostProperty', { listingId: item.id })
+                  }
+                >
+                  <Ionicons name="pencil-outline" size={16} color={colors.primary} />
+                  <Text style={styles.editBtnText}>Edit</Text>
+                </Pressable>
+              </View>
             );
           }}
         />
@@ -234,16 +245,36 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    gap: spacing.sm,
+  },
+  rowMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   rowBody: { flex: 1, minWidth: 0 },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  editBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   rowTitle: { fontSize: 15, fontWeight: '800', color: colors.navy },
   rowMeta: { fontSize: 12, color: colors.slateLight, marginTop: 4 },
   statusPill: {

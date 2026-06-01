@@ -16,8 +16,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/types';
+import type { AgentListingDetails } from '../api/agentTypes';
 import { agentListingsApi, paymentsApi, propertiesApi } from '../api/singleton';
 import { ApiError } from '../api/client';
+import { BrandLoading } from '../components/ui/BrandLoading';
 import { useAuth } from '../context/AuthContext';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
@@ -37,6 +39,7 @@ import type { SelectedPlace } from '../services/googlePlaces';
 import { colors, radius, spacing } from '../theme';
 import {
   POST_PROPERTY_STEPS,
+  agentListingFormFromDetail,
   buildCreateAgentListingRequest,
   buildCreatePropertyRequest,
   initialPostPropertyForm,
@@ -59,7 +62,9 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-export default function PostPropertyScreen({ navigation }: Props) {
+export default function PostPropertyScreen({ navigation, route }: Props) {
+  const listingId = route.params?.listingId;
+  const isAgentEdit = listingId != null;
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const isAgent = isAgentRole(profile?.role);
@@ -68,6 +73,9 @@ export default function PostPropertyScreen({ navigation }: Props) {
   const [step, setStep] = useState<PostPropertyStepIndex>(0);
   const [form, setForm] = useState<PostPropertyFormState>(initialPostPropertyForm);
   const [images, setImages] = useState<PickedImage[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+  const [listingMeta, setListingMeta] = useState<AgentListingDetails | null>(null);
+  const [loadingListing, setLoadingListing] = useState(isAgentEdit);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [publishCredits, setPublishCredits] = useState(0);
@@ -84,22 +92,70 @@ export default function PostPropertyScreen({ navigation }: Props) {
     }
   }, [isAgent]);
 
+  const loadAgentListing = useCallback(async () => {
+    if (!listingId) return;
+    setLoadingListing(true);
+    try {
+      const detail = await agentListingsApi.getById(listingId);
+      setListingMeta(detail);
+      setForm(agentListingFormFromDetail(detail));
+      const gallery = detail.imageUrls ?? [];
+      const cover = detail.coverImageUrl?.trim();
+      const urls = cover
+        ? [cover, ...gallery.filter((u) => u && u !== cover)]
+        : gallery.filter(Boolean);
+      setExistingImageUrls(urls);
+      setImages([]);
+    } catch (e) {
+      Alert.alert(
+        'Could not load listing',
+        e instanceof ApiError ? e.message : 'Try again.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } finally {
+      setLoadingListing(false);
+    }
+  }, [listingId, navigation]);
+
   useFocusEffect(
     useCallback(() => {
+      if (isAgentEdit) {
+        if (!isAgent) {
+          navigation.replace('Home');
+          return;
+        }
+        void loadAgentListing();
+        return;
+      }
       if (!isAgent && !isOwner) {
         navigation.replace('Home');
         return;
       }
       loadAgentCredits();
-    }, [isAgent, isOwner, loadAgentCredits, navigation])
+    }, [
+      isAgent,
+      isAgentEdit,
+      isOwner,
+      loadAgentCredits,
+      loadAgentListing,
+      navigation,
+    ])
   );
 
   const mapsEnabled = hasGoogleMapsKey();
   const isLastStep = step === 3;
   const stepMeta = POST_PROPERTY_STEPS[step];
-  const canAgentPost = !isAgent || publishCredits > 0;
-  const screenTitle = isAgent ? 'Post agent listing' : 'Post your property';
-  const submitLabel = isAgent ? 'Post listing' : 'Post property';
+  const canAgentPost = !isAgent || isAgentEdit || publishCredits > 0;
+  const screenTitle = isAgentEdit
+    ? 'Edit listing'
+    : isAgent
+      ? 'Post agent listing'
+      : 'Post your property';
+  const submitLabel = isAgentEdit
+    ? 'Save changes'
+    : isAgent
+      ? 'Post listing'
+      : 'Post property';
 
   function patch<K extends keyof PostPropertyFormState>(
     key: K,
@@ -143,7 +199,7 @@ export default function PostPropertyScreen({ navigation }: Props) {
 
   function goNext() {
     Keyboard.dismiss();
-    const err = validatePostPropertyStep(step, form);
+    const err = validatePostPropertyStep(step, form, { editMode: isAgentEdit });
     if (err) {
       setFormError(err);
       return;
@@ -185,7 +241,7 @@ export default function PostPropertyScreen({ navigation }: Props) {
   }
 
   async function handleSubmit() {
-    if (isAgent && publishCredits <= 0) {
+    if (isAgent && !isAgentEdit && publishCredits <= 0) {
       Alert.alert(
         'Publish credit required',
         'Purchase a listing publish plan before posting. One credit is used per listing.',
@@ -197,7 +253,7 @@ export default function PostPropertyScreen({ navigation }: Props) {
       return;
     }
 
-    const validationError = validatePostPropertyForm(form);
+    const validationError = validatePostPropertyForm(form, { editMode: isAgentEdit });
     if (validationError) {
       setFormError(validationError);
       return;
@@ -217,21 +273,46 @@ export default function PostPropertyScreen({ navigation }: Props) {
       }
 
       if (isAgent) {
-        const duration = listingDurationFromTier(activePublishTier);
-        const body = buildCreateAgentListingRequest(form, uploadedUrls, duration);
-        const created = await agentListingsApi.create(body);
-        Alert.alert(
-          'Listing submitted',
-          'Your agent listing is pending admin review. It will appear on your dashboard once approved.',
-          [
+        const imageUrls =
+          uploadedUrls.length > 0 ? uploadedUrls : existingImageUrls;
+        if (isAgentEdit && listingId && listingMeta) {
+          const body = buildCreateAgentListingRequest(
+            form,
+            imageUrls,
+            listingMeta.listingDurationDays,
             {
-              text: 'Agent dashboard',
-              onPress: () => navigation.navigate('AgentDashboard'),
-            },
-            { text: 'OK', style: 'cancel' },
-          ]
-        );
-        void created.id;
+              isPublished: listingMeta.isPublished,
+              isNegotiable: listingMeta.isNegotiable,
+            }
+          );
+          await agentListingsApi.update(listingId, body);
+          Alert.alert(
+            'Listing updated',
+            'Your changes were saved and sent back for admin review.',
+            [
+              {
+                text: 'Agent dashboard',
+                onPress: () => navigation.navigate('AgentDashboard'),
+              },
+              { text: 'OK', style: 'cancel' },
+            ]
+          );
+        } else {
+          const duration = listingDurationFromTier(activePublishTier);
+          const body = buildCreateAgentListingRequest(form, uploadedUrls, duration);
+          await agentListingsApi.create(body);
+          Alert.alert(
+            'Listing submitted',
+            'Your agent listing is pending admin review. It will appear on your dashboard once approved.',
+            [
+              {
+                text: 'Agent dashboard',
+                onPress: () => navigation.navigate('AgentDashboard'),
+              },
+              { text: 'OK', style: 'cancel' },
+            ]
+          );
+        }
       } else {
         const body = buildCreatePropertyRequest(form, uploadedUrls);
         const created = await propertiesApi.create(body);
@@ -445,16 +526,41 @@ export default function PostPropertyScreen({ navigation }: Props) {
               icon="camera-outline"
               accent="#ea580c"
             >
+              {isAgentEdit && existingImageUrls.length > 0 ? (
+                <View style={styles.existingPhotos}>
+                  <Text style={styles.existingPhotosLabel}>
+                    Current photos ({existingImageUrls.length}) — add new ones below
+                    or save to keep these.
+                  </Text>
+                  <Pressable
+                    onPress={() => setExistingImageUrls([])}
+                    style={styles.clearPhotosBtn}
+                  >
+                    <Text style={styles.clearPhotosText}>Remove all current photos</Text>
+                  </Pressable>
+                </View>
+              ) : null}
               <PhotoPickerSection
                 images={images}
                 onAdd={pickImages}
                 onRemove={(i) => setImages((prev) => prev.filter((_, j) => j !== i))}
               />
             </SectionCard>
-            <ReviewSummaryCard form={form} photoCount={images.length} />
+            <ReviewSummaryCard
+              form={form}
+              photoCount={images.length + existingImageUrls.length}
+            />
           </>
         );
     }
+  }
+
+  if (loadingListing) {
+    return (
+      <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
+        <BrandLoading message="Loading listing…" />
+      </AuthenticatedScreenLayout>
+    );
   }
 
   return (
@@ -527,7 +633,9 @@ export default function PostPropertyScreen({ navigation }: Props) {
           <GradientButton
             label={
               submitting
-                ? 'Posting…'
+                ? isAgentEdit
+                  ? 'Saving…'
+                  : 'Posting…'
                 : isLastStep
                   ? submitLabel
                   : 'Continue'
@@ -718,5 +826,27 @@ const styles = StyleSheet.create({
   },
   footerPrimaryFull: {
     flex: 1,
+  },
+  existingPhotos: {
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  existingPhotosLabel: {
+    fontSize: 13,
+    color: colors.slateMuted,
+    lineHeight: 18,
+    marginBottom: spacing.sm,
+  },
+  clearPhotosBtn: {
+    alignSelf: 'flex-start',
+  },
+  clearPhotosText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.error,
   },
 });

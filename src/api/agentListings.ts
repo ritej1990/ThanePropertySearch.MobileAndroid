@@ -16,6 +16,10 @@ export function createAgentListingsApi(client: ReturnType<typeof createApiClient
       return client.post<AgentListingDetails>('/api/agent-listings', body);
     },
 
+    update(id: number, body: CreateAgentListingRequest) {
+      return client.put<AgentListingDetails>(`/api/agent-listings/${id}`, body);
+    },
+
     /** Agent owner / admin — includes pending & unpublished listings. */
     getById(id: number) {
       return client.get<AgentListingDetails>(`/api/agent-listings/${id}`);
