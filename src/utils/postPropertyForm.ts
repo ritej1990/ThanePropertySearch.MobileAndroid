@@ -1,7 +1,7 @@
 import { hasGoogleMapsKey, THANE_MAP_CENTER } from '../config/env';
 import { isWithinThaneBounds } from './mapHelpers';
 import type { CreatePropertyRequest } from '../api/createPropertyTypes';
-import type { CreateAgentListingRequest } from '../api/agentTypes';
+import type { AgentListingDetails, CreateAgentListingRequest } from '../api/agentTypes';
 import type { SelectedPlace } from '../services/googlePlaces';
 
 export const BHK_OPTIONS = ['1 RK', '1 BHK', '2 BHK', '3 BHK'] as const;
@@ -60,9 +60,59 @@ export const POST_PROPERTY_STEPS = [
 
 export type PostPropertyStepIndex = 0 | 1 | 2 | 3;
 
+export function listingCategoryToFlags(category: string): Pick<
+  PostPropertyFormState,
+  'isForRent' | 'isForSale' | 'isForPg'
+> {
+  const c = category.trim().toLowerCase();
+  if (c === 'pg') {
+    return { isForRent: true, isForSale: false, isForPg: true };
+  }
+  if (c === 'sale') {
+    return { isForRent: false, isForSale: true, isForPg: false };
+  }
+  return { isForRent: true, isForSale: false, isForPg: false };
+}
+
+export function agentListingFormFromDetail(
+  listing: AgentListingDetails
+): PostPropertyFormState {
+  const flags = listingCategoryToFlags(listing.listingCategory);
+  const availableFrom =
+    listing.availableFrom && listing.availableFrom.length >= 10
+      ? listing.availableFrom.slice(0, 10)
+      : '';
+
+  return {
+    title: listing.title ?? '',
+    description: listing.description ?? '',
+    areaName: listing.areaName ?? '',
+    pincode: '',
+    address: listing.address ?? '',
+    bhkConfiguration: listing.bhkConfiguration ?? '',
+    rentAmount: String(listing.rentAmount ?? ''),
+    sellPrice: listing.sellPrice != null ? String(listing.sellPrice) : '',
+    depositAmount: String(listing.depositAmount ?? ''),
+    builtupSqft: String(listing.builtupSqft ?? ''),
+    ...flags,
+    availableFrom,
+    locationQuery: listing.areaName || listing.address,
+    selectedPlace: {
+      placeId: `listing-${listing.id}`,
+      label: listing.areaName || listing.address,
+      address: listing.address,
+      areaName: listing.areaName,
+      pincode: '',
+      latitude: listing.latitude,
+      longitude: listing.longitude,
+    },
+  };
+}
+
 export function validatePostPropertyStep(
   step: PostPropertyStepIndex,
-  form: PostPropertyFormState
+  form: PostPropertyFormState,
+  options?: { editMode?: boolean }
 ): string | null {
   if (step === 0) {
     if (!form.title.trim()) return 'Enter a catchy listing title.';
@@ -108,7 +158,19 @@ export function validatePostPropertyStep(
     }
     if (!form.address.trim()) return 'Address is required.';
     if (!form.areaName.trim()) return 'Enter the area name (e.g. Thane West).';
-    if (!/^\d{6}$/.test(form.pincode.trim())) return 'Enter a valid 6-digit pincode.';
+    if (
+      !options?.editMode &&
+      !/^\d{6}$/.test(form.pincode.trim())
+    ) {
+      return 'Enter a valid 6-digit pincode.';
+    }
+    if (
+      options?.editMode &&
+      form.pincode.trim() &&
+      !/^\d{6}$/.test(form.pincode.trim())
+    ) {
+      return 'Enter a valid 6-digit pincode.';
+    }
     return null;
   }
 
@@ -116,10 +178,15 @@ export function validatePostPropertyStep(
 }
 
 export function validatePostPropertyForm(
-  form: PostPropertyFormState
+  form: PostPropertyFormState,
+  options?: { editMode?: boolean }
 ): string | null {
   for (let i = 0; i < 3; i++) {
-    const err = validatePostPropertyStep(i as PostPropertyStepIndex, form);
+    const err = validatePostPropertyStep(
+      i as PostPropertyStepIndex,
+      form,
+      options
+    );
     if (err) return err;
   }
   return null;
@@ -160,7 +227,8 @@ export function listingDurationFromTier(tierCode: string | null | undefined): nu
 export function buildCreateAgentListingRequest(
   form: PostPropertyFormState,
   imageUrls: string[],
-  listingDurationDays = 30
+  listingDurationDays = 30,
+  overrides?: Partial<Pick<CreateAgentListingRequest, 'isPublished' | 'isNegotiable'>>
 ): CreateAgentListingRequest {
   const rent = parseDecimal(form.rentAmount)!;
   const deposit = parseDecimal(form.depositAmount)!;
@@ -196,9 +264,9 @@ export function buildCreateAgentListingRequest(
     longitude: lng,
     coverImageUrl: cover,
     imageUrls: gallery.length > 0 ? gallery : null,
-    isPublished: true,
+    isPublished: overrides?.isPublished ?? true,
     listingDurationDays,
-    isNegotiable: false,
+    isNegotiable: overrides?.isNegotiable ?? false,
     availableFrom,
   };
 }

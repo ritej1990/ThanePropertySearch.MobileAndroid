@@ -8,7 +8,8 @@ export type RootStackParamList = {
   Policy: { kind: PolicyKind };
   Home: undefined;
   OwnerDashboard: undefined;
-  PostProperty: undefined;
+  PostProperty: { listingId?: number } | undefined;
+  BuilderProjectForm: { projectId?: number } | undefined;
   PropertyDetails: {
     propertyId: number;
     title?: string;
@@ -47,7 +48,7 @@ export type RootStackParamList = {
   SupportTickets: undefined;
   SupportTicketDetails: { ticketId: number; subject?: string };
   BuilderProjects: undefined;
-  BuilderProjectDetails: { projectId: number; title?: string };
+  BuilderProjectDetails: { projectId: number; title?: string; manage?: boolean };
   BuilderDashboard: undefined;
   MyPayments: { essentialOnly?: boolean } | undefined;
   VisitRequests: { propertyId: number; title?: string };

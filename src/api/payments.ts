@@ -9,7 +9,14 @@ import type {
   EssentialStatus,
   PricingCatalog,
 } from './paymentTypes';
-import { contactPackReturnUrl, essentialReturnUrl } from './paymentReturnUrls';
+import {
+  agentLeadCreditsReturnUrl,
+  agentListingPublishReturnUrl,
+  builderLeadCreditsReturnUrl,
+  builderProjectUploadReturnUrl,
+  contactPackReturnUrl,
+  essentialReturnUrl,
+} from './paymentReturnUrls';
 
 export function createPaymentsApi(client: ReturnType<typeof createApiClient>) {
   return {
@@ -75,31 +82,31 @@ export function createPaymentsApi(client: ReturnType<typeof createApiClient>) {
       return client.get<AgentPaymentSummaryResponse>('/api/payments/agent/summary');
     },
 
-    createBuilderProjectUploadOrder(tierCode: string, returnUrl: string) {
+    createBuilderProjectUploadOrder(tierCode: string) {
       return client.post<CashfreeOrderResponse>(
         '/api/payments/cashfree/create-builder-project-upload-order',
-        { tierCode, returnUrl }
+        { tierCode, returnUrl: builderProjectUploadReturnUrl(tierCode) }
       );
     },
 
-    createBuilderLeadCreditsOrder(tierCode: string, returnUrl: string) {
+    createBuilderLeadCreditsOrder(packageCode: string) {
       return client.post<CashfreeOrderResponse>(
         '/api/payments/cashfree/create-builder-lead-credits-order',
-        { tierCode, returnUrl }
+        { packageCode, returnUrl: builderLeadCreditsReturnUrl(packageCode) }
       );
     },
 
-    createAgentListingPublishOrder(tierCode: string, returnUrl: string) {
+    createAgentListingPublishOrder(tierCode: string) {
       return client.post<CashfreeOrderResponse>(
         '/api/payments/cashfree/create-agent-listing-publish-order',
-        { tierCode, returnUrl }
+        { tierCode, returnUrl: agentListingPublishReturnUrl(tierCode) }
       );
     },
 
-    createAgentLeadCreditsOrder(tierCode: string, returnUrl: string) {
+    createAgentLeadCreditsOrder(packageCode: string) {
       return client.post<CashfreeOrderResponse>(
         '/api/payments/cashfree/create-agent-lead-credits-order',
-        { tierCode, returnUrl }
+        { packageCode, returnUrl: agentLeadCreditsReturnUrl(packageCode) }
       );
     },
 
@@ -108,6 +115,18 @@ export function createPaymentsApi(client: ReturnType<typeof createApiClient>) {
         '/api/payments/builder-project-upload/purchase',
         {
           tierCode,
+          paymentMethod: 'Cashfree',
+          paymentReference: orderId,
+          paymentAmountDeclared: amountInr,
+        }
+      );
+    },
+
+    activateBuilderLeadCredits(packageCode: string, orderId: string, amountInr: number) {
+      return client.post<{ message: string }>(
+        '/api/payments/builder-lead-credits/purchase',
+        {
+          packageCode,
           paymentMethod: 'Cashfree',
           paymentReference: orderId,
           paymentAmountDeclared: amountInr,

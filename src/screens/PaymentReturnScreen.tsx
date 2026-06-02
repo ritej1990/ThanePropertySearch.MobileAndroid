@@ -106,12 +106,43 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
         propertyId: resolved.returnPropertyId,
         title: undefined,
       });
-    } else if (resolved.product === 'essential') {
-      navigation.replace('EssentialService');
-    } else {
-      navigation.replace('Home');
+      return;
+    }
+    switch (resolved.product) {
+      case 'essential':
+        navigation.replace('EssentialService');
+        break;
+      case 'contact_pack':
+        navigation.replace('Home');
+        break;
+      case 'builder_upload':
+      case 'builder_leads':
+        navigation.replace('BuilderPayments');
+        break;
+      case 'agent_publish':
+      case 'agent_leads':
+        navigation.replace('AgentPayments');
+        break;
+      default:
+        navigation.replace('Home');
     }
   }, [navigation, resolved]);
+
+  const retryRoute = useCallback(() => {
+    if (!resolved) return 'EssentialService' as const;
+    switch (resolved.product) {
+      case 'contact_pack':
+        return 'ContactPackPurchase' as const;
+      case 'builder_upload':
+      case 'builder_leads':
+        return 'BuilderPayments' as const;
+      case 'agent_publish':
+      case 'agent_leads':
+        return 'AgentPayments' as const;
+      default:
+        return 'EssentialService' as const;
+    }
+  }, [resolved]);
 
   return (
     <View style={styles.screen}>
@@ -154,18 +185,18 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
             </Text>
             <Pressable
               style={styles.retryBtn}
-              onPress={() =>
-                navigation.replace(
-                  resolved?.product === 'contact_pack'
-                    ? 'ContactPackPurchase'
-                    : 'EssentialService'
-                )
-              }
+              onPress={() => navigation.replace(retryRoute())}
             >
               <Text style={styles.retryText}>
                 {resolved?.product === 'contact_pack'
                   ? 'Back to contact pack'
-                  : 'Back to plans'}
+                  : resolved?.product === 'builder_upload' ||
+                      resolved?.product === 'builder_leads'
+                    ? 'Back to builder payments'
+                    : resolved?.product === 'agent_publish' ||
+                        resolved?.product === 'agent_leads'
+                      ? 'Back to agent payments'
+                      : 'Back to plans'}
               </Text>
             </Pressable>
             <Pressable

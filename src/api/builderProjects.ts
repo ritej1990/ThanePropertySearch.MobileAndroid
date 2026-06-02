@@ -6,6 +6,7 @@ import type {
   BuilderProjectDetail,
   BuilderProjectSummary,
   PagedResult,
+  UpsertBuilderProjectRequest,
 } from './builderTypes';
 import {
   enrichBuilderProject,
@@ -77,6 +78,14 @@ export function createBuilderProjectsApi(client: ReturnType<typeof createApiClie
 
     getLeads(projectId: number) {
       return client.get<BuilderLead[]>(`/api/builder-projects/${projectId}/leads`);
+    },
+
+    create(body: UpsertBuilderProjectRequest) {
+      return client.post<BuilderProjectDetail>('/api/builder-projects', body);
+    },
+
+    update(id: number, body: UpsertBuilderProjectRequest) {
+      return client.put<BuilderProjectDetail>(`/api/builder-projects/${id}`, body);
     },
   };
 }

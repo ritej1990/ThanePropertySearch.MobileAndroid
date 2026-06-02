@@ -37,6 +37,7 @@ import AgentDashboardScreen from './src/screens/AgentDashboardScreen';
 import AgentPendingApprovalScreen from './src/screens/AgentPendingApprovalScreen';
 import AgentPaymentsScreen from './src/screens/AgentPaymentsScreen';
 import BuilderPaymentsScreen from './src/screens/BuilderPaymentsScreen';
+import BuilderProjectFormScreen from './src/screens/BuilderProjectFormScreen';
 import InvoiceViewerScreen from './src/screens/InvoiceViewerScreen';
 import PolicyScreen from './src/screens/PolicyScreen';
 import { linking } from './src/navigation/linking';
@@ -261,6 +262,13 @@ function AppNavigator() {
             component={BuilderLeadsScreen}
             options={{ headerShown: false }}
           />
+          {isBuilder ? (
+            <Stack.Screen
+              name="BuilderProjectForm"
+              component={BuilderProjectFormScreen}
+              options={{ headerShown: false }}
+            />
+          ) : null}
           <Stack.Screen
             name="AgentPendingApproval"
             component={AgentPendingApprovalScreen}

@@ -8,8 +8,7 @@ import {
 import { WebView, type WebViewNavigation } from 'react-native-webview';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
-  contactPackReturnUrl,
-  essentialReturnUrl,
+  cashfreeReturnUrlForProduct,
   isCashfreeReturnNavigation,
   parseCashfreeReturnUrl,
   resolveReturnUrl,
@@ -113,10 +112,7 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
     });
   }, [product, orderId, tierCode, amountInr, returnPropertyId]);
 
-  const returnUrlTemplate =
-    product === 'essential' && tierCode
-      ? essentialReturnUrl(tierCode)
-      : contactPackReturnUrl();
+  const returnUrlTemplate = cashfreeReturnUrlForProduct(product, tierCode);
   const returnUrl = resolveReturnUrl(returnUrlTemplate, orderId);
   const html = useMemo(
     () => buildCheckoutHtml(paymentSessionId, environment, returnUrl),

@@ -67,7 +67,7 @@ function StatTile({
 }
 
 export default function BuilderProjectDetailsScreen({ route, navigation }: Props) {
-  const { projectId } = route.params;
+  const { projectId, manage } = route.params;
   const [item, setItem] = useState<BuilderProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +197,17 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
         </View>
 
         <View style={styles.body}>
+          {manage ? (
+            <Pressable
+              style={styles.manageEditBtn}
+              onPress={() =>
+                navigation.navigate('BuilderProjectForm', { projectId: item.id })
+              }
+            >
+              <Ionicons name="pencil-outline" size={18} color={colors.builder} />
+              <Text style={styles.manageEditText}>Edit project</Text>
+            </Pressable>
+          ) : null}
           <LinearGradient
             colors={[...gradients.builder]}
             start={{ x: 0, y: 0 }}
@@ -499,6 +510,23 @@ const styles = StyleSheet.create({
     marginTop: -spacing.xl,
     paddingHorizontal: spacing.lg,
     paddingTop: 0,
+  },
+  manageEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.builderSoft,
+    borderWidth: 1,
+    borderColor: colors.builderBorder,
+  },
+  manageEditText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.builder,
   },
   priceHighlight: {
     flexDirection: 'row',

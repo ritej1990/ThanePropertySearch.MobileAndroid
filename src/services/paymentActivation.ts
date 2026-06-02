@@ -40,6 +40,15 @@ export async function activateCashfreeOrder(
         );
         return res.message;
       }
+      if (product === 'builder_leads') {
+        if (!tierCode) throw new Error('Lead pack is missing.');
+        const res = await paymentsApi.activateBuilderLeadCredits(
+          tierCode,
+          orderId,
+          amountInr
+        );
+        return res.message;
+      }
       if (product === 'agent_publish') {
         if (!tierCode) throw new Error('Plan tier is missing.');
         const res = await paymentsApi.activateAgentListingPublish(
