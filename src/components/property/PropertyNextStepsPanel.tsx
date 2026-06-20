@@ -19,10 +19,13 @@ import { propertiesApi } from '../../api/singleton';
 import type { EssentialStatus } from '../../api/paymentTypes';
 import type { OwnerContact } from '../../api/inquiryTypes';
 import type { RootStackParamList } from '../../navigation/types';
+import { useTranslation } from '../../context/LocaleContext';
 import {
   alertPlanRequired,
+  canRevealOwnerContact,
   handlePlanUsageError,
   hasActivePlanCredits,
+  isEssentialPlanExpired,
 } from '../../utils/planUsage';
 import { colors, radius, spacing } from '../../theme';
 
@@ -104,6 +107,7 @@ export function PropertyNextStepsPanel({
   navigation,
   onUsageChanged,
 }: Props) {
+  const { t } = useTranslation();
   const [essential, setEssential] = useState<EssentialStatus | null>(null);
   const [visitModal, setVisitModal] = useState(false);
   const [requestModal, setRequestModal] = useState(false);
@@ -131,12 +135,16 @@ export function PropertyNextStepsPanel({
 
   function ensurePlanCredits(): boolean {
     if (hasPlan) return true;
-    alertPlanRequired(navigation, propertyId);
+    alertPlanRequired(navigation, propertyId, isEssentialPlanExpired(essential), t);
     return false;
   }
 
   async function revealContact() {
-    if (!ensurePlanCredits()) return;
+    // Reveal can also be paid for with contact-pack credits, not just the plan.
+    if (!canRevealOwnerContact(essential)) {
+      alertPlanRequired(navigation, propertyId);
+      return;
+    }
     setBusy(true);
     try {
       const contact: OwnerContact = await propertiesApi.getOwnerContact(propertyId);

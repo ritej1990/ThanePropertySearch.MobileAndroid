@@ -1,5 +1,34 @@
 import type { EssentialStatus } from '../api/paymentTypes';
 
+export function normalizeEssentialUsage(status: EssentialStatus) {
+  const usageMax = Math.max(0, status.usageMax);
+  const apiUsed = Math.max(0, status.usageUsed);
+  const apiLeft = Math.max(0, status.usageLeft);
+
+  if (usageMax <= 0) {
+    return { usageMax: 0, usageUsed: apiUsed, usageLeft: apiLeft };
+  }
+
+  if (apiUsed + apiLeft === usageMax) {
+    return { usageMax, usageUsed: apiUsed, usageLeft: apiLeft };
+  }
+
+  if (apiLeft <= usageMax) {
+    return {
+      usageMax,
+      usageUsed: Math.max(0, usageMax - apiLeft),
+      usageLeft: apiLeft,
+    };
+  }
+
+  const usageUsed = Math.min(usageMax, apiUsed);
+  return {
+    usageMax,
+    usageUsed,
+    usageLeft: Math.max(0, usageMax - usageUsed),
+  };
+}
+
 export function formatPlanEndDate(endsAtUtc: string | null | undefined): string | null {
   if (!endsAtUtc) return null;
   const d = new Date(endsAtUtc);
@@ -19,19 +48,21 @@ export function getEssentialStatusLabel(status: EssentialStatus | null): {
 } {
   if (!status) return { label: 'Inactive', tone: 'expired' };
 
+  const { usageLeft, usageMax } = normalizeEssentialUsage(status);
+
   const hasCreditsUsed =
     !status.active &&
     status.endsAtUtc &&
     new Date(status.endsAtUtc) > new Date() &&
-    status.usageMax > 0 &&
-    status.usageLeft <= 0;
+    usageMax > 0 &&
+    usageLeft <= 0;
 
   if (hasCreditsUsed) return { label: 'Credits used', tone: 'warn' };
 
   const expired = !status.active;
   if (expired) return { label: 'Expired', tone: 'expired' };
 
-  if (status.usageLeft <= 5) return { label: 'Low usage', tone: 'warn' };
+  if (usageLeft <= 5) return { label: 'Low usage', tone: 'warn' };
 
   return { label: 'Active', tone: 'active' };
 }

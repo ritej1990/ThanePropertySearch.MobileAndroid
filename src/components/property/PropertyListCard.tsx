@@ -1,33 +1,32 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { PropertyResponse } from '../../api/types';
 import { PropertyChip } from './PropertyChip';
 import { PropertyImage } from './PropertyImage';
+import { PropertyListMetaPanel } from './PropertyListMetaPanel';
 import { colors, radius, spacing } from '../../theme';
-import { formatInr, listingTypeChips, parseRichMetadata } from '../../utils/propertyFormat';
+import { listingTypeChips } from '../../utils/propertyFormat';
 import { formatRating, getPrimaryPrice } from '../../utils/propertyDisplay';
+import { buildPropertyListCardMeta } from '../../utils/propertyListMeta';
 import { resolveListingRera, shouldShowListingRera, isNewListing } from '../../utils/listingRera';
 import { ReraBadge } from './ReraBadge';
 import { NewListingRibbon } from './NewListingRibbon';
+import { AiCardInsight } from './AiCardInsight';
 
 type Props = {
   item: PropertyResponse;
   onPress: () => void;
 };
 
-export function PropertyListCard({ item, onPress }: Props) {
+function PropertyListCardBase({ item, onPress }: Props) {
   const chips = listingTypeChips(item);
   const price = getPrimaryPrice(item);
-  const rich = parseRichMetadata(item.richMetadataJson);
-  const possessionLabel =
-    rich.possessionStatus?.trim() ||
-    rich.society?.possessionDetail?.trim() ||
-    null;
+  const listMeta = useMemo(() => buildPropertyListCardMeta(item), [item]);
   const isNew = isNewListing(item.createdAtUtc);
   const descSnippet = item.description?.trim()
-    ? item.description.trim().slice(0, 90) + (item.description.length > 90 ? '…' : '')
+    ? item.description.trim().slice(0, 120) + (item.description.length > 120 ? '…' : '')
     : null;
   const rera = resolveListingRera(item);
   const showRera = shouldShowListingRera(item);
@@ -45,7 +44,7 @@ export function PropertyListCard({ item, onPress }: Props) {
           style={styles.mediaGradient}
           pointerEvents="none"
         />
-        <View style={styles.chipsTop} pointerEvents="none">
+        <View style={[styles.chipsTop, isNew && styles.chipsTopNew]} pointerEvents="none">
           {chips.map((c) => (
             <PropertyChip key={c.label} label={c.label} tone={c.tone} small />
           ))}
@@ -55,9 +54,9 @@ export function PropertyListCard({ item, onPress }: Props) {
           {item.isNegotiable ? (
             <PropertyChip label="Negotiable" tone="bhk" small />
           ) : null}
-          {item.isFeaturedInSearch && (
+          {item.isFeaturedInSearch ? (
             <PropertyChip label="Featured" tone="featured" small />
-          )}
+          ) : null}
         </View>
         <View style={styles.priceOverlay} pointerEvents="none">
           <Text style={styles.priceOverlayLabel}>{price.label}</Text>
@@ -68,12 +67,12 @@ export function PropertyListCard({ item, onPress }: Props) {
             ) : null}
           </Text>
         </View>
-        {item.imageUrls.length > 1 && (
+        {item.imageUrls.length > 1 ? (
           <View style={styles.photoBadge}>
             <Ionicons name="images-outline" size={12} color={colors.heroText} />
             <Text style={styles.photoBadgeText}>{item.imageUrls.length}</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.body}>
@@ -86,34 +85,33 @@ export function PropertyListCard({ item, onPress }: Props) {
           ) : null}
         </View>
 
-        <View style={styles.locationRow}>
-          <Ionicons name="location-outline" size={16} color="#0d9488" />
-          <Text style={styles.location} numberOfLines={2}>
-            {item.areaName}
-            {item.address ? ` · ${item.address}` : ''}
-          </Text>
+        <View style={styles.locationBlock}>
+          <View style={styles.locationRow}>
+            <Ionicons name="location-outline" size={16} color="#0d9488" />
+            <Text style={styles.areaName} numberOfLines={1}>
+              {item.areaName || 'Thane'}
+            </Text>
+          </View>
+          {item.address?.trim() ? (
+            <Text style={styles.address} numberOfLines={2}>
+              {item.address.trim()}
+            </Text>
+          ) : null}
         </View>
 
+        <PropertyListMetaPanel meta={listMeta} />
+
+        {showRera && rera ? (
+          <View style={styles.reraRow}>
+            <ReraBadge rera={rera} compact />
+          </View>
+        ) : null}
+
         {descSnippet ? (
-          <Text style={styles.descSnippet} numberOfLines={2}>
+          <Text style={styles.descSnippet} numberOfLines={3}>
             {descSnippet}
           </Text>
         ) : null}
-
-        <View style={styles.factsRow}>
-          {showRera && rera ? <ReraBadge rera={rera} compact /> : null}
-          {possessionLabel ? (
-            <View style={styles.possessionChip}>
-              <Ionicons name="calendar-outline" size={12} color="#0d9488" />
-              <Text style={styles.possessionText} numberOfLines={1}>
-                {possessionLabel}
-              </Text>
-            </View>
-          ) : null}
-          {item.builtupSqft > 0 ? (
-            <Text style={styles.factText}>{item.builtupSqft} sq.ft</Text>
-          ) : null}
-        </View>
 
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
@@ -128,14 +126,12 @@ export function PropertyListCard({ item, onPress }: Props) {
           ) : null}
         </View>
 
+        <AiCardInsight listingId={item.id} />
+
         <View style={styles.ctaRow}>
-          {item.isForRent && item.depositAmount > 0 ? (
-            <Text style={styles.depositInline}>
-              Deposit {formatInr(item.depositAmount)}
-            </Text>
-          ) : (
-            <View style={styles.ctaSpacer} />
-          )}
+          <Text style={styles.ctaHint} numberOfLines={1}>
+            Tap for full details, photos & amenities
+          </Text>
           <View style={styles.ctaLink}>
             <Text style={styles.cta}>View details</Text>
             <Ionicons name="arrow-forward" size={18} color={colors.primary} />
@@ -145,6 +141,9 @@ export function PropertyListCard({ item, onPress }: Props) {
     </Pressable>
   );
 }
+
+/** Memoized: FlatList recycles rows on scroll — avoids re-render churn for off-screen data. */
+export const PropertyListCard = React.memo(PropertyListCardBase);
 
 const styles = StyleSheet.create({
   card: {
@@ -184,6 +183,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+  },
+  chipsTopNew: {
+    left: 64,
   },
   priceOverlay: {
     position: 'absolute',
@@ -244,54 +246,35 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     lineHeight: 22,
   },
+  locationBlock: {
+    marginBottom: spacing.md,
+    gap: 4,
+  },
   locationRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 6,
-    marginBottom: spacing.md,
-    paddingRight: spacing.xs,
   },
-  location: {
+  areaName: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.slateMuted,
-  },
-  descSnippet: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.slateLight,
-    marginBottom: spacing.sm,
-  },
-  factsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  possessionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    maxWidth: '100%',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: radius.pill,
-    backgroundColor: '#ecfdf5',
-    borderWidth: 1,
-    borderColor: '#99f6e4',
-  },
-  possessionText: {
-    flexShrink: 1,
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0f766e',
   },
-  factText: {
+  address: {
     fontSize: 12,
-    fontWeight: '600',
+    lineHeight: 17,
+    color: colors.slateMuted,
+    paddingLeft: 22,
+  },
+  reraRow: {
+    marginBottom: spacing.sm,
+  },
+  descSnippet: {
+    fontSize: 12,
+    lineHeight: 18,
     color: colors.slateLight,
+    marginBottom: spacing.sm,
   },
   metaRow: {
     flexDirection: 'row',
@@ -325,15 +308,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#92400e',
   },
-  depositInline: {
+  ctaHint: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.slateLight,
     marginRight: spacing.sm,
-  },
-  ctaSpacer: {
-    flex: 1,
   },
   ctaLink: {
     flexDirection: 'row',

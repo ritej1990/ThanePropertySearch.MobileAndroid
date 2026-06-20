@@ -19,6 +19,8 @@ type Props = {
   size?: number;
   /** Show “Thane Flats” beside the mark */
   showWordmark?: boolean;
+  /** Inline element after the wordmark (e.g. plan usage %). */
+  trailing?: React.ReactNode;
   /** Subtitle under wordmark (e.g. loading message) */
   subtitle?: string;
   /** Gentle pulse while loading */
@@ -32,6 +34,7 @@ type Props = {
 export function ThaneFlatsLogo({
   size = 36,
   showWordmark = false,
+  trailing,
   subtitle,
   animated = false,
   onDark = false,
@@ -112,16 +115,19 @@ export function ThaneFlatsLogo({
     <View style={[styles.row, style]}>
       {animatedMark}
       <View style={styles.textCol}>
-        <Text
-          style={[
-            styles.wordmark,
-            onDark && styles.wordmarkDark,
-            { fontSize: Math.max(13, size * 0.38) },
-          ]}
-          numberOfLines={1}
-        >
-          Thane Flats
-        </Text>
+        <View style={styles.wordmarkRow}>
+          <Text
+            style={[
+              styles.wordmark,
+              onDark && styles.wordmarkDark,
+              { fontSize: Math.max(13, size * 0.38) },
+            ]}
+            numberOfLines={1}
+          >
+            Thane Flats
+          </Text>
+          {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
+        </View>
         {subtitle ? (
           <Text
             style={[styles.subtitle, onDark && styles.subtitleDark]}
@@ -159,6 +165,12 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
+  wordmarkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'nowrap',
+  },
   wordmark: {
     fontWeight: '800',
     letterSpacing: -0.3,
@@ -166,6 +178,9 @@ const styles = StyleSheet.create({
   },
   wordmarkDark: {
     color: colors.heroText,
+  },
+  trailing: {
+    flexShrink: 0,
   },
   subtitle: {
     marginTop: 2,

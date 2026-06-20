@@ -45,6 +45,12 @@
         {
           "photosPermission": "Allow Thane Flats to access your photos for property listings."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Thane Flats to use your location to show nearby homes in Thane."
+        }
       ]
     ]
   }

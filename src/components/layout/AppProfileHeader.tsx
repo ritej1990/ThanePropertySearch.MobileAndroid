@@ -15,13 +15,20 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { useResendEmailVerification } from '../../hooks/useResendEmailVerification';
+import { useEmailVerifyBanner } from '../../hooks/useEmailVerifyBanner';
 import { paymentsApi } from '../../api/singleton';
 import type { EssentialStatus } from '../../api/paymentTypes';
 import { EssentialUsageBar } from '../plans/EssentialUsageBar';
+import {
+  getPlanHeaderDisplay,
+  planHeaderPalette,
+} from '../../utils/planUsage';
 import { isUserRole } from '../../utils/roles';
 import { SignOutConfirmModal } from '../auth/SignOutConfirmModal';
 import { ScrollRevealPanel } from '../ui/ScrollRevealPanel';
+import { LanguageToggle } from '../ui/LanguageToggle';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
 import type { RootStackParamList } from '../../navigation/types';
 import { AppNavMenu, type NavMenuTarget } from './AppNavMenu';
@@ -77,14 +84,17 @@ export function AppProfileHeader({
   showBack,
   onBack,
   density = 'default',
-  chromeVisible,
   chromeCollapsed = false,
 }: Props) {
-  const headerChrome = chromeVisible;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile, logout } = useAuth();
+  const { t } = useTranslation();
   const { resend, sending, email, emailConfirmed } = useResendEmailVerification();
+  const { visible: showEmailBanner, dismiss: dismissEmailBanner } = useEmailVerifyBanner(
+    email,
+    emailConfirmed ?? false
+  );
   const [essentialStatus, setEssentialStatus] = useState<EssentialStatus | null>(null);
   const [signOutVisible, setSignOutVisible] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -92,7 +102,7 @@ export function AppProfileHeader({
   const [unreadChats, setUnreadChats] = useState(0);
   const firstName = getProfileFirstName(profile?.fullName);
   const initials = getProfileInitials(profile?.fullName);
-  const quickNav = buildQuickNavItems(profile?.role);
+  const quickNav = buildQuickNavItems(profile?.role, t);
 
   const refreshUnread = useCallback(async () => {
     try {
@@ -169,6 +179,15 @@ export function AppProfileHeader({
       case 'builderPayments':
         navigation.navigate('BuilderPayments');
         break;
+      case 'aiAdvisor':
+        navigation.navigate('AiAdvisor');
+        break;
+      case 'areaExplorer':
+        navigation.navigate('AreaExplorer');
+        break;
+      case 'homeLoanAdvisor':
+        navigation.navigate('HomeLoanAdvisor');
+        break;
       default:
         break;
     }
@@ -187,7 +206,40 @@ export function AppProfileHeader({
 
   const backMode = showBack && onBack;
   const slimHome = density === 'compact' && !backMode;
-  const showPlanUsage = isUserRole(profile?.role) && essentialStatus && essentialStatus.usageMax > 0;
+  const showPlanUsage =
+    isUserRole(profile?.role) && essentialStatus && essentialStatus.usageMax > 0;
+
+  const planHeader =
+    showPlanUsage && essentialStatus ? getPlanHeaderDisplay(essentialStatus, t) : null;
+  const planUsagePalette = planHeader ? planHeaderPalette(planHeader.tone) : null;
+
+  const planPercentChip =
+    planHeader && planUsagePalette ? (
+      <Pressable
+        style={[
+          styles.planPctChip,
+          slimHome && styles.planPctChipSlim,
+          {
+            backgroundColor: planUsagePalette.bg,
+            borderColor: planUsagePalette.border,
+          },
+        ]}
+        onPress={() => navigation.navigate('EssentialService', undefined)}
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={planHeader.accessibilityLabel}
+      >
+        <Text
+          style={[
+            styles.planPctText,
+            slimHome && styles.planPctTextSlim,
+            { color: planUsagePalette.text },
+          ]}
+        >
+          {planHeader.text}
+        </Text>
+      </Pressable>
+    ) : null;
 
   return (
     <View style={styles.wrap}>
@@ -207,7 +259,7 @@ export function AppProfileHeader({
               onPress={onBack}
               style={styles.backBtn}
               hitSlop={8}
-              accessibilityLabel="Go back"
+              accessibilityLabel={t('common.goBack')}
             >
               <Ionicons name="arrow-back" size={20} color={colors.heroText} />
             </Pressable>
@@ -216,36 +268,40 @@ export function AppProfileHeader({
           <Pressable
             style={styles.brandPress}
             onPress={() => handleMenuNavigate('home')}
-            accessibilityLabel="Go to home"
+            accessibilityLabel={t('common.goHome')}
           >
             <ThaneFlatsLogo
               size={slimHome ? 26 : backMode ? 28 : 34}
               showWordmark
               onDark
+              trailing={planPercentChip}
             />
             {!backMode && !slimHome ? (
-              <Text style={styles.tagline}>Thane property search</Text>
+              <Text style={styles.tagline}>{t('header.tagline')}</Text>
             ) : null}
           </Pressable>
 
           <View style={styles.actions}>
             {!backMode ? (
+              <LanguageToggle variant="header" compact={slimHome} />
+            ) : null}
+            {!backMode ? (
               <HeaderIconButton
                 icon="chatbubbles-outline"
-                label="My chats"
+                label={t('common.myChats')}
                 badge={unreadChats}
                 onPress={() => navigation.navigate('MyChats')}
               />
             ) : null}
             <HeaderIconButton
               icon="menu"
-              label="Open menu"
+              label={t('common.openMenu')}
               onPress={() => setMenuVisible(true)}
             />
             <Pressable
               onPress={() => setMenuVisible(true)}
               style={styles.avatarBtn}
-              accessibilityLabel="Account menu"
+              accessibilityLabel={t('common.accountMenu')}
             >
               <LinearGradient
                 colors={[colors.teal, colors.primary]}
@@ -272,24 +328,18 @@ export function AppProfileHeader({
           />
         ) : null}
 
-        {showPlanUsage && headerChrome ? (
-          <ScrollRevealPanel progress={headerChrome} maxHeight={62}>
+        {showPlanUsage && !slimHome ? (
+          <ScrollRevealPanel visible={!chromeCollapsed} maxHeight={62}>
             <EssentialUsageBar
               status={essentialStatus!}
               compact={slimHome || Boolean(backMode)}
               onPress={() => navigation.navigate('EssentialService', undefined)}
             />
           </ScrollRevealPanel>
-        ) : showPlanUsage ? (
-          <EssentialUsageBar
-            status={essentialStatus!}
-            compact={slimHome || Boolean(backMode)}
-            onPress={() => navigation.navigate('EssentialService', undefined)}
-          />
         ) : null}
 
-        {!backMode && !slimHome && headerChrome ? (
-          <ScrollRevealPanel progress={headerChrome} maxHeight={88}>
+        {!backMode && !slimHome ? (
+          <ScrollRevealPanel visible={!chromeCollapsed} maxHeight={88}>
             <View style={styles.welcomeRow}>
               <View style={styles.welcomeText}>
                 <Text style={styles.welcomeHi}>Hi, {firstName}</Text>
@@ -307,27 +357,10 @@ export function AppProfileHeader({
               </View>
             </View>
           </ScrollRevealPanel>
-        ) : !backMode && !slimHome ? (
-          <View style={styles.welcomeRow}>
-            <View style={styles.welcomeText}>
-              <Text style={styles.welcomeHi}>Hi, {firstName}</Text>
-              <View style={styles.welcomeMeta}>
-                <View style={styles.roleChip}>
-                  <Text style={styles.roleChipText}>{getRoleLabel(profile?.role)}</Text>
-                </View>
-                {emailConfirmed ? (
-                  <View style={styles.verifiedChip}>
-                    <Ionicons name="checkmark-circle" size={12} color="#6ee7b7" />
-                    <Text style={styles.verifiedText}>Verified</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          </View>
         ) : null}
 
-        {!backMode && !slimHome && quickNav.length > 0 && headerChrome ? (
-          <ScrollRevealPanel progress={headerChrome} maxHeight={52}>
+        {!backMode && !slimHome && quickNav.length > 0 ? (
+          <ScrollRevealPanel visible={!chromeCollapsed} maxHeight={52}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -356,75 +389,24 @@ export function AppProfileHeader({
               >
                 <Ionicons name="grid-outline" size={15} color={colors.goldAccent} />
                 <Text style={[styles.quickPillText, styles.quickPillMoreText]}>
-                  More
+                  {t('common.more')}
                 </Text>
               </Pressable>
             </ScrollView>
           </ScrollRevealPanel>
-        ) : !backMode && !slimHome && quickNav.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.quickNav}
-          >
-            {quickNav.map((item) => (
-              <Pressable
-                key={item.key}
-                style={styles.quickPill}
-                onPress={() => handleMenuNavigate(item.key)}
-              >
-                <Ionicons name={item.icon} size={15} color={colors.heroText} />
-                <Text style={styles.quickPillText}>{item.label}</Text>
-                {item.key === 'myChats' && unreadChats > 0 ? (
-                  <View style={styles.quickBadge}>
-                    <Text style={styles.quickBadgeText}>
-                      {unreadChats > 9 ? '9+' : unreadChats}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-            ))}
-            <Pressable
-              style={[styles.quickPill, styles.quickPillMore]}
-              onPress={() => setMenuVisible(true)}
-            >
-              <Ionicons name="grid-outline" size={15} color={colors.goldAccent} />
-              <Text style={[styles.quickPillText, styles.quickPillMoreText]}>
-                More
-              </Text>
-            </Pressable>
-          </ScrollView>
         ) : null}
       </LinearGradient>
 
-      {!emailConfirmed && email && !chromeCollapsed
-        ? headerChrome
-          ? (
-            <ScrollRevealPanel progress={headerChrome} maxHeight={56} collapseFromTop>
-              <Pressable
-                style={styles.emailBanner}
-                onPress={resend}
-                disabled={sending}
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color={colors.goldAccent} />
-                ) : (
-                  <Ionicons name="mail-unread" size={18} color={colors.goldAccent} />
-                )}
-                <View style={styles.emailBannerText}>
-                  <Text style={styles.emailBannerTitle} numberOfLines={1}>
-                    Verify your email
-                  </Text>
-                  <Text style={styles.emailBannerSub} numberOfLines={1}>
-                    {email} · Tap to resend
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.goldAccent} />
-              </Pressable>
-            </ScrollRevealPanel>
-            )
-          : (
-            <Pressable style={styles.emailBanner} onPress={resend} disabled={sending}>
+      {showEmailBanner && email ? (
+        <ScrollRevealPanel visible={!chromeCollapsed} maxHeight={56} collapseFromTop>
+          <View style={styles.emailBanner}>
+            <Pressable
+              style={styles.emailBannerMain}
+              onPress={resend}
+              disabled={sending}
+              accessibilityRole="button"
+              accessibilityLabel={t('header.resendEmail')}
+            >
               {sending ? (
                 <ActivityIndicator size="small" color={colors.goldAccent} />
               ) : (
@@ -432,16 +414,26 @@ export function AppProfileHeader({
               )}
               <View style={styles.emailBannerText}>
                 <Text style={styles.emailBannerTitle} numberOfLines={1}>
-                  Verify your email
+                  {t('header.verifyEmailTitle')}
                 </Text>
                 <Text style={styles.emailBannerSub} numberOfLines={1}>
-                  {email} · Tap to resend
+                  {t('header.verifyEmailSub', { email })}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.goldAccent} />
             </Pressable>
-            )
-        : null}
+            <Pressable
+              style={styles.emailBannerClose}
+              onPress={() => void dismissEmailBanner()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('header.dismissVerifyEmail')}
+            >
+              <Ionicons name="close" size={18} color="#b45309" />
+            </Pressable>
+          </View>
+        </ScrollRevealPanel>
+      ) : null}
 
       <AppNavMenu
         visible={menuVisible}
@@ -504,6 +496,24 @@ const styles = StyleSheet.create({
   brandPress: {
     flex: 1,
     minWidth: 0,
+  },
+  planPctChip: {
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  planPctChipSlim: {
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+  },
+  planPctText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  planPctTextSlim: {
+    fontSize: 10,
   },
   tagline: {
     fontSize: 10,
@@ -670,12 +680,26 @@ const styles = StyleSheet.create({
   emailBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
     backgroundColor: '#fffbeb',
     borderBottomWidth: 1,
     borderBottomColor: '#fde68a',
+  },
+  emailBannerMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
+    minWidth: 0,
+  },
+  emailBannerClose: {
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.md,
+    paddingLeft: spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emailBannerText: {
     flex: 1,

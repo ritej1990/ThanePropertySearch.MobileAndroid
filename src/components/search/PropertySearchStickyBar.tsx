@@ -10,6 +10,7 @@ import { colors, radius, spacing } from '../../theme';
 type Props = {
   searchText: string;
   selectedPlace: SelectedPlace | null;
+  nearYou?: boolean;
   resultCount: number;
   activeFilterCount: number;
   onPressSearch: () => void;
@@ -23,6 +24,7 @@ type Props = {
 export function PropertySearchStickyBar({
   searchText,
   selectedPlace,
+  nearYou,
   resultCount,
   activeFilterCount,
   onPressSearch,
@@ -35,7 +37,7 @@ export function PropertySearchStickyBar({
   const mapsEnabled = hasGoogleMapsKey();
   const label =
     selectedPlace?.label ??
-    (searchText.trim() ? searchText.trim() : 'Search area in Thane…');
+    (nearYou ? 'Near you' : searchText.trim() ? searchText.trim() : 'Search area in Thane…');
 
   return (
     <View style={styles.wrap}>

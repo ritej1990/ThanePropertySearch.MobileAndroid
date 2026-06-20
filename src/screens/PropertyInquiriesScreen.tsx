@@ -13,6 +13,7 @@ import { propertiesApi } from '../api/singleton';
 import type { PropertyInquirySummary } from '../api/inquiryTypes';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { AiLeadBadge } from '../components/property/AiLeadBadge';
 import { PageHero } from '../components/ui/PageHero';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import type { RootStackParamList } from '../navigation/types';
@@ -118,6 +119,7 @@ export default function PropertyInquiriesScreen({ navigation, route }: Props) {
                         {item.status}
                       </Text>
                     </View>
+                    <AiLeadBadge inquiryId={item.id} />
                   </Pressable>
                   {pending ? (
                     <View style={styles.actions}>

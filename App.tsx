@@ -6,10 +6,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { LocaleProvider } from './src/context/LocaleContext';
 import { ToastProvider } from './src/context/ToastContext';
 import type { RootStackParamList } from './src/navigation/types';
 import { colors } from './src/theme';
 import { isBuilderRole, isOwnerRole, isAgentRole } from './src/utils/roles';
+import { BUILDER_PORTAL_ENABLED } from './src/config/env';
 import LoginScreen from './src/screens/LoginScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -34,6 +36,9 @@ import VisitRequestsScreen from './src/screens/VisitRequestsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import BuilderLeadsScreen from './src/screens/BuilderLeadsScreen';
 import AgentDashboardScreen from './src/screens/AgentDashboardScreen';
+import AiAdvisorScreen from './src/screens/AiAdvisorScreen';
+import HomeLoanAdvisorScreen from './src/screens/HomeLoanAdvisorScreen';
+import AreaExplorerScreen from './src/screens/AreaExplorerScreen';
 import AgentPendingApprovalScreen from './src/screens/AgentPendingApprovalScreen';
 import AgentPaymentsScreen from './src/screens/AgentPaymentsScreen';
 import BuilderPaymentsScreen from './src/screens/BuilderPaymentsScreen';
@@ -49,7 +54,7 @@ function AppNavigator() {
 
   const isAuthed = token != null;
   const isOwner = isOwnerRole(profile?.role);
-  const isBuilder = isBuilderRole(profile?.role);
+  const isBuilder = BUILDER_PORTAL_ENABLED && isBuilderRole(profile?.role);
   const isAgent = isAgentRole(profile?.role);
 
   const authedKey = isAgent
@@ -166,22 +171,26 @@ function AppNavigator() {
               options={{ headerShown: false, title: 'My listings' }}
             />
           )}
-          <Stack.Screen
-            name="BuilderProjects"
-            component={BuilderProjectsScreen}
-            options={{ headerShown: false, title: 'Builder projects' }}
-          />
-          <Stack.Screen
-            name="BuilderProjectDetails"
-            component={BuilderProjectDetailsScreen}
-            options={{ headerShown: false }}
-          />
-          {!isBuilder && (
-            <Stack.Screen
-              name="BuilderDashboard"
-              component={BuilderDashboardScreen}
-              options={{ headerShown: false, title: 'Builder dashboard' }}
-            />
+          {BUILDER_PORTAL_ENABLED && (
+            <>
+              <Stack.Screen
+                name="BuilderProjects"
+                component={BuilderProjectsScreen}
+                options={{ headerShown: false, title: 'Builder projects' }}
+              />
+              <Stack.Screen
+                name="BuilderProjectDetails"
+                component={BuilderProjectDetailsScreen}
+                options={{ headerShown: false }}
+              />
+              {!isBuilder && (
+                <Stack.Screen
+                  name="BuilderDashboard"
+                  component={BuilderDashboardScreen}
+                  options={{ headerShown: false, title: 'Builder dashboard' }}
+                />
+              )}
+            </>
           )}
           <Stack.Screen
             name="PropertyDetails"
@@ -258,17 +267,36 @@ function AppNavigator() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
-            name="BuilderLeads"
-            component={BuilderLeadsScreen}
+            name="AiAdvisor"
+            component={AiAdvisorScreen}
             options={{ headerShown: false }}
           />
-          {isBuilder ? (
-            <Stack.Screen
-              name="BuilderProjectForm"
-              component={BuilderProjectFormScreen}
-              options={{ headerShown: false }}
-            />
-          ) : null}
+          <Stack.Screen
+            name="HomeLoanAdvisor"
+            component={HomeLoanAdvisorScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AreaExplorer"
+            component={AreaExplorerScreen}
+            options={{ headerShown: false }}
+          />
+          {BUILDER_PORTAL_ENABLED && (
+            <>
+              <Stack.Screen
+                name="BuilderLeads"
+                component={BuilderLeadsScreen}
+                options={{ headerShown: false }}
+              />
+              {isBuilder ? (
+                <Stack.Screen
+                  name="BuilderProjectForm"
+                  component={BuilderProjectFormScreen}
+                  options={{ headerShown: false }}
+                />
+              ) : null}
+            </>
+          )}
           <Stack.Screen
             name="AgentPendingApproval"
             component={AgentPendingApprovalScreen}
@@ -279,11 +307,13 @@ function AppNavigator() {
             component={AgentPaymentsScreen}
             options={{ headerShown: false }}
           />
-          <Stack.Screen
-            name="BuilderPayments"
-            component={BuilderPaymentsScreen}
-            options={{ headerShown: false }}
-          />
+          {BUILDER_PORTAL_ENABLED && (
+            <Stack.Screen
+              name="BuilderPayments"
+              component={BuilderPaymentsScreen}
+              options={{ headerShown: false }}
+            />
+          )}
           <Stack.Screen
             name="InvoiceViewer"
             component={InvoiceViewerScreen}
@@ -306,14 +336,16 @@ function AppNavigator() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <NavigationContainer linking={linking}>
-            <StatusBar style="auto" />
-            <AppNavigator />
-          </NavigationContainer>
-        </ToastProvider>
-      </AuthProvider>
+      <LocaleProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <NavigationContainer linking={linking}>
+              <StatusBar style="auto" />
+              <AppNavigator />
+            </NavigationContainer>
+          </ToastProvider>
+        </AuthProvider>
+      </LocaleProvider>
     </SafeAreaProvider>
   );
 }

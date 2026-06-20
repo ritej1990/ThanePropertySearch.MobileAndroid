@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import type { TranslateFn } from '../../i18n';
 import { isBuilderRole, isOwnerRole, isUserRole, isAgentRole } from '../../utils/roles';
+import { BUILDER_PORTAL_ENABLED } from '../../config/env';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -16,7 +18,10 @@ export type NavMenuTarget =
   | 'postProperty'
   | 'agentDashboard'
   | 'agentPayments'
-  | 'builderPayments';
+  | 'builderPayments'
+  | 'aiAdvisor'
+  | 'homeLoanAdvisor'
+  | 'areaExplorer';
 
 export type NavMenuItem = {
   key: NavMenuTarget;
@@ -46,34 +51,40 @@ const MENU_COLORS = {
   surfaceMuted: '#f8fafc',
 };
 
-export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[] {
+export function buildNavMenuItems(
+  role: string | null | undefined,
+  t: TranslateFn
+): NavMenuItem[] {
   const items: NavMenuItem[] = [
     {
       key: 'home',
-      label: 'Property search',
-      subtitle: 'Buy, rent & resale in Thane',
+      label: t('nav.propertySearch'),
+      subtitle: t('nav.propertySearchSub'),
       icon: 'search',
       section: 'explore',
       accent: MENU_COLORS.teal,
       accentBg: MENU_COLORS.tealSoft,
     },
-    {
+  ];
+
+  if (BUILDER_PORTAL_ENABLED) {
+    items.push({
       key: 'builders',
-      label: 'Builder projects',
-      subtitle: 'New developments & towers',
+      label: t('nav.builderProjects'),
+      subtitle: t('nav.builderProjectsSub'),
       icon: 'business',
       section: 'explore',
       accent: MENU_COLORS.builder,
       accentBg: MENU_COLORS.builderSoft,
-    },
-  ];
+    });
+  }
 
   if (isOwnerRole(role)) {
     items.push(
       {
         key: 'ownerDashboard',
-        label: 'My listings',
-        subtitle: 'Dashboard & inquiries',
+        label: t('nav.myListings'),
+        subtitle: t('nav.myListingsSub'),
         icon: 'home',
         section: 'explore',
         accent: MENU_COLORS.teal,
@@ -81,8 +92,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
       },
       {
         key: 'postProperty',
-        label: 'Post property',
-        subtitle: 'Rent, sale, or PG listing',
+        label: t('nav.postProperty'),
+        subtitle: t('nav.postPropertySub'),
         icon: 'add-circle',
         section: 'explore',
         accent: MENU_COLORS.gold,
@@ -95,8 +106,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
     items.push(
       {
         key: 'agentDashboard',
-        label: 'Agent dashboard',
-        subtitle: 'Listings, leads & profile',
+        label: t('nav.agentDashboard'),
+        subtitle: t('nav.agentDashboardSub'),
         icon: 'briefcase',
         section: 'explore',
         accent: MENU_COLORS.primary,
@@ -104,8 +115,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
       },
       {
         key: 'postProperty',
-        label: 'Post listing',
-        subtitle: 'Rent, sale, or PG — uses publish credit',
+        label: t('nav.postListing'),
+        subtitle: t('nav.postListingSub'),
         icon: 'add-circle',
         section: 'explore',
         accent: MENU_COLORS.gold,
@@ -113,8 +124,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
       },
       {
         key: 'agentPayments',
-        label: 'Agent plans',
-        subtitle: 'Publish & lead packages',
+        label: t('nav.agentPlans'),
+        subtitle: t('nav.agentPlansSub'),
         icon: 'card',
         section: 'account',
         accent: MENU_COLORS.primary,
@@ -123,11 +134,11 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
     );
   }
 
-  if (isBuilderRole(role)) {
+  if (BUILDER_PORTAL_ENABLED && isBuilderRole(role)) {
     items.push({
       key: 'builderDashboard',
-      label: 'Builder dashboard',
-      subtitle: 'Projects, leads & units',
+      label: t('nav.builderDashboard'),
+      subtitle: t('nav.builderDashboardSub'),
       icon: 'construct',
       section: 'explore',
       accent: MENU_COLORS.builder,
@@ -135,8 +146,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
     });
     items.push({
       key: 'builderPayments',
-      label: 'Builder plans',
-      subtitle: 'Upload credits & leads',
+      label: t('nav.builderPlans'),
+      subtitle: t('nav.builderPlansSub'),
       icon: 'cloud-upload',
       section: 'account',
       accent: MENU_COLORS.builder,
@@ -145,8 +156,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
   } else if (!isOwnerRole(role) && !isAgentRole(role)) {
     items.push({
       key: 'ownerDashboard',
-      label: 'List your property',
-      subtitle: 'Owner dashboard',
+      label: t('nav.listYourProperty'),
+      subtitle: t('nav.listYourPropertySub'),
       icon: 'home-outline',
       section: 'explore',
       accent: MENU_COLORS.teal,
@@ -157,8 +168,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
   if (isUserRole(role)) {
     items.push({
       key: 'essentialPlan',
-      label: 'Essential plan',
-      subtitle: 'Chat & formal requests',
+      label: t('nav.essentialPlan'),
+      subtitle: t('nav.essentialPlanSub'),
       icon: 'flash',
       section: 'account',
       accent: MENU_COLORS.primary,
@@ -166,10 +177,43 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
     });
   }
 
+  if (isUserRole(role) || isOwnerRole(role)) {
+    items.push({
+      key: 'aiAdvisor',
+      label: t('nav.aiPropertyAdvisor'),
+      subtitle: t('nav.aiPropertyAdvisorSub'),
+      icon: 'sparkles',
+      section: 'explore',
+      accent: '#7c3aed',
+      accentBg: '#f5f3ff',
+    });
+  }
+
+  items.push(
+    {
+      key: 'areaExplorer',
+      label: t('nav.aiAreaExplorer'),
+      subtitle: t('nav.aiAreaExplorerSub'),
+      icon: 'map',
+      section: 'explore',
+      accent: '#7c3aed',
+      accentBg: '#f5f3ff',
+    },
+    {
+      key: 'homeLoanAdvisor',
+      label: t('nav.homeLoanAdvisor'),
+      subtitle: t('nav.homeLoanAdvisorSub'),
+      icon: 'cash',
+      section: 'explore',
+      accent: '#7c3aed',
+      accentBg: '#f5f3ff',
+    }
+  );
+
   items.push({
     key: 'profile',
-    label: 'My profile',
-    subtitle: 'Account & contact details',
+    label: t('nav.myProfile'),
+    subtitle: t('nav.myProfileSub'),
     icon: 'person',
     section: 'account',
     accent: MENU_COLORS.navy,
@@ -179,8 +223,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
   if (!isOwnerRole(role)) {
     items.push({
       key: 'myPayments',
-      label: 'My payments',
-      subtitle: 'Plans & transaction history',
+      label: t('nav.myPayments'),
+      subtitle: t('nav.myPaymentsSub'),
       icon: 'receipt',
       section: 'account',
       accent: MENU_COLORS.primary,
@@ -191,8 +235,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
   if (isUserRole(role) || isOwnerRole(role)) {
     items.push({
       key: 'myChats',
-      label: 'My chats',
-      subtitle: 'Negotiations with owners',
+      label: t('common.myChats'),
+      subtitle: t('nav.myChatsSub'),
       icon: 'chatbubbles',
       section: 'account',
       accent: MENU_COLORS.primary,
@@ -202,8 +246,8 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
 
   items.push({
     key: 'support',
-    label: 'Support',
-    subtitle: 'Help desk & tickets',
+    label: t('nav.support'),
+    subtitle: t('nav.supportSub'),
     icon: 'help-buoy',
     section: 'support',
     accent: MENU_COLORS.teal,
@@ -213,41 +257,44 @@ export function buildNavMenuItems(role: string | null | undefined): NavMenuItem[
   return items;
 }
 
-export function buildQuickNavItems(role: string | null | undefined): QuickNavItem[] {
-  if (isBuilderRole(role)) {
+export function buildQuickNavItems(
+  role: string | null | undefined,
+  t: TranslateFn
+): QuickNavItem[] {
+  if (BUILDER_PORTAL_ENABLED && isBuilderRole(role)) {
     return [
-      { key: 'builderDashboard', label: 'Dashboard', icon: 'grid' },
-      { key: 'builders', label: 'Directory', icon: 'business' },
-      { key: 'builderPayments', label: 'Plans', icon: 'card' },
+      { key: 'builderDashboard', label: t('common.dashboard'), icon: 'grid' },
+      { key: 'builders', label: t('common.builders'), icon: 'business' },
+      { key: 'builderPayments', label: t('common.plans'), icon: 'card' },
     ];
   }
   if (isAgentRole(role)) {
     return [
-      { key: 'agentDashboard', label: 'Dashboard', icon: 'briefcase' },
-      { key: 'postProperty', label: 'Post', icon: 'add' },
-      { key: 'agentPayments', label: 'Plans', icon: 'card' },
+      { key: 'agentDashboard', label: t('common.dashboard'), icon: 'briefcase' },
+      { key: 'postProperty', label: t('common.post'), icon: 'add' },
+      { key: 'agentPayments', label: t('common.plans'), icon: 'card' },
     ];
   }
 
-  const quick: QuickNavItem[] = [
-    { key: 'home', label: 'Search', icon: 'search' },
-    { key: 'builders', label: 'Builders', icon: 'business' },
-  ];
-
-  if (isOwnerRole(role)) {
-    quick.push({ key: 'ownerDashboard', label: 'Listings', icon: 'home' });
-    quick.push({ key: 'postProperty', label: 'Post', icon: 'add' });
-  } else if (isUserRole(role)) {
-    quick.push({ key: 'essentialPlan', label: 'Plans', icon: 'flash' });
+  const quick: QuickNavItem[] = [{ key: 'home', label: t('common.search'), icon: 'search' }];
+  if (BUILDER_PORTAL_ENABLED) {
+    quick.push({ key: 'builders', label: t('common.builders'), icon: 'business' });
   }
 
-  quick.push({ key: 'myChats', label: 'Chats', icon: 'chatbubbles' });
+  if (isOwnerRole(role)) {
+    quick.push({ key: 'ownerDashboard', label: t('common.listings'), icon: 'home' });
+    quick.push({ key: 'postProperty', label: t('common.post'), icon: 'add' });
+  } else if (isUserRole(role)) {
+    quick.push({ key: 'essentialPlan', label: t('common.plans'), icon: 'flash' });
+  }
+
+  quick.push({ key: 'myChats', label: t('common.chats'), icon: 'chatbubbles' });
 
   return quick;
 }
 
 export function buildQuickMenuKeys(role: string | null | undefined): NavMenuTarget[] {
-  if (isBuilderRole(role)) {
+  if (BUILDER_PORTAL_ENABLED && isBuilderRole(role)) {
     return ['builderDashboard', 'builders', 'builderPayments'];
   }
   if (isAgentRole(role)) {
@@ -256,30 +303,50 @@ export function buildQuickMenuKeys(role: string | null | undefined): NavMenuTarg
   if (isOwnerRole(role)) {
     return ['ownerDashboard', 'home', 'myChats'];
   }
-  return ['home', 'builders', 'myChats'];
+  return BUILDER_PORTAL_ENABLED ? ['home', 'builders', 'myChats'] : ['home', 'myChats'];
 }
 
-export function quickMenuLabel(key: NavMenuTarget): string {
+export function quickMenuLabel(key: NavMenuTarget, t: TranslateFn): string {
   switch (key) {
     case 'home':
-      return 'Search';
+      return t('common.search');
     case 'builders':
-      return 'Projects';
+      return t('common.projects');
     case 'builderDashboard':
-      return 'Dashboard';
+      return t('common.dashboard');
     case 'builderPayments':
-      return 'Plans';
+      return t('common.plans');
     case 'agentDashboard':
-      return 'Dashboard';
+      return t('common.dashboard');
     case 'postProperty':
-      return 'Post';
+      return t('common.post');
     case 'agentPayments':
-      return 'Plans';
+      return t('common.plans');
     case 'ownerDashboard':
-      return 'Listings';
+      return t('common.listings');
     case 'myChats':
-      return 'Chats';
+      return t('common.chats');
+    case 'aiAdvisor':
+      return t('common.aiAdvisor');
+    case 'areaExplorer':
+      return t('common.areaExplorer');
+    case 'homeLoanAdvisor':
+      return t('common.homeLoan');
     default:
-      return 'Open';
+      return t('common.open');
+  }
+}
+
+export function navSectionLabel(
+  section: NavMenuItem['section'],
+  t: TranslateFn
+): string {
+  switch (section) {
+    case 'explore':
+      return t('nav.sectionExplore');
+    case 'account':
+      return t('nav.sectionAccount');
+    case 'support':
+      return t('nav.sectionSupport');
   }
 }

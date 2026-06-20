@@ -4,6 +4,7 @@ import {
   THANE_MAP_CENTER,
   hasGoogleMapsKey,
 } from '../config/env';
+import { getGooglePlacesLanguage } from '../api/localeHeader';
 import { isWithinThaneBounds } from '../utils/mapHelpers';
 
 const THANE_AUTOCOMPLETE_BOUNDS = `${THANE_MAP_BOUNDS.minLatitude},${THANE_MAP_BOUNDS.minLongitude}|${THANE_MAP_BOUNDS.maxLatitude},${THANE_MAP_BOUNDS.maxLongitude}`;
@@ -105,7 +106,7 @@ export async function fetchPlacePredictions(
     bounds: THANE_AUTOCOMPLETE_BOUNDS,
     strictbounds: 'true',
     types: 'geocode',
-    language: 'en',
+    language: getGooglePlacesLanguage(),
   });
 
   const res = await fetch(
@@ -139,7 +140,7 @@ export async function fetchPlaceDetails(placeId: string): Promise<SelectedPlace>
     place_id: placeId,
     key: GOOGLE_MAPS_API_KEY,
     fields: 'geometry,formatted_address,name,address_components',
-    language: 'en',
+    language: getGooglePlacesLanguage(),
   });
 
   const res = await fetch(

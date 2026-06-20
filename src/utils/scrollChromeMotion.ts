@@ -25,9 +25,14 @@ export function headerExtraMotion(progress: AnimatedProgress) {
   return { opacity, translateY, scaleY };
 }
 
+/** Scroll offset where the sticky bar starts fading in (matches stickyBarMotion). */
+export function stickyBarRevealStart(revealAt: number): number {
+  return Math.max(12, revealAt - 36);
+}
+
 /** Sticky compact bar — appears once list content scrolls past `revealAt`. */
 export function stickyBarMotion(scrollY: Animated.Value, revealAt: number) {
-  const start = Math.max(12, revealAt - 36);
+  const start = stickyBarRevealStart(revealAt);
   const end = Math.max(start + 28, revealAt);
 
   const opacity = scrollY.interpolate({

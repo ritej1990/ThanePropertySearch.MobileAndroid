@@ -3,10 +3,65 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { EssentialStatus } from '../api/paymentTypes';
 import type { RootStackParamList } from '../navigation/types';
 import { ApiError } from '../api/client';
+import { getEssentialStatusLabel, normalizeEssentialUsage } from './planDisplay';
+import type { TranslateFn } from '../i18n';
+
+export { normalizeEssentialUsage };
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export type EssentialCreditsLevel = 'ok' | 'moderate' | 'critical';
+
+export type PlanHeaderDisplay = {
+  text: string;
+  tone: 'active' | 'warn' | 'expired';
+  accessibilityLabel: string;
+};
+
+/** Matches web essential-credits-chip — expired when plan is not active. */
+export function isEssentialPlanExpired(status: EssentialStatus | null): boolean {
+  if (!status) return true;
+  const { tone, label } = getEssentialStatusLabel(status);
+  return tone === 'expired' && label === 'Expired';
+}
+
+/** Header chip next to brand — Usage N% only while plan is active; otherwise Expired / Credits used. */
+export function getPlanHeaderDisplay(status: EssentialStatus, t: TranslateFn): PlanHeaderDisplay {
+  const { label, tone } = getEssentialStatusLabel(status);
+
+  if (tone === 'expired') {
+    return {
+      text: t('plan.expired'),
+      tone: 'expired',
+      accessibilityLabel: t('plan.planExpiredA11y'),
+    };
+  }
+
+  if (label === 'Credits used') {
+    return {
+      text: t('plan.creditsUsed'),
+      tone: 'warn',
+      accessibilityLabel: t('plan.creditsUsedA11y'),
+    };
+  }
+
+  const percent = formatPlanUsedPercent(status);
+  return {
+    text: t('plan.usagePercent', { percent }),
+    tone,
+    accessibilityLabel: t('plan.usageA11y', { percent }),
+  };
+}
+
+export function planHeaderPalette(tone: PlanHeaderDisplay['tone']) {
+  if (tone === 'expired') {
+    return essentialCreditsLevelStyles('critical');
+  }
+  if (tone === 'warn') {
+    return essentialCreditsLevelStyles('moderate');
+  }
+  return essentialCreditsLevelStyles('ok');
+}
 
 export function resolveEssentialCreditsLevel(
   usageLeft: number,
@@ -82,29 +137,33 @@ export function essentialCreditsLevelStyles(level: EssentialCreditsLevel) {
   }
 }
 
-export function normalizeEssentialUsage(status: EssentialStatus) {
-  const usageMax = Math.max(0, status.usageMax);
-  const usageUsed = Math.max(0, status.usageUsed);
-  const usageLeft =
-    usageMax > 0
-      ? Math.max(0, usageMax - usageUsed)
-      : Math.max(0, status.usageLeft);
-  return { usageMax, usageUsed, usageLeft };
+export function hasActivePlanCredits(status: EssentialStatus | null): boolean {
+  if (!status?.active) return false;
+  const { usageLeft } = normalizeEssentialUsage(status);
+  return usageLeft > 0;
 }
 
-export function hasActivePlanCredits(status: EssentialStatus | null): boolean {
+/**
+ * Contact-pack credits work for revealing owner contact even when the Essential
+ * plan is inactive/exhausted, so the reveal action must consider both.
+ */
+export function canRevealOwnerContact(status: EssentialStatus | null): boolean {
   if (!status) return false;
-  if (status.active) return (status.usageLeft ?? 0) > 0;
-  return (
-    (status.usageLeft ?? 0) > 0 &&
-    status.endsAtUtc != null &&
-    new Date(status.endsAtUtc) > new Date()
-  );
+  return hasActivePlanCredits(status) || (status.contactRevealCreditsRemaining ?? 0) > 0;
 }
 
 export function formatPlanCredits(status: EssentialStatus | null): string {
   if (!status) return '—';
-  return `${status.usageLeft} / ${status.usageMax}`;
+  const { usageLeft, usageMax } = normalizeEssentialUsage(status);
+  return `${usageLeft} / ${usageMax}`;
+}
+
+/** Whole-number percent of Essential plan credits consumed (0–100). */
+export function formatPlanUsedPercent(status: EssentialStatus): number {
+  if (!status.active) return 100;
+  const { usageMax, usageUsed } = normalizeEssentialUsage(status);
+  if (usageMax <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((usageUsed / usageMax) * 100)));
 }
 
 const CREDIT_ACTIONS =
@@ -112,12 +171,25 @@ const CREDIT_ACTIONS =
 
 export function alertPlanRequired(
   navigation: Nav,
-  returnPropertyId?: number
+  returnPropertyId?: number,
+  expired?: boolean,
+  t?: TranslateFn
 ): void {
-  Alert.alert('Plan required', CREDIT_ACTIONS, [
-    { text: 'Cancel', style: 'cancel' },
+  const title = expired
+    ? t?.('plan.planExpiredTitle') ?? 'Plan expired'
+    : t?.('plan.planRequired') ?? 'Plan required';
+  const body = expired
+    ? t?.('plan.planExpiredBody') ??
+      'Your Essential plan has expired. Renew to contact owners, schedule visits, and send messages.'
+    : CREDIT_ACTIONS;
+  const action = expired
+    ? t?.('plan.renewPlan') ?? 'Renew plan'
+    : t?.('plan.viewPlans') ?? 'View plans';
+
+  Alert.alert(title, body, [
+    { text: t?.('common.cancel') ?? 'Cancel', style: 'cancel' },
     {
-      text: 'View plans',
+      text: action,
       onPress: () =>
         navigation.navigate('EssentialService', {
           returnPropertyId,

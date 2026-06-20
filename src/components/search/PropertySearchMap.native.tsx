@@ -21,6 +21,7 @@ import { colors, radius, spacing } from '../../theme';
 type Props = {
   properties: PropertyResponse[];
   selectedPlace: SelectedPlace | null;
+  mapCenter?: { latitude: number; longitude: number } | null;
   onPropertyPress: (item: PropertyResponse) => void;
 };
 
@@ -36,6 +37,7 @@ function HomeMarker({ selected }: { selected?: boolean }) {
 export function PropertySearchMap({
   properties,
   selectedPlace,
+  mapCenter,
   onPropertyPress,
 }: Props) {
   const mapRef = useRef<MapView>(null);
@@ -53,8 +55,8 @@ export function PropertySearchMap({
   );
 
   const initialRegion = useMemo(
-    () => getMapInitialRegion(properties, selectedPlace),
-    [properties, selectedPlace]
+    () => getMapInitialRegion(properties, selectedPlace, mapCenter),
+    [properties, selectedPlace, mapCenter]
   );
 
   const handleRegionChangeComplete = (region: Region) => {
@@ -72,7 +74,7 @@ export function PropertySearchMap({
   }, [tracksChanges, mappable.length]);
 
   useEffect(() => {
-    const coords = mapFitCoordinates(properties, selectedPlace);
+    const coords = mapFitCoordinates(properties, selectedPlace, mapCenter);
     if (coords.length === 0 || !mapRef.current) return;
     const timer = setTimeout(() => {
       mapRef.current?.fitToCoordinates(coords, {
@@ -81,13 +83,13 @@ export function PropertySearchMap({
       });
       setTimeout(() => {
         mapRef.current?.animateToRegion(
-          clampMapRegion(getMapInitialRegion(properties, selectedPlace)),
+          clampMapRegion(getMapInitialRegion(properties, selectedPlace, mapCenter)),
           300
         );
       }, 500);
     }, 400);
     return () => clearTimeout(timer);
-  }, [properties, selectedPlace]);
+  }, [properties, selectedPlace, mapCenter]);
 
   if (!hasNativeMapSupport()) {
     return (

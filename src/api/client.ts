@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../config/env';
 import type { TokenStorage } from '../storage/tokenStorage';
+import { getAcceptLanguageHeader } from './localeHeader';
 
 export type ApiRequestInit = RequestInit & {
   /** When false, do not attach Bearer token (default true). */
@@ -22,6 +23,9 @@ export function createApiClient(tokenStorage: TokenStorage) {
     const headers = new Headers(init.headers);
     if (!headers.has('Content-Type') && init.body != null && !(init.body instanceof FormData)) {
       headers.set('Content-Type', 'application/json');
+    }
+    if (!headers.has('Accept-Language')) {
+      headers.set('Accept-Language', getAcceptLanguageHeader());
     }
 
     const useAuth = init.auth !== false;

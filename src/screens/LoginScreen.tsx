@@ -19,6 +19,8 @@ import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
 import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LocaleContext';
+import { LanguageToggle } from '../components/ui/LanguageToggle';
 import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { RootStackParamList } from '../navigation/types';
 import { LegalFooter } from '../components/layout/LegalFooter';
@@ -37,6 +39,7 @@ export default function LoginScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const passwordRef = useRef<TextInput>(null);
   const { login } = useAuth();
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,7 +47,7 @@ export default function LoginScreen({ navigation }: Props) {
   async function handleLogin() {
     Keyboard.dismiss();
     if (!username.trim() || !password) {
-      Alert.alert('Missing details', 'Enter your username and password.');
+      Alert.alert(t('auth.missingDetails'), t('auth.enterCredentials'));
       return;
     }
 
@@ -54,7 +57,7 @@ export default function LoginScreen({ navigation }: Props) {
       await login(username.trim(), password);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Login failed';
-      Alert.alert('Sign in failed', msg);
+      Alert.alert(t('auth.signInFailed'), msg);
     } finally {
       setLoading(false);
     }
@@ -67,9 +70,12 @@ export default function LoginScreen({ navigation }: Props) {
 
   const body = (
     <>
-      <View style={styles.topBrand} pointerEvents="none">
+      <View style={styles.topBrand} pointerEvents="box-none">
+        <View style={styles.langRow}>
+          <LanguageToggle variant="auth" />
+        </View>
         <ThaneFlatsLogo size={44} showWordmark animated onDark />
-        <Text style={styles.topTagline}>Sign in to continue</Text>
+        <Text style={styles.topTagline}>{t('auth.signInContinue')}</Text>
       </View>
 
       <View style={isWeb ? styles.formAreaWeb : styles.formArea}>
@@ -80,17 +86,15 @@ export default function LoginScreen({ navigation }: Props) {
               <Ionicons name="log-in-outline" size={22} color={colors.primary} />
             </View>
             <View style={styles.cardIconText}>
-              <Text style={styles.cardTitle}>Welcome back</Text>
-              <Text style={styles.cardSub}>
-                Enter your username and password to access your account.
-              </Text>
+              <Text style={styles.cardTitle}>{t('auth.welcomeBack')}</Text>
+              <Text style={styles.cardSub}>{t('auth.signInHint')}</Text>
             </View>
           </View>
 
           <AuthTextField
-            label="Username"
+            label={t('auth.username')}
             icon="person-outline"
-            placeholder="Enter username"
+            placeholder={t('auth.usernamePlaceholder')}
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
@@ -102,9 +106,9 @@ export default function LoginScreen({ navigation }: Props) {
           />
           <AuthTextField
             ref={passwordRef}
-            label="Password"
+            label={t('auth.password')}
             icon="lock-closed-outline"
-            placeholder="Enter password"
+            placeholder={t('auth.passwordPlaceholder')}
             secureTextEntry
             value={password}
             onChangeText={setPassword}
@@ -120,25 +124,23 @@ export default function LoginScreen({ navigation }: Props) {
             }}
             hitSlop={8}
           >
-            <Text style={styles.forgotText}>Forgot password?</Text>
+            <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
           </Pressable>
 
           <GradientButton
-            label="Sign in"
+            label={t('auth.signIn')}
             loading={loading}
             onPress={handleLogin}
           />
 
           <View style={styles.trustRow}>
             <Ionicons name="shield-checkmark" size={15} color="#0f766e" />
-            <Text style={styles.trustText}>
-              Secure login · Same account as thaneflats.com
-            </Text>
+            <Text style={styles.trustText}>{t('auth.secureLogin')}</Text>
           </View>
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>New here?</Text>
+            <Text style={styles.dividerText}>{t('auth.newHere')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -149,7 +151,7 @@ export default function LoginScreen({ navigation }: Props) {
               navigation.navigate('Register');
             }}
           >
-            <Text style={styles.secondaryBtnText}>Create an account</Text>
+            <Text style={styles.secondaryBtnText}>{t('auth.createAccount')}</Text>
           </Pressable>
         </View>
       </View>
@@ -211,6 +213,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
+    width: '100%',
+  },
+  langRow: {
+    alignSelf: 'flex-end',
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    width: '100%',
+    alignItems: 'flex-end',
   },
   topTagline: {
     marginTop: spacing.sm,
