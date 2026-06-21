@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { EssentialStatus } from '../../api/paymentTypes';
-import { formatPlanEndDate, getEssentialStatusLabel } from '../../utils/planDisplay';
+import { formatPlanEndDate, getEssentialStatusLabel, normalizeEssentialUsage } from '../../utils/planDisplay';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
@@ -36,6 +36,7 @@ function StatTile({
 
 export function EssentialSubscriptionCard({ status }: Props) {
   const { label, tone } = getEssentialStatusLabel(status);
+  const { usageLeft, usageUsed, usageMax } = normalizeEssentialUsage(status);
   const endLabel = formatPlanEndDate(status.endsAtUtc);
 
   const badgeStyle =
@@ -62,14 +63,14 @@ export function EssentialSubscriptionCard({ status }: Props) {
         <StatTile
           icon="arrow-down-circle"
           label="REMAINING"
-          value={String(status.usageLeft)}
-          muted={`/ ${status.usageMax}`}
+          value={String(usageLeft)}
+          muted={`/ ${usageMax}`}
         />
         <StatTile
           icon="trending-up"
           label="USED"
-          value={String(status.usageUsed)}
-          muted={`/ ${status.usageMax}`}
+          value={String(usageUsed)}
+          muted={`/ ${usageMax}`}
         />
         <StatTile
           icon="calendar"

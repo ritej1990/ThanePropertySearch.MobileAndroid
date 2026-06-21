@@ -12,10 +12,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
+import { LanguageToggle } from '../ui/LanguageToggle';
 import {
   buildNavMenuItems,
   buildQuickMenuKeys,
+  navSectionLabel,
   quickMenuLabel,
   type NavMenuItem,
   type NavMenuTarget,
@@ -32,12 +35,6 @@ type Props = {
   onNavigate: (target: NavMenuTarget) => void;
   onSignOut?: () => void;
   unreadChats?: number;
-};
-
-const SECTION_LABELS: Record<NavMenuItem['section'], string> = {
-  explore: 'Explore',
-  account: 'Account',
-  support: 'Help',
 };
 
 function roleAccent(role: string | null | undefined) {
@@ -57,12 +54,13 @@ export function AppNavMenu({
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const role = profile?.role;
 
   const sheetWidth = Math.min(Math.round(screenW * 0.82), 288);
   const maxSheetHeight = screenH - insets.top - 8;
 
-  const items = useMemo(() => buildNavMenuItems(role), [role]);
+  const items = useMemo(() => buildNavMenuItems(role, t), [role, t]);
   const quickKeys = useMemo(() => buildQuickMenuKeys(role), [role]);
 
   const quickItems = useMemo(
@@ -122,9 +120,12 @@ export function AppNavMenu({
 
           <View style={styles.header}>
             <ThaneFlatsLogo size={22} showWordmark onDark={false} />
-            <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={10}>
-              <Ionicons name="close" size={16} color={colors.slateMuted} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <LanguageToggle variant="surface" compact />
+              <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={10}>
+                <Ionicons name="close" size={16} color={colors.slateMuted} />
+              </Pressable>
+            </View>
           </View>
 
           <Pressable style={styles.profileCard} onPress={() => go('profile')}>
@@ -218,7 +219,7 @@ export function AppNavMenu({
                       ) : null}
                     </View>
                     <Text style={styles.quickLabel} numberOfLines={1}>
-                      {quickMenuLabel(item.key)}
+                      {quickMenuLabel(item.key, t)}
                     </Text>
                   </Pressable>
                 );
@@ -234,7 +235,7 @@ export function AppNavMenu({
           >
             {sections.map((group, gi) => (
               <View key={group.section} style={gi > 0 ? styles.sectionSpaced : undefined}>
-                <Text style={styles.sectionLabel}>{SECTION_LABELS[group.section]}</Text>
+                <Text style={styles.sectionLabel}>{navSectionLabel(group.section, t)}</Text>
                 <View style={styles.sectionCard}>
                   {group.items.map((item, idx) => (
                     <MenuRow
@@ -265,7 +266,7 @@ export function AppNavMenu({
                 }}
               >
                 <Ionicons name="log-out-outline" size={15} color={colors.error} />
-                <Text style={styles.signOutText}>Sign out</Text>
+                <Text style={styles.signOutText}>{t('common.signOut')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -348,6 +349,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   closeBtn: {
     width: 28,

@@ -21,6 +21,9 @@ import { PropertyDetailTabs } from '../components/property/PropertyDetailTabs';
 import { PropertyGallery } from '../components/property/PropertyGallery';
 import { SimilarPropertyCard } from '../components/property/SimilarPropertyCard';
 import { PropertyKeySpecsPanel, type KeySpecItem } from '../components/property/PropertyKeySpecsPanel';
+import { AiPropertyDetailsHub } from '../components/property/AiPropertyDetailsHub';
+import { AiNegotiationPanel } from '../components/property/AiNegotiationPanel';
+import { AiFraudAssessment } from '../components/property/AiFraudAssessment';
 import { SpecRow } from '../components/property/SpecRow';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, gradients, radius, spacing, typography } from '../theme';
@@ -518,6 +521,16 @@ function PropertyDetailsContent({
           society={societyPanel}
           about={aboutPanel}
         />
+
+        {!isAgentListing ? (
+          <AiPropertyDetailsHub listingId={propertyId} propertyTitle={item.title} />
+        ) : null}
+
+        {isOwnListing ? <AiFraudAssessment listingId={propertyId} /> : null}
+
+        {showUserActions && !isAgentListing && item.isForSale && item.sellPrice ? (
+          <AiNegotiationPanel listingId={propertyId} askingPrice={item.sellPrice} />
+        ) : null}
 
         {showUserActions && !isAgentListing ? (
           <View ref={nextStepsRef} collapsable={false}>

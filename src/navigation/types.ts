@@ -54,6 +54,9 @@ export type RootStackParamList = {
   VisitRequests: { propertyId: number; title?: string };
   Profile: undefined;
   BuilderLeads: { projectId: number; projectName?: string };
+  AiAdvisor: undefined;
+  HomeLoanAdvisor: undefined;
+  AreaExplorer: undefined;
   AgentDashboard: undefined;
   AgentPendingApproval: undefined;
   AgentPayments: undefined;

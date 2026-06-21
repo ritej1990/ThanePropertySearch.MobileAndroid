@@ -2,9 +2,12 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { EssentialStatus } from '../../api/paymentTypes';
+import { useTranslation } from '../../context/LocaleContext';
+import { getEssentialStatusLabel } from '../../utils/planDisplay';
 import { radius, spacing } from '../../theme';
 import {
   essentialCreditsLevelStyles,
+  isEssentialPlanExpired,
   normalizeEssentialUsage,
   resolveEssentialCreditsLevel,
 } from '../../utils/planUsage';
@@ -18,17 +21,37 @@ type Props = {
 
 /** Header plan-credits meter — matches web essential-credits-chip. */
 export function EssentialUsageBar({ status, onPress, compact, collapsed }: Props) {
+  const { t } = useTranslation();
   const { usageMax, usageUsed, usageLeft } = normalizeEssentialUsage(status);
   if (usageMax <= 0) return null;
 
-  const pctUsed = Math.min(100, Math.max(0, (usageUsed / usageMax) * 100));
-  const { level, hint } = resolveEssentialCreditsLevel(
-    usageLeft,
-    usageMax,
-    status.endsAtUtc
-  );
+  const { label: statusLabel } = getEssentialStatusLabel(status);
+  const expired = isEssentialPlanExpired(status);
+  const creditsExhausted = statusLabel === 'Credits used';
+  const statusOnly = expired || creditsExhausted;
+
+  const pctUsed = expired
+    ? 100
+    : Math.min(100, Math.max(0, (usageUsed / usageMax) * 100));
+
+  const { level, hint } = expired
+    ? { level: 'critical' as const, hint: t('plan.renewHint') }
+    : creditsExhausted
+      ? { level: 'critical' as const, hint: t('plan.creditsUsedHint') }
+      : resolveEssentialCreditsLevel(usageLeft, usageMax, status.endsAtUtc);
+
   const palette = essentialCreditsLevelStyles(level);
-  const title = `${usageLeft} of ${usageMax} plan credits left · ${hint}`;
+  const statusText = expired
+    ? t('plan.expired')
+    : creditsExhausted
+      ? t('plan.creditsUsed')
+      : null;
+
+  const title = expired
+    ? `${t('plan.planExpired')} · ${hint}`
+    : creditsExhausted
+      ? `${t('plan.creditsUsed')} · ${hint}`
+      : `${t('plan.creditsLeft', { left: usageLeft, max: usageMax })} · ${hint}`;
 
   return (
     <Pressable
@@ -50,25 +73,50 @@ export function EssentialUsageBar({ status, onPress, compact, collapsed }: Props
           ]}
         />
       </View>
-      <View style={styles.row}>
-        <View style={styles.left}>
+
+      {statusOnly ? (
+        <View style={styles.statusRow}>
           <Ionicons
-            name="flash"
+            name={expired ? 'time-outline' : 'flash'}
             size={compact ? 12 : 14}
             color={palette.text}
-            style={styles.icon}
           />
-          <Text style={[styles.label, compact && styles.labelCompact, { color: palette.text }]}>
-            Plan credits
+          <Text
+            style={[
+              styles.statusCentered,
+              compact && styles.statusCenteredCompact,
+              { color: palette.text },
+            ]}
+          >
+            {statusText}
           </Text>
+          <Ionicons name="chevron-forward" size={14} color={palette.text} />
         </View>
-        <Text style={[styles.count, compact && styles.countCompact, { color: palette.text }]}>
-          <Text style={styles.countStrong}>{usageLeft}</Text>
-          <Text style={styles.countOf}> of {usageMax}</Text>
-          <Text style={styles.countSuffix}> left</Text>
-        </Text>
-        <Ionicons name="chevron-forward" size={14} color={palette.text} />
-      </View>
+      ) : (
+        <View style={styles.row}>
+          <View style={styles.left}>
+            <Ionicons
+              name="flash"
+              size={compact ? 12 : 14}
+              color={palette.text}
+              style={styles.icon}
+            />
+            <Text style={[styles.label, compact && styles.labelCompact, { color: palette.text }]}>
+              {t('plan.planCredits')}
+            </Text>
+          </View>
+          <Text style={[styles.count, compact && styles.countCompact, { color: palette.text }]}>
+            <Text style={styles.countStrong}>{usageLeft}</Text>
+            <Text style={styles.countOf}> of {usageMax}</Text>
+            <Text style={styles.countSuffix}> {t('plan.leftSuffix')}</Text>
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={palette.text} />
+        </View>
+      )}
+
+      {expired ? (
+        <Text style={[styles.subHint, { color: palette.text }]}>{t('plan.tapRenew')}</Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -94,6 +142,21 @@ const styles = StyleSheet.create({
   meterFill: {
     height: '100%',
     borderRadius: radius.pill,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  statusCentered: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  statusCenteredCompact: {
+    fontSize: 11,
   },
   row: {
     flexDirection: 'row',
@@ -137,5 +200,12 @@ const styles = StyleSheet.create({
   countSuffix: {
     fontWeight: '600',
     opacity: 0.88,
+  },
+  subHint: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 6,
+    opacity: 0.92,
+    textAlign: 'center',
   },
 });

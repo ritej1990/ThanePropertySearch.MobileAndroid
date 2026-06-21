@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../context/LocaleContext';
 import { colors, radius, spacing } from '../../theme';
 
 export type SearchViewMode = 'list' | 'map';
@@ -67,25 +68,27 @@ export function SearchViewToggle({
   mapDisabled,
   compact,
 }: Props) {
+  const { t } = useTranslation();
+
   return (
     <View
       style={[styles.track, compact && styles.trackCompact]}
       accessibilityRole="tablist"
-      accessibilityLabel="Search view mode"
+      accessibilityLabel={t('search.viewMode')}
     >
       <Segment
         selected={mode === 'list'}
         icon={mode === 'list' ? 'list' : 'list-outline'}
-        label="List"
-        a11yLabel="List view"
+        label={t('common.list')}
+        a11yLabel={t('search.listView')}
         onPress={() => onChange('list')}
         compact={compact}
       />
       <Segment
         selected={mode === 'map'}
         icon={mode === 'map' ? 'map' : 'map-outline'}
-        label="Map"
-        a11yLabel={mapDisabled ? 'Map view unavailable' : 'Map view'}
+        label={t('common.map')}
+        a11yLabel={mapDisabled ? t('search.mapUnavailable') : t('search.mapView')}
         onPress={() => onChange('map')}
         disabled={mapDisabled}
         compact={compact}

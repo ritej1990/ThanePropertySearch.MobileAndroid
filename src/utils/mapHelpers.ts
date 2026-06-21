@@ -98,12 +98,22 @@ export function propertiesWithCoordinates(items: PropertyResponse[]): PropertyRe
 
 export function getMapInitialRegion(
   items: PropertyResponse[],
-  selectedPlace: SelectedPlace | null
+  selectedPlace: SelectedPlace | null,
+  mapCenter?: { latitude: number; longitude: number } | null
 ): Region {
   if (selectedPlace && isWithinThaneBounds(selectedPlace.latitude, selectedPlace.longitude)) {
     return clampMapRegion({
       latitude: selectedPlace.latitude,
       longitude: selectedPlace.longitude,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.1,
+    });
+  }
+
+  if (mapCenter && isWithinThaneBounds(mapCenter.latitude, mapCenter.longitude)) {
+    return clampMapRegion({
+      latitude: mapCenter.latitude,
+      longitude: mapCenter.longitude,
       latitudeDelta: 0.1,
       longitudeDelta: 0.1,
     });
@@ -131,7 +141,8 @@ export function getMapInitialRegion(
 
 export function mapFitCoordinates(
   items: PropertyResponse[],
-  selectedPlace: SelectedPlace | null
+  selectedPlace: SelectedPlace | null,
+  mapCenter?: { latitude: number; longitude: number } | null
 ): Array<{ latitude: number; longitude: number }> {
   const coords = propertiesWithCoordinates(items).map((p) => ({
     latitude: p.latitude,
@@ -144,6 +155,14 @@ export function mapFitCoordinates(
     coords.push({
       latitude: selectedPlace.latitude,
       longitude: selectedPlace.longitude,
+    });
+  } else if (
+    mapCenter &&
+    isWithinThaneBounds(mapCenter.latitude, mapCenter.longitude)
+  ) {
+    coords.push({
+      latitude: mapCenter.latitude,
+      longitude: mapCenter.longitude,
     });
   }
   if (coords.length === 0) {

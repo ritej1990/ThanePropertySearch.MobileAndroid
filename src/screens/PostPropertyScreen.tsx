@@ -17,7 +17,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/types';
 import type { AgentListingDetails } from '../api/agentTypes';
-import { agentListingsApi, paymentsApi, propertiesApi } from '../api/singleton';
+import { agentListingsApi, aiApi, paymentsApi, propertiesApi } from '../api/singleton';
+import type { PriceRecommendationResponse } from '../api/aiTypes';
 import { ApiError } from '../api/client';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { useAuth } from '../context/AuthContext';
@@ -80,6 +81,9 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
   const [formError, setFormError] = useState<string | null>(null);
   const [publishCredits, setPublishCredits] = useState(0);
   const [activePublishTier, setActivePublishTier] = useState<string | null>(null);
+  const [priceSuggestion, setPriceSuggestion] = useState<PriceRecommendationResponse | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   const loadAgentCredits = useCallback(async () => {
     if (!isAgent) return;
@@ -211,6 +215,38 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
     }
     setStep((s) => (s + 1) as PostPropertyStepIndex);
     scrollTop();
+  }
+
+  async function getAiPriceSuggestion() {
+    if (!form.bhkConfiguration.trim() || !form.builtupSqft.trim()) {
+      Alert.alert('Missing details', 'Select BHK and enter built-up area first.');
+      return;
+    }
+    setPriceLoading(true);
+    setPriceError(null);
+    setPriceSuggestion(null);
+    try {
+      const res = await aiApi.recommendPrice({
+        propertyType: form.isForSale ? 'Sale' : 'Rent',
+        bhk: form.bhkConfiguration,
+        builtupSqft: Number(form.builtupSqft) || 0,
+        locality: form.areaName.trim() || 'Thane West',
+      });
+      setPriceSuggestion(res);
+    } catch (e) {
+      setPriceError(e instanceof ApiError ? e.message : 'Could not get an AI price suggestion right now.');
+    } finally {
+      setPriceLoading(false);
+    }
+  }
+
+  function applyAiPrice() {
+    if (!priceSuggestion) return;
+    if (form.isForSale) {
+      patch('sellPrice', String(Math.round(priceSuggestion.fairMarketPrice)));
+    } else {
+      patch('rentAmount', String(Math.round(priceSuggestion.fairMarketPrice)));
+    }
   }
 
   async function pickImages() {
@@ -433,6 +469,35 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
               placeholder="980"
               keyboardType="numeric"
             />
+
+            <Pressable style={styles.aiPriceBtn} onPress={getAiPriceSuggestion} disabled={priceLoading}>
+              <Ionicons name="sparkles" size={16} color="#7c3aed" />
+              <Text style={styles.aiPriceBtnText}>
+                {priceLoading ? 'Asking AI…' : 'Get AI price suggestion'}
+              </Text>
+            </Pressable>
+
+            {priceError ? <Text style={styles.aiPriceError}>{priceError}</Text> : null}
+
+            {priceSuggestion ? (
+              <View style={styles.aiPriceCard}>
+                <Text style={styles.aiPriceFair}>
+                  Fair price: ₹{Math.round(priceSuggestion.fairMarketPrice).toLocaleString('en-IN')}
+                  {form.isForSale ? '' : ' / month'}
+                </Text>
+                <Text style={styles.aiPriceRange}>
+                  Range ₹{Math.round(priceSuggestion.priceRangeMin).toLocaleString('en-IN')} – ₹
+                  {Math.round(priceSuggestion.priceRangeMax).toLocaleString('en-IN')}
+                </Text>
+                <Text style={styles.aiPriceSummary}>{priceSuggestion.summary}</Text>
+                <Pressable style={styles.aiPriceApplyBtn} onPress={applyAiPrice}>
+                  <Text style={styles.aiPriceApplyText}>
+                    Use this {form.isForSale ? 'sale price' : 'rent'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
             {(form.isForRent || form.isForPg) && (
               <AuthTextField
                 label="Available from (optional)"
@@ -747,6 +812,68 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  aiPriceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: '#f5f3ff',
+    borderWidth: 1,
+    borderColor: '#ddd6fe',
+    marginBottom: spacing.md,
+  },
+  aiPriceBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6d28d9',
+  },
+  aiPriceError: {
+    fontSize: 12,
+    color: colors.error,
+    marginBottom: spacing.md,
+  },
+  aiPriceCard: {
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: '#faf5ff',
+    borderWidth: 1,
+    borderColor: '#e9d5ff',
+    marginBottom: spacing.md,
+  },
+  aiPriceFair: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.navy,
+  },
+  aiPriceRange: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.slateLight,
+    marginTop: 2,
+  },
+  aiPriceSummary: {
+    fontSize: 13,
+    color: colors.slateMuted,
+    marginTop: spacing.xs,
+    lineHeight: 18,
+  },
+  aiPriceApplyBtn: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: '#7c3aed',
+  },
+  aiPriceApplyText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.heroText,
   },
   mapSuccess: {
     flexDirection: 'row',

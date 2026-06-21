@@ -25,6 +25,7 @@ import { GradientButton } from '../components/ui/GradientButton';
 import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
 import { useDevicePhoneNumber } from '../hooks/useDevicePhoneNumber';
 import { useUsernameAvailability } from '../hooks/useUsernameAvailability';
+import { useEmailAvailability } from '../hooks/useEmailAvailability';
 import { ApiError } from '../api/client';
 import { authApi } from '../api/singleton';
 import {
@@ -32,6 +33,7 @@ import {
   sanitizeUsername,
 } from '../utils/username';
 import { isValidOptionalGst, normalizeGst } from '../utils/gstNumber';
+import { BUILDER_PORTAL_ENABLED } from '../config/env';
 import type { RootStackParamList } from '../navigation/types';
 import { LegalFooter } from '../components/layout/LegalFooter';
 import { colors, radius, spacing, typography } from '../theme';
@@ -93,6 +95,7 @@ export default function RegisterScreen({ navigation }: Props) {
   const usernameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const usernameTouched = useRef(false);
 
@@ -100,11 +103,15 @@ export default function RegisterScreen({ navigation }: Props) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [role, setRole] = useState<(typeof roles)[number]>('User');
   const [marketIntent, setMarketIntent] = useState<(typeof intents)[number]>('Buy');
   const [companyName, setCompanyName] = useState('');
   const [reraNumber, setReraNumber] = useState('');
+  const [whatsAppNumber, setWhatsAppNumber] = useState('');
+  const [operatingLocalities, setOperatingLocalities] = useState('');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
   const [gstNumber, setGstNumber] = useState('');
 
   const showGst = role !== 'Owner';
@@ -151,6 +158,13 @@ export default function RegisterScreen({ navigation }: Props) {
     isAvailable: usernameAvailable,
     checkNow: checkUsernameNow,
   } = useUsernameAvailability(username);
+
+  const {
+    status: emailStatus,
+    message: emailMessage,
+    checkNow: checkEmailNow,
+  } = useEmailAvailability(email);
+  const emailTaken = emailStatus === 'taken';
 
   const localUsernameSuggestions = useMemo(
     () => buildUsernameCandidatesFromFullName(fullName),
@@ -204,14 +218,19 @@ export default function RegisterScreen({ navigation }: Props) {
       username.trim().length < 3 ||
       !usernameAvailable ||
       !email.trim() ||
+      emailTaken ||
       !password.trim() ||
+      password.length < 6 ||
+      confirmPassword !== password ||
       phoneNumber.length !== 10 ||
       (showAgentFields && (!companyName.trim() || !reraNumber.trim())) ||
       (showGst && gstNumber.trim().length > 0 && !isValidOptionalGst(gstNumber)),
     [
       email,
+      emailTaken,
       fullName,
       password,
+      confirmPassword,
       phoneNumber,
       username,
       usernameAvailable,
@@ -243,6 +262,15 @@ export default function RegisterScreen({ navigation }: Props) {
       );
       return;
     }
+    if (emailTaken) {
+      await checkEmailNow(email);
+      Alert.alert('Email unavailable', 'This email is already registered. Try signing in instead.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Passwords do not match', 'Please re-enter the same password in both fields.');
+      return;
+    }
     if (disabled) {
       Alert.alert('Missing details', 'Please fill all required fields.');
       return;
@@ -262,6 +290,11 @@ export default function RegisterScreen({ navigation }: Props) {
         gstNumber: showGst && gstNumber.trim() ? normalizeGst(gstNumber) : null,
         companyName: showAgentFields ? companyName.trim() : null,
         reraNumber: showAgentFields ? reraNumber.trim().toUpperCase() : null,
+        whatsAppNumber: showAgentFields && whatsAppNumber.trim() ? whatsAppNumber.trim() : null,
+        operatingLocalities:
+          showAgentFields && operatingLocalities.trim() ? operatingLocalities.trim() : null,
+        profilePhotoUrl:
+          showAgentFields && profilePhotoUrl.trim() ? profilePhotoUrl.trim() : null,
       });
 
       setSuccessMessage(
@@ -342,7 +375,9 @@ export default function RegisterScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.roleList}>
-            {ROLE_OPTIONS.map((opt) => (
+            {ROLE_OPTIONS.filter(
+              (opt) => BUILDER_PORTAL_ENABLED || opt.value !== 'Builder'
+            ).map((opt) => (
               <RegisterSelectCard
                 key={opt.value}
                 label={opt.label}
@@ -420,10 +455,23 @@ export default function RegisterScreen({ navigation }: Props) {
             autoCorrect={false}
             value={email}
             onChangeText={setEmail}
+            onBlur={() => checkEmailNow(email)}
             returnKeyType="next"
             blurOnSubmit={false}
             onSubmitEditing={() => passwordRef.current?.focus()}
           />
+          {emailMessage ? (
+            <Text
+              style={[
+                styles.fieldStatus,
+                emailStatus === 'available' && styles.fieldStatusOk,
+                (emailStatus === 'taken' || emailStatus === 'error') &&
+                  styles.fieldStatusErr,
+              ]}
+            >
+              {emailMessage}
+            </Text>
+          ) : null}
           <AuthTextField
             ref={passwordRef}
             label="Password"
@@ -434,8 +482,25 @@ export default function RegisterScreen({ navigation }: Props) {
             onChangeText={setPassword}
             returnKeyType="next"
             blurOnSubmit={false}
+            onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+          />
+          <AuthTextField
+            ref={confirmPasswordRef}
+            label="Confirm password"
+            icon="lock-closed-outline"
+            placeholder="Re-enter your password"
+            secureTextEntry
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            returnKeyType="next"
+            blurOnSubmit={false}
             onSubmitEditing={() => phoneRef.current?.focus()}
           />
+          {confirmPassword.length > 0 && confirmPassword !== password ? (
+            <Text style={[styles.fieldStatus, styles.fieldStatusErr]}>
+              Passwords do not match
+            </Text>
+          ) : null}
           <PhoneNumberField
             ref={phoneRef}
             value={phoneNumber}
@@ -467,6 +532,30 @@ export default function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="characters"
                 value={reraNumber}
                 onChangeText={setReraNumber}
+              />
+              <AuthTextField
+                label="WhatsApp (optional)"
+                icon="logo-whatsapp"
+                placeholder="Same as mobile if blank"
+                keyboardType="number-pad"
+                value={whatsAppNumber}
+                onChangeText={setWhatsAppNumber}
+              />
+              <AuthTextField
+                label="Operating areas (optional)"
+                icon="map-outline"
+                placeholder="e.g. Thane West, Ghodbunder Road"
+                value={operatingLocalities}
+                onChangeText={setOperatingLocalities}
+              />
+              <AuthTextField
+                label="Photo URL (optional)"
+                icon="image-outline"
+                placeholder="https://…"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={profilePhotoUrl}
+                onChangeText={setProfilePhotoUrl}
               />
             </>
           ) : null}
@@ -602,6 +691,19 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: spacing.sm,
+  },
+  fieldStatus: {
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.slateLight,
+  },
+  fieldStatusOk: {
+    color: '#0f766e',
+  },
+  fieldStatusErr: {
+    color: colors.error,
   },
   trustRow: {
     flexDirection: 'row',

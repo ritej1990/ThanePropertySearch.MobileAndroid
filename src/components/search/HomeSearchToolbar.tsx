@@ -1,21 +1,24 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { PropertyLocationSearch } from '../property/PropertyLocationSearch';
 import type { SelectedPlace } from '../../services/googlePlaces';
 import { DEFAULT_SEARCH_RADIUS_KM, hasGoogleMapsKey } from '../../config/env';
+import type { ListingGeoAnchor } from '../../utils/listingGeo';
 import {
   nextSortOption,
   type PropertySearchFilters,
 } from '../../utils/propertySearchFilters';
 import { SearchViewToggle, type SearchViewMode } from './SearchViewToggle';
+import { useTranslation } from '../../context/LocaleContext';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
   searchText: string;
   onSearchTextChange: (text: string) => void;
   selectedPlace: SelectedPlace | null;
+  geoAnchor: ListingGeoAnchor;
   onPlaceSelected: (place: SelectedPlace | null) => void;
   filters: PropertySearchFilters;
   onFiltersChange: (filters: PropertySearchFilters) => void;
@@ -25,6 +28,8 @@ type Props = {
   onViewModeChange: (mode: SearchViewMode) => void;
   activeFilterCount: number;
   onOpenFilters: () => void;
+  onAiSearch?: () => void;
+  aiSearching?: boolean;
   onOpenBuilders?: () => void;
   showPlan?: boolean;
   onOpenPlan?: () => void;
@@ -138,6 +143,7 @@ export function HomeSearchToolbar({
   searchText,
   onSearchTextChange,
   selectedPlace,
+  geoAnchor,
   onPlaceSelected,
   filters,
   onFiltersChange,
@@ -147,17 +153,21 @@ export function HomeSearchToolbar({
   onViewModeChange,
   activeFilterCount,
   onOpenFilters,
+  onAiSearch,
+  aiSearching,
   onOpenBuilders,
   showPlan,
   onOpenPlan,
   showOwnerLink,
   onOwnerDashboard,
 }: Props) {
+  const { t } = useTranslation();
   const mapsEnabled = hasGoogleMapsKey();
 
-  const resultLabel = selectedPlace
-    ? `${resultCount} homes within ${DEFAULT_SEARCH_RADIUS_KM} km`
-    : `${resultCount} of ${totalLoaded} homes in Thane`;
+  const resultLabel =
+    geoAnchor.kind === 'place' || geoAnchor.kind === 'gps'
+      ? t('search.homesWithinKm', { count: resultCount, km: DEFAULT_SEARCH_RADIUS_KM })
+      : t('search.homesInThane', { count: resultCount, total: totalLoaded });
 
   return (
     <LinearGradient
@@ -178,16 +188,30 @@ export function HomeSearchToolbar({
             elevated
           />
         </View>
+        {onAiSearch ? (
+          <Pressable
+            style={[styles.iconBtn, styles.iconBtnAi]}
+            onPress={onAiSearch}
+            disabled={aiSearching}
+            accessibilityLabel={t('common.aiSearch')}
+          >
+            {aiSearching ? (
+              <ActivityIndicator size="small" color="#7c3aed" />
+            ) : (
+              <Ionicons name="sparkles" size={17} color="#7c3aed" />
+            )}
+          </Pressable>
+        ) : null}
         <ToolbarIconBtn
           icon="options-outline"
-          label="Open filters"
+          label={t('common.openFilters')}
           onPress={onOpenFilters}
           badge={activeFilterCount}
           active={activeFilterCount > 0}
         />
         <ToolbarIconBtn
           icon="swap-vertical"
-          label="Change sort order"
+          label={t('common.changeSort')}
           onPress={() =>
             onFiltersChange({ ...filters, sort: nextSortOption(filters.sort) })
           }
@@ -208,7 +232,7 @@ export function HomeSearchToolbar({
           <Pressable
             onPress={() => onPlaceSelected(null)}
             hitSlop={8}
-            accessibilityLabel="Clear area"
+            accessibilityLabel={t('common.clearArea')}
             style={styles.placeClear}
           >
             <Ionicons name="close" size={14} color={colors.tealDark} />
@@ -233,7 +257,7 @@ export function HomeSearchToolbar({
           {onOpenBuilders ? (
             <ShortcutPill
               icon="business"
-              label="Builders"
+              label={t('common.builders')}
               onPress={onOpenBuilders}
               colors={['#f5f3ff', '#ede9fe']}
               borderColor={colors.builderBorder}
@@ -243,7 +267,7 @@ export function HomeSearchToolbar({
           {showPlan && onOpenPlan ? (
             <ShortcutPill
               icon="flash"
-              label="Plan"
+              label={t('common.plan')}
               onPress={onOpenPlan}
               colors={['#eff6ff', '#dbeafe']}
               borderColor="#bfdbfe"
@@ -253,7 +277,7 @@ export function HomeSearchToolbar({
           {showOwnerLink && onOwnerDashboard ? (
             <ToolbarIconBtn
               icon="grid"
-              label="Owner dashboard"
+              label={t('common.ownerDashboard')}
               onPress={onOwnerDashboard}
               tone="owner"
             />
@@ -267,7 +291,7 @@ export function HomeSearchToolbar({
           style={styles.resultBadge}
         >
           <Text style={styles.resultCount}>{resultCount}</Text>
-          <Text style={styles.resultLabel}>{selectedPlace ? 'shown' : 'homes'}</Text>
+          <Text style={styles.resultLabel}>{geoAnchor.kind === 'gps' ? t('common.nearYou') : t('common.homes')}</Text>
         </LinearGradient>
       </View>
 
@@ -302,7 +326,7 @@ const styles = StyleSheet.create({
   },
   searchRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: spacing.sm,
   },
   searchShadow: {
@@ -344,6 +368,10 @@ const styles = StyleSheet.create({
   iconBtnBuilder: {
     backgroundColor: colors.builderSoft,
     borderColor: colors.builderBorder,
+  },
+  iconBtnAi: {
+    backgroundColor: '#f5f3ff',
+    borderColor: '#ddd6fe',
   },
   iconBtnPlan: {
     backgroundColor: '#eff6ff',

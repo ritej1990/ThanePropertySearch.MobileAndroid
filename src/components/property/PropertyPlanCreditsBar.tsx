@@ -7,7 +7,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { paymentsApi } from '../../api/singleton';
 import type { EssentialStatus } from '../../api/paymentTypes';
 import type { RootStackParamList } from '../../navigation/types';
-import { hasActivePlanCredits } from '../../utils/planUsage';
+import { useTranslation } from '../../context/LocaleContext';
+import { hasActivePlanCredits, isEssentialPlanExpired, normalizeEssentialUsage } from '../../utils/planUsage';
 import { colors, radius, spacing } from '../../theme';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export function PropertyPlanCreditsBar({ propertyId, navigation }: Props) {
+  const { t } = useTranslation();
   const [essential, setEssential] = useState<EssentialStatus | null>(null);
 
   const load = useCallback(async () => {
@@ -37,31 +39,45 @@ export function PropertyPlanCreditsBar({ propertyId, navigation }: Props) {
 
   if (!essential) return null;
 
+  const expired = isEssentialPlanExpired(essential);
+  const { usageMax, usageUsed, usageLeft } = normalizeEssentialUsage(essential);
   const hasPlan = hasActivePlanCredits(essential);
-  const used = Math.max(0, essential.usageUsed);
   const pct =
-    essential.usageMax > 0
-      ? Math.min(100, (used / essential.usageMax) * 100)
-      : 0;
+    usageMax > 0 ? Math.min(100, (usageUsed / usageMax) * 100) : 0;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.creditsCard}>
         <View style={styles.cardHead}>
-          <View style={styles.cardHeadLeft}>
-            <Ionicons name="flash" size={18} color={colors.primary} />
-            <Text style={styles.cardTitle}>Plan credits</Text>
-          </View>
-          <Text style={styles.cardValue}>
-            <Text style={styles.remain}>{essential.usageLeft}</Text>
-            <Text style={styles.total}> / {essential.usageMax}</Text>
-          </Text>
+          {expired ? (
+            <View style={styles.expiredHead}>
+              <Ionicons name="time-outline" size={18} color={colors.error} />
+              <Text style={styles.expiredText}>{t('plan.expired')}</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.cardHeadLeft}>
+                <Ionicons name="flash" size={18} color={colors.primary} />
+                <Text style={styles.cardTitle}>{t('plan.planCredits')}</Text>
+              </View>
+              <Text style={styles.cardValue}>
+                <Text style={styles.remain}>{usageLeft}</Text>
+                <Text style={styles.total}> / {usageMax}</Text>
+              </Text>
+            </>
+          )}
         </View>
         <View style={styles.track}>
-          <View style={[styles.trackFill, { width: `${pct}%` }]} />
+          <View
+            style={[
+              styles.trackFill,
+              expired && styles.trackFillExpired,
+              { width: `${expired ? 100 : pct}%` },
+            ]}
+          />
         </View>
         <Text style={styles.hint}>
-          1 credit per action — contact, visit, request, or chat message
+          {expired ? t('plan.renewContactHint') : t('plan.creditHint')}
         </Text>
       </View>
 
@@ -72,21 +88,27 @@ export function PropertyPlanCreditsBar({ propertyId, navigation }: Props) {
             navigation.navigate('EssentialService', { returnPropertyId: propertyId })
           }
           accessibilityRole="button"
-          accessibilityLabel="Unlock chat and requests"
+          accessibilityLabel={expired ? t('plan.renewEssential') : t('plan.unlockChat')}
         >
           <LinearGradient
-            colors={['#1e3a5f', '#2563eb']}
+            colors={expired ? ['#7f1d1d', '#dc2626'] : ['#1e3a5f', '#2563eb']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.unlockGradient}
           >
             <View style={styles.unlockIconWrap}>
-              <Ionicons name="flash" size={20} color={colors.goldAccent} />
+              <Ionicons
+                name={expired ? 'refresh' : 'flash'}
+                size={20}
+                color={colors.goldAccent}
+              />
             </View>
             <View style={styles.unlockTextCol}>
-              <Text style={styles.unlockTitle}>Unlock chat & requests</Text>
+              <Text style={styles.unlockTitle}>
+                {expired ? t('plan.renewEssential') : t('plan.unlockChat')}
+              </Text>
               <Text style={styles.unlockSub}>
-                Get an Essential plan (e.g. 30 credits) to contact owners
+                {expired ? t('plan.renewSub') : t('plan.unlockSub')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={22} color={colors.heroText} />
@@ -115,6 +137,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
+  expiredHead: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
   cardHeadLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -132,6 +161,11 @@ const styles = StyleSheet.create({
   remain: {
     color: colors.teal,
   },
+  expiredText: {
+    color: colors.error,
+    fontSize: 16,
+    fontWeight: '800',
+  },
   total: {
     color: colors.slateLight,
     fontSize: 14,
@@ -148,6 +182,9 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 3,
     backgroundColor: colors.primary,
+  },
+  trackFillExpired: {
+    backgroundColor: colors.error,
   },
   hint: {
     fontSize: 12,

@@ -20,10 +20,13 @@ import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import type { RootStackParamList } from '../navigation/types';
+import { useTranslation } from '../context/LocaleContext';
 import {
   alertPlanRequired,
   handlePlanUsageError,
   hasActivePlanCredits,
+  isEssentialPlanExpired,
+  normalizeEssentialUsage,
 } from '../utils/planUsage';
 import { colors, radius, spacing } from '../theme';
 
@@ -36,6 +39,7 @@ export default function PropertyChatScreen({ navigation, route }: Props) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const { t } = useTranslation();
 
   const loadMessages = useCallback(async () => {
     try {
@@ -72,7 +76,7 @@ export default function PropertyChatScreen({ navigation, route }: Props) {
     const trimmed = text.trim();
     if (!trimmed) return;
     if (!hasActivePlanCredits(essential)) {
-      alertPlanRequired(navigation, propertyId);
+      alertPlanRequired(navigation, propertyId, isEssentialPlanExpired(essential), t);
       return;
     }
     setSending(true);
@@ -91,7 +95,12 @@ export default function PropertyChatScreen({ navigation, route }: Props) {
 
   const creditsLabel =
     essential != null
-      ? `${essential.usageLeft} / ${essential.usageMax} credits left`
+      ? isEssentialPlanExpired(essential)
+        ? t('plan.planExpiredChat')
+        : (() => {
+            const { usageLeft, usageMax } = normalizeEssentialUsage(essential);
+            return t('plan.creditsLeftChat', { left: usageLeft, max: usageMax });
+          })()
       : null;
 
   return (

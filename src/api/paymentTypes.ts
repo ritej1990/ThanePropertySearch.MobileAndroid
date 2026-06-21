@@ -24,6 +24,8 @@ export type EssentialStatus = {
   usageMax: number;
   usageUsed: number;
   usageLeft: number;
+  /** Separate contact-pack top-up — usable for revealing owner contact only. */
+  contactRevealCreditsRemaining?: number;
 };
 
 export type ContactCredits = {

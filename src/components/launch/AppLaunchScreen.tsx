@@ -22,8 +22,9 @@ const LAUNCH_SAFETY_MS = MIN_VISIBLE_MS + EXIT_MS + 800;
 
 const STATUS_LINES = [
   'Loading verified listings across Thane…',
+  'Warming up AI insights, pricing & advisor…',
   'Preparing maps & neighbourhood filters…',
-  'Almost ready — your home search starts here…',
+  'Almost ready — your AI home search starts here…',
 ] as const;
 
 const FEATURE_HIGHLIGHTS = [
@@ -247,11 +248,27 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
             <Ionicons name="location" size={12} color={colors.goldAccent} />
             <Text style={styles.locationText}>Thane · Maharashtra</Text>
           </View>
-          <Text style={styles.tagline}>Your Thane property companion</Text>
+          <Text style={styles.tagline}>Your AI Thane property companion</Text>
           <Text style={styles.lead} numberOfLines={2}>
-            Buy, rent, sell & list — all in one app
+            Buy, rent, sell & list — powered by AI
           </Text>
+          <View style={styles.aiBadge}>
+            <Ionicons name="sparkles" size={12} color={colors.navyDeep} />
+            <Text style={styles.aiBadgeText}>AI-powered</Text>
+          </View>
         </Animated.View>
+
+        <View style={styles.aiBanner}>
+          <View style={styles.aiBannerIcon}>
+            <Ionicons name="sparkles" size={16} color={colors.heroText} />
+          </View>
+          <View style={styles.aiBannerText}>
+            <Text style={styles.aiBannerTitle}>Now with AI assistance</Text>
+            <Text style={styles.aiBannerSub} numberOfLines={2}>
+              Smart pricing, area insights, negotiation & a property advisor
+            </Text>
+          </View>
+        </View>
 
         <LaunchMarketShowcase entrance={showcaseEntrance} />
 
@@ -382,6 +399,57 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontSize: 13,
     textAlign: 'center',
+  },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: spacing.sm,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.goldAccent,
+  },
+  aiBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.navyDeep,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  aiBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(124, 58, 237, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.45)',
+  },
+  aiBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#7c3aed',
+  },
+  aiBannerText: {
+    flex: 1,
+  },
+  aiBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.heroText,
+  },
+  aiBannerSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(226, 232, 240, 0.9)',
+    marginTop: 1,
+    lineHeight: 15,
   },
   featureGrid: {
     flexDirection: 'row',

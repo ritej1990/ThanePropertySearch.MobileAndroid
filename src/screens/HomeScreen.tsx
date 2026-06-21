@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   Pressable,
@@ -25,17 +26,25 @@ import { PropertyFiltersSheet } from '../components/search/PropertyFiltersSheet'
 import { SearchEmptyState } from '../components/search/SearchEmptyState';
 import type { SearchViewMode } from '../components/search/SearchViewToggle';
 import type { SelectedPlace } from '../services/googlePlaces';
-import { DEFAULT_SEARCH_RADIUS_KM } from '../config/env';
+import { BUILDER_PORTAL_ENABLED } from '../config/env';
 import type { RootStackParamList } from '../navigation/types';
-import { propertiesApi } from '../api/singleton';
+import { aiApi, propertiesApi } from '../api/singleton';
 import type { PropertyResponse } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
+import { useUserLocation } from '../hooks/useUserLocation';
+import {
+  listingGeoBannerText,
+  listingGeoQuery,
+  resolveListingGeoAnchor,
+} from '../utils/listingGeo';
 import { colors, gradients, radius, spacing } from '../theme';
 import {
   applyPropertySearch,
   countActiveFilters,
   defaultSearchFilters,
+  RENT_PRESETS,
+  type ListingTypeFilter,
   type PropertySearchFilters,
 } from '../utils/propertySearchFilters';
 import { isOwnerRole, isUserRole } from '../utils/roles';
@@ -65,7 +74,9 @@ function HomeScreenContent({ navigation }: Props) {
   const [filters, setFilters] = useState<PropertySearchFilters>(defaultSearchFilters);
   const [viewMode, setViewMode] = useState<SearchViewMode>('list');
   const [filtersSheetVisible, setFiltersSheetVisible] = useState(false);
+  const [aiSearching, setAiSearching] = useState(false);
   const [toolbarHeight, setToolbarHeight] = useState(360);
+  const { location: userLocation, refresh: refreshUserLocation } = useUserLocation();
   const { scrollY, goToTopVisible, onScroll, resetCompactHeader } =
     useAuthenticatedScroll();
   const { listColumns, contentMaxWidth, horizontalPad } = useResponsiveLayout();
@@ -78,20 +89,28 @@ function HomeScreenContent({ navigation }: Props) {
   /** Matches AuthenticatedScreenLayout legalFooterInset when showLegalFooter is true */
   const legalFooterHeight = 52;
 
+  const geoAnchor = useMemo(
+    () => resolveListingGeoAnchor(selectedPlace, userLocation),
+    [selectedPlace, userLocation]
+  );
+
+  const mapCenter = useMemo(
+    () =>
+      geoAnchor.kind === 'gps' && !selectedPlace
+        ? { latitude: geoAnchor.latitude, longitude: geoAnchor.longitude }
+        : null,
+    [geoAnchor, selectedPlace]
+  );
+
   const load = useCallback(
     async (place?: SelectedPlace | null) => {
       setError(null);
       try {
-        const geo = place !== undefined ? place : selectedPlace;
-        const data = await propertiesApi.list(
-          geo
-            ? {
-                latitude: geo.latitude,
-                longitude: geo.longitude,
-                radiusKm: DEFAULT_SEARCH_RADIUS_KM,
-              }
-            : undefined
+        const anchor = resolveListingGeoAnchor(
+          place !== undefined ? place : selectedPlace,
+          userLocation
         );
+        const data = await propertiesApi.list(listingGeoQuery(anchor));
         setItems(data);
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : 'Could not load listings';
@@ -101,15 +120,18 @@ function HomeScreenContent({ navigation }: Props) {
         setRefreshing(false);
       }
     },
-    [selectedPlace]
+    [selectedPlace, userLocation]
   );
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      load();
-    }, [load])
+      void refreshUserLocation();
+    }, [refreshUserLocation])
   );
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   function handlePlaceSelected(place: SelectedPlace | null) {
     setSelectedPlace(place);
@@ -166,6 +188,53 @@ function HomeScreenContent({ navigation }: Props) {
     navigation.navigate('BuilderProjects');
   }, [navigation]);
 
+  const handleAiSearch = useCallback(async () => {
+    const query = searchText.trim();
+    if (!query) {
+      Alert.alert('Type a search first', 'e.g. "2bhk under 20k near Ghodbunder Road"');
+      return;
+    }
+    setAiSearching(true);
+    try {
+      const res = await aiApi.parseSearch(query);
+
+      const nextListingType: ListingTypeFilter =
+        res.listingType?.toLowerCase() === 'rent'
+          ? 'rent'
+          : res.listingType?.toLowerCase() === 'sale'
+            ? 'sale'
+            : res.listingType?.toLowerCase() === 'pg'
+              ? 'pg'
+              : filters.listingType;
+
+      const budget = res.rentBudgetMax ?? res.saleBudgetMax ?? null;
+      const nextRentPreset =
+        budget != null
+          ? RENT_PRESETS.find((p) => p.max != null && budget <= p.max)?.key ??
+            RENT_PRESETS[RENT_PRESETS.length - 1].key
+          : filters.rentPreset;
+
+      setFilters({
+        ...filters,
+        listingType: nextListingType,
+        bhk: res.bhk ? [res.bhk] : filters.bhk,
+        rentPreset: nextRentPreset,
+      });
+      setSearchText(res.location ?? '');
+
+      if (res.displayLines.length > 0) {
+        Alert.alert('AI search applied', res.displayLines.join('\n'));
+      }
+    } catch (e) {
+      Alert.alert(
+        'AI search unavailable',
+        e instanceof ApiError ? e.message : 'Could not parse that search right now.'
+      );
+    } finally {
+      setAiSearching(false);
+    }
+  }, [searchText, filters]);
+
   const openFilters = useCallback(() => {
     setFiltersSheetVisible(true);
   }, []);
@@ -192,7 +261,8 @@ function HomeScreenContent({ navigation }: Props) {
   const stickyRevealAt = Math.max(140, toolbarHeight - 12);
 
   const listHeader = useMemo(() => {
-    const placeBanner = !selectedPlace ? null : (
+    const showGeoBanner = geoAnchor.kind === 'place' || geoAnchor.kind === 'gps';
+    const placeBanner = !showGeoBanner ? null : (
       <LinearGradient
         colors={['#ecfdf5', '#f0fdfa']}
         start={{ x: 0, y: 0 }}
@@ -200,20 +270,25 @@ function HomeScreenContent({ navigation }: Props) {
         style={styles.placeBanner}
       >
         <View style={styles.placeBannerIcon}>
-          <Ionicons name="location" size={16} color={colors.tealDark} />
+          <Ionicons
+            name={geoAnchor.kind === 'gps' ? 'navigate' : 'location'}
+            size={16}
+            color={colors.tealDark}
+          />
         </View>
         <Text style={styles.placeBannerText} numberOfLines={2}>
-          Within {DEFAULT_SEARCH_RADIUS_KM} km of{' '}
-          <Text style={styles.placeBannerBold}>{selectedPlace.label}</Text>
+          {listingGeoBannerText(geoAnchor)}
         </Text>
-        <Pressable
-          onPress={clearPlaceSearch}
-          hitSlop={8}
-          accessibilityLabel="Clear area search"
-          style={styles.placeBannerClose}
-        >
-          <Ionicons name="close" size={16} color={colors.tealDark} />
-        </Pressable>
+        {geoAnchor.kind === 'place' ? (
+          <Pressable
+            onPress={clearPlaceSearch}
+            hitSlop={8}
+            accessibilityLabel="Clear area search"
+            style={styles.placeBannerClose}
+          >
+            <Ionicons name="close" size={16} color={colors.tealDark} />
+          </Pressable>
+        ) : null}
       </LinearGradient>
     );
 
@@ -231,6 +306,7 @@ function HomeScreenContent({ navigation }: Props) {
             searchText={searchText}
             onSearchTextChange={setSearchText}
             selectedPlace={selectedPlace}
+            geoAnchor={geoAnchor}
             onPlaceSelected={handlePlaceSelected}
             filters={filters}
             onFiltersChange={setFilters}
@@ -240,7 +316,9 @@ function HomeScreenContent({ navigation }: Props) {
             onViewModeChange={handleViewModeChange}
             activeFilterCount={activeFilterCount}
             onOpenFilters={openFilters}
-            onOpenBuilders={openBuilders}
+            onAiSearch={handleAiSearch}
+            aiSearching={aiSearching}
+            onOpenBuilders={BUILDER_PORTAL_ENABLED ? openBuilders : undefined}
             showPlan={showPlan}
             onOpenPlan={openPlans}
             showOwnerLink={isOwner}
@@ -251,6 +329,7 @@ function HomeScreenContent({ navigation }: Props) {
       </View>
     );
   }, [
+    geoAnchor,
     selectedPlace,
     clearPlaceSearch,
     toolbarHeight,
@@ -263,6 +342,8 @@ function HomeScreenContent({ navigation }: Props) {
     handleViewModeChange,
     activeFilterCount,
     openFilters,
+    handleAiSearch,
+    aiSearching,
     openBuilders,
     showPlan,
     openPlans,
@@ -282,6 +363,7 @@ function HomeScreenContent({ navigation }: Props) {
             <PropertySearchStickyBar
               searchText={searchText}
               selectedPlace={selectedPlace}
+              nearYou={geoAnchor.kind === 'gps'}
               resultCount={filtered.length}
               activeFilterCount={activeFilterCount}
               onPressSearch={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
@@ -310,12 +392,13 @@ function HomeScreenContent({ navigation }: Props) {
               <PropertySearchMap
                 properties={filtered}
                 selectedPlace={selectedPlace}
+                mapCenter={mapCenter}
                 onPropertyPress={openProperty}
               />
             )}
           </View>
         ) : loading && items.length === 0 ? (
-          <BrandLoading message="Loading homes…" />
+          <BrandLoading message="Finding homes near you…" />
         ) : error ? (
           <View style={styles.centered}>
             <Text style={styles.errTitle}>Could not load listings</Text>
@@ -337,6 +420,11 @@ function HomeScreenContent({ navigation }: Props) {
             scrollEventThrottle={16}
             bounces
             decelerationRate="normal"
+            initialNumToRender={5}
+            maxToRenderPerBatch={6}
+            updateCellsBatchingPeriod={60}
+            windowSize={7}
+            removeClippedSubviews
             ListEmptyComponent={
               <SearchEmptyState onClearFilters={clearSearchAndFilters} />
             }
@@ -345,7 +433,7 @@ function HomeScreenContent({ navigation }: Props) {
                 refreshing={refreshing}
                 onRefresh={() => {
                   setRefreshing(true);
-                  load();
+                  void refreshUserLocation().then(() => load());
                 }}
                 tintColor="#0d9488"
                 colors={['#0d9488']}

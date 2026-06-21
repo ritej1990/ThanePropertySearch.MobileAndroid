@@ -40,6 +40,7 @@ export type RegisterBody = {
   reraNumber?: string | null;
   whatsAppNumber?: string | null;
   operatingLocalities?: string | null;
+  profilePhotoUrl?: string | null;
 };
 
 /** Matches PropertyResponse (subset used by lists — extend as needed) */

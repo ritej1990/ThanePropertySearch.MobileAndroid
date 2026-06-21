@@ -1,4 +1,5 @@
 import { createApiClient } from './client';
+import { createAiApi } from './ai';
 import { createAuthApi } from './auth';
 import { createAgentListingsApi } from './agentListings';
 import { createAgentProfilesApi } from './agentProfiles';
@@ -20,3 +21,4 @@ export const builderProjectsApi = createBuilderProjectsApi(api);
 export const agentProfilesApi = createAgentProfilesApi(api);
 export const agentListingsApi = createAgentListingsApi(api);
 export const invoicesApi = createInvoicesApi(api);
+export const aiApi = createAiApi(api);

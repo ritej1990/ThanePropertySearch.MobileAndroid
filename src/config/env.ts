@@ -101,3 +101,6 @@ export const THANE_MAP_MAX_LATITUDE_DELTA = 0.22;
 export const THANE_MAP_MAX_LONGITUDE_DELTA = 0.22;
 
 export const DEFAULT_SEARCH_RADIUS_KM = 12;
+
+/** Mirrors Web's BuilderPortalFeature.IsEnabled — set EXPO_PUBLIC_BUILDER_PORTAL_ENABLED=true to turn builder UI back on. */
+export const BUILDER_PORTAL_ENABLED = readPublicEnv('EXPO_PUBLIC_BUILDER_PORTAL_ENABLED') === 'true';

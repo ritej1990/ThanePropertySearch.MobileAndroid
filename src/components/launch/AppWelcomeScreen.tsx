@@ -189,6 +189,10 @@ export function AppWelcomeScreen({ profile, onComplete }: Props) {
           <Text style={styles.greeting}>{greeting},</Text>
           <Text style={styles.name}>{firstName}</Text>
           <Text style={styles.welcomeLine}>Welcome back to Thane Flats</Text>
+          <View style={styles.aiChip}>
+            <Ionicons name="sparkles" size={12} color={colors.navyDeep} />
+            <Text style={styles.aiChipText}>AI-powered property assistant</Text>
+          </View>
 
           <View style={styles.metaRow}>
             <Text style={styles.fullName} numberOfLines={1}>
@@ -283,6 +287,22 @@ const styles = StyleSheet.create({
     color: colors.goldSoft,
     marginTop: spacing.sm,
     textAlign: 'center',
+  },
+  aiChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: spacing.md,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.goldAccent,
+  },
+  aiChipText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.navyDeep,
+    letterSpacing: 0.3,
   },
   metaRow: {
     flexDirection: 'row',
