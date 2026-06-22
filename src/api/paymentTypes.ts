@@ -19,11 +19,17 @@ export type PricingCatalog = {
 
 export type EssentialStatus = {
   active: boolean;
+  /** True once the plan is unusable (date passed or credits exhausted) — matches Web's `expired`. */
+  expired?: boolean;
+  expiredReason?: 'date' | 'credits' | null;
   endsAtUtc: string | null;
   tier: string | null;
   usageMax: number;
   usageUsed: number;
+  /** Raw remaining count — can stay >0 after expiry; prefer effectiveUsageLeft for display. */
   usageLeft: number;
+  /** 0 once the plan is inactive, even if usageLeft is still >0. Matches Web's `effectiveUsageLeft`. */
+  effectiveUsageLeft?: number;
   /** Separate contact-pack top-up — usable for revealing owner contact only. */
   contactRevealCreditsRemaining?: number;
 };

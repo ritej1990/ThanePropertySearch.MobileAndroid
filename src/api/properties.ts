@@ -207,5 +207,11 @@ export function createPropertiesApi(client: ReturnType<typeof createApiClient>) 
         `/api/properties/${propertyId}/owner-listing`
       );
     },
+
+    resubmitForReview(propertyId: number) {
+      return client.post<{ message: string; reviewStatus: string }>(
+        `/api/properties/${propertyId}/resubmit-for-review`
+      );
+    },
   };
 }

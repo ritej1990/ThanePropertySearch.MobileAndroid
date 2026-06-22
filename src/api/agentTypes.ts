@@ -13,6 +13,25 @@ export type AgentProfile = {
   averageRating: number;
   ratingCount: number;
   emailConfirmed: boolean;
+  reraCertificateUrl?: string | null;
+};
+
+/** Matches UpsertAgentProfileRequest — only usable once the profile is approved. */
+export type UpdateAgentProfileBody = {
+  profilePhotoUrl?: string | null;
+  companyName: string;
+  whatsAppNumber: string;
+  reraNumber: string;
+  operatingLocalities: string;
+};
+
+/** Matches ResubmitAgentProfileRequest — reopens a pending/rejected profile for review. */
+export type ResubmitAgentProfileBody = {
+  reraNumber: string;
+  reraCertificateUrl?: string | null;
+  companyName?: string | null;
+  whatsAppNumber?: string | null;
+  operatingLocalities?: string | null;
 };
 
 export type AgentListingSummary = {
@@ -49,6 +68,7 @@ export type CreateAgentListingRequest = {
   listingDurationDays: number;
   isNegotiable?: boolean;
   availableFrom?: string | null;
+  richMetadataJson?: string | null;
 };
 
 export type AgentListingDetails = {

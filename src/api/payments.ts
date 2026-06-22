@@ -1,6 +1,7 @@
 import type { createApiClient } from './client';
 import type { AgentPaymentSummaryResponse } from './agentTypes';
 import type { PaymentTransaction } from './paymentHistoryTypes';
+import type { OwnerListingSummary } from './ownerTypes';
 import type {
   ActivateContactPackResponse,
   ActivateEssentialResponse,
@@ -30,6 +31,10 @@ export function createPaymentsApi(client: ReturnType<typeof createApiClient>) {
 
     getContactCredits() {
       return client.get<ContactCredits>('/api/users/contact-credits');
+    },
+
+    getOwnerListingSummary() {
+      return client.get<OwnerListingSummary>('/api/payments/owner-listing/summary');
     },
 
     createEssentialOrder(tierCode: string) {

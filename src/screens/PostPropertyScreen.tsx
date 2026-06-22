@@ -26,6 +26,7 @@ import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { PropertyLocationSearch } from '../components/property/PropertyLocationSearch';
+import { AiListingDraftPanel } from '../components/postProperty/AiListingDraftPanel';
 import { BhkSelector } from '../components/postProperty/BhkSelector';
 import { ListingTypeSelector } from '../components/postProperty/ListingTypeSelector';
 import {
@@ -38,9 +39,11 @@ import { StepProgress } from '../components/postProperty/StepProgress';
 import { hasGoogleMapsKey } from '../config/env';
 import type { SelectedPlace } from '../services/googlePlaces';
 import { colors, radius, spacing } from '../theme';
+import type { PropertyAiListingDraftResponse } from '../api/aiTypes';
 import {
   POST_PROPERTY_STEPS,
   agentListingFormFromDetail,
+  applyAiListingDraft,
   buildCreateAgentListingRequest,
   buildCreatePropertyRequest,
   initialPostPropertyForm,
@@ -147,7 +150,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
   );
 
   const mapsEnabled = hasGoogleMapsKey();
-  const isLastStep = step === 3;
+  const isLastStep = step === 4;
   const stepMeta = POST_PROPERTY_STEPS[step];
   const canAgentPost = !isAgent || isAgentEdit || publishCredits > 0;
   const screenTitle = isAgentEdit
@@ -160,6 +163,11 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
     : isAgent
       ? 'Post listing'
       : 'Post property';
+
+  function applyAiDraft(draft: PropertyAiListingDraftResponse) {
+    setForm((prev) => applyAiListingDraft(prev, draft));
+    setFormError(null);
+  }
 
   function patch<K extends keyof PostPropertyFormState>(
     key: K,
@@ -391,7 +399,9 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
     switch (step) {
       case 0:
         return (
-          <SectionCard
+          <>
+            {!isAgentEdit ? <AiListingDraftPanel onApply={applyAiDraft} /> : null}
+            <SectionCard
             title="Tell us about your property"
             subtitle="A clear title and description help renters find you faster."
             icon="home-outline"
@@ -419,6 +429,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
               style={styles.textArea}
             />
           </SectionCard>
+          </>
         );
 
       case 1:
@@ -513,6 +524,181 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
 
       case 2:
         return (
+          <SectionCard
+            title="Extended details"
+            subtitle="Optional — adds richer info to your listing, same as the website's full listing form."
+            icon="list-outline"
+            accent="#0d9488"
+          >
+            <AuthTextField
+              label="Society / building name"
+              icon="business-outline"
+              value={form.societyName}
+              onChangeText={(v) => patch('societyName', v)}
+              placeholder="Hiranandani Estate Residency"
+            />
+            <AuthTextField
+              label="Carpet area (sq.ft.)"
+              icon="resize-outline"
+              value={form.metaCarpetSqft}
+              onChangeText={(v) => patch('metaCarpetSqft', v)}
+              placeholder="765"
+              keyboardType="numeric"
+            />
+            <AuthTextField
+              label="Configuration"
+              icon="grid-outline"
+              value={form.metaConfiguration}
+              onChangeText={(v) => patch('metaConfiguration', v)}
+              placeholder="2 Bed, 2 Bath, 1 Balcony"
+            />
+            <AuthTextField
+              label="Tenant preference"
+              icon="people-outline"
+              value={form.metaTenantPreference}
+              onChangeText={(v) => patch('metaTenantPreference', v)}
+              placeholder="Family / Bachelor / PG / Any"
+            />
+            <AuthTextField
+              label="Possession status"
+              icon="key-outline"
+              value={form.metaPossessionStatus}
+              onChangeText={(v) => patch('metaPossessionStatus', v)}
+              placeholder="Ready to move"
+            />
+            <AuthTextField
+              label="Transaction type"
+              icon="swap-horizontal-outline"
+              value={form.metaTransactionType}
+              onChangeText={(v) => patch('metaTransactionType', v)}
+              placeholder="Resale / Rental / New booking"
+            />
+            <AuthTextField
+              label="Ownership"
+              icon="ribbon-outline"
+              value={form.metaOwnership}
+              onChangeText={(v) => patch('metaOwnership', v)}
+              placeholder="Freehold"
+            />
+            <AuthTextField
+              label="Floor"
+              icon="layers-outline"
+              value={form.metaFloorInfo}
+              onChangeText={(v) => patch('metaFloorInfo', v)}
+              placeholder="Mid floor"
+            />
+            <AuthTextField
+              label="Facing"
+              icon="compass-outline"
+              value={form.metaFacing}
+              onChangeText={(v) => patch('metaFacing', v)}
+              placeholder="East"
+            />
+            <AuthTextField
+              label="Overlooking"
+              icon="eye-outline"
+              value={form.metaOverlooking}
+              onChangeText={(v) => patch('metaOverlooking', v)}
+              placeholder="Garden / internal road"
+            />
+            <AuthTextField
+              label="Property age"
+              icon="time-outline"
+              value={form.metaPropertyAge}
+              onChangeText={(v) => patch('metaPropertyAge', v)}
+              placeholder="3 to 5 years"
+            />
+            <AuthTextField
+              label="RERA status"
+              icon="shield-checkmark-outline"
+              value={form.metaReraStatus}
+              onChangeText={(v) => patch('metaReraStatus', v)}
+              placeholder="Verify on MahaRERA before finalising"
+            />
+            <AuthTextField
+              label="Furnishing status"
+              icon="cube-outline"
+              value={form.metaFurnishingStatus}
+              onChangeText={(v) => patch('metaFurnishingStatus', v)}
+              placeholder="Semi-furnished"
+            />
+            <AuthTextField
+              label="Furnishing included"
+              icon="checkmark-circle-outline"
+              value={form.metaFurnishingIncluded}
+              onChangeText={(v) => patch('metaFurnishingIncluded', v)}
+              placeholder="AC, Geyser, Fans, Wardrobes"
+            />
+            <AuthTextField
+              label="Furnishing excluded"
+              icon="close-circle-outline"
+              value={form.metaFurnishingExcluded}
+              onChangeText={(v) => patch('metaFurnishingExcluded', v)}
+              placeholder="Sofa, TV, Fridge"
+            />
+            <AuthTextField
+              label="Flooring"
+              icon="grid-outline"
+              value={form.metaFlooring}
+              onChangeText={(v) => patch('metaFlooring', v)}
+              placeholder="Vitrified tiles"
+            />
+            <AuthTextField
+              label="Parking"
+              icon="car-outline"
+              value={form.metaParking}
+              onChangeText={(v) => patch('metaParking', v)}
+              placeholder="1 covered + visitor parking"
+            />
+            <AuthTextField
+              label="Power backup"
+              icon="flash-outline"
+              value={form.metaPowerBackup}
+              onChangeText={(v) => patch('metaPowerBackup', v)}
+              placeholder="Backup for lift & common areas"
+            />
+            <AuthTextField
+              label="Water source"
+              icon="water-outline"
+              value={form.metaWaterSource}
+              onChangeText={(v) => patch('metaWaterSource', v)}
+              placeholder="Municipal corporation + society tank"
+            />
+            <AuthTextField
+              label="Highlights (comma separated)"
+              icon="star-outline"
+              value={form.metaHighlights}
+              onChangeText={(v) => patch('metaHighlights', v)}
+              placeholder="Gated society, Natural light, Family neighbourhood"
+              multiline
+              numberOfLines={2}
+              style={styles.textArea}
+            />
+            <AuthTextField
+              label="Amenities / features (comma separated)"
+              icon="sparkles-outline"
+              value={form.metaFeatures}
+              onChangeText={(v) => patch('metaFeatures', v)}
+              placeholder="Lift, 24×7 Security, Power backup, CCTV"
+              multiline
+              numberOfLines={2}
+              style={styles.textArea}
+            />
+            <AuthTextField
+              label="Places nearby (one per line, name|hint)"
+              icon="location-outline"
+              value={form.placesNearbyLines}
+              onChangeText={(v) => patch('placesNearbyLines', v)}
+              placeholder={'Thane Railway Station|train\nViviana Mall|road'}
+              multiline
+              numberOfLines={3}
+              style={styles.textArea}
+            />
+          </SectionCard>
+        );
+
+      case 3:
+        return (
           <>
             <SectionCard
               title="Find on Google Maps"
@@ -581,7 +767,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
           </>
         );
 
-      case 3:
+      case 4:
       default:
         return (
           <>

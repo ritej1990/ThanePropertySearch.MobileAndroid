@@ -2,7 +2,7 @@ import type { PropertyResponse } from '../api/types';
 
 export type ListingTypeFilter = 'all' | 'rent' | 'sale' | 'pg';
 
-export type SortOption = 'newest' | 'price_asc' | 'price_desc';
+export type SortOption = 'newest' | 'price_asc' | 'price_desc' | 'ai_match';
 
 export type RentPresetKey = 'any' | 'under15' | '15to25' | '25to40' | 'above40';
 
@@ -99,7 +99,8 @@ export function countActiveFilters(filters: PropertySearchFilters): number {
 export function applyPropertySearch(
   items: PropertyResponse[],
   filters: PropertySearchFilters,
-  searchText: string
+  searchText: string,
+  aiScores?: Map<number, number> | Record<number, number>
 ): PropertyResponse[] {
   let list = items.filter(
     (item) =>
@@ -110,8 +111,21 @@ export function applyPropertySearch(
       (!filters.featuredOnly || item.isFeaturedInSearch)
   );
 
+  function aiScoreOf(item: PropertyResponse): number {
+    if (!aiScores) return 0;
+    const v = aiScores instanceof Map ? aiScores.get(item.id) : aiScores[item.id];
+    return v ?? 0;
+  }
+
   list = [...list].sort((a, b) => {
     if (filters.sort === 'newest') {
+      return (
+        new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime()
+      );
+    }
+    if (filters.sort === 'ai_match') {
+      const diff = aiScoreOf(b) - aiScoreOf(a);
+      if (diff !== 0) return diff;
       return (
         new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime()
       );
@@ -130,13 +144,16 @@ export function sortLabel(sort: SortOption): string {
       return 'Price ↑';
     case 'price_desc':
       return 'Price ↓';
+    case 'ai_match':
+      return 'AI match';
     default:
       return 'Newest';
   }
 }
 
 export function nextSortOption(current: SortOption): SortOption {
-  if (current === 'newest') return 'price_asc';
+  if (current === 'newest') return 'ai_match';
+  if (current === 'ai_match') return 'price_asc';
   if (current === 'price_asc') return 'price_desc';
   return 'newest';
 }

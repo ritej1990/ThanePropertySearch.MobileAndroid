@@ -3,6 +3,7 @@ import { isWithinThaneBounds } from './mapHelpers';
 import type { CreatePropertyRequest } from '../api/createPropertyTypes';
 import type { AgentListingDetails, CreateAgentListingRequest } from '../api/agentTypes';
 import type { SelectedPlace } from '../services/googlePlaces';
+import type { PropertyAiListingDraftResponse } from '../api/aiTypes';
 
 export const BHK_OPTIONS = ['1 RK', '1 BHK', '2 BHK', '3 BHK'] as const;
 
@@ -23,6 +24,28 @@ export type PostPropertyFormState = {
   availableFrom: string;
   locationQuery: string;
   selectedPlace: SelectedPlace | null;
+  metaTenantPreference: string;
+  metaPossessionStatus: string;
+  metaReraStatus: string;
+  metaCarpetSqft: string;
+  metaConfiguration: string;
+  metaFloorInfo: string;
+  metaFacing: string;
+  metaOverlooking: string;
+  metaPropertyAge: string;
+  metaTransactionType: string;
+  metaOwnership: string;
+  metaFurnishingStatus: string;
+  metaHighlights: string;
+  metaFurnishingIncluded: string;
+  metaFurnishingExcluded: string;
+  metaFeatures: string;
+  societyName: string;
+  metaFlooring: string;
+  metaParking: string;
+  metaPowerBackup: string;
+  metaWaterSource: string;
+  placesNearbyLines: string;
 };
 
 export const initialPostPropertyForm = (): PostPropertyFormState => ({
@@ -42,6 +65,28 @@ export const initialPostPropertyForm = (): PostPropertyFormState => ({
   availableFrom: '',
   locationQuery: '',
   selectedPlace: null,
+  metaTenantPreference: '',
+  metaPossessionStatus: '',
+  metaReraStatus: '',
+  metaCarpetSqft: '',
+  metaConfiguration: '',
+  metaFloorInfo: '',
+  metaFacing: '',
+  metaOverlooking: '',
+  metaPropertyAge: '',
+  metaTransactionType: '',
+  metaOwnership: '',
+  metaFurnishingStatus: '',
+  metaHighlights: '',
+  metaFurnishingIncluded: '',
+  metaFurnishingExcluded: '',
+  metaFeatures: '',
+  societyName: '',
+  metaFlooring: '',
+  metaParking: '',
+  metaPowerBackup: '',
+  metaWaterSource: '',
+  placesNearbyLines: '',
 });
 
 function parseDecimal(value: string): number | null {
@@ -54,11 +99,12 @@ function parseDecimal(value: string): number | null {
 export const POST_PROPERTY_STEPS = [
   { key: 'basics', title: 'Basics', icon: 'home-outline' as const },
   { key: 'pricing', title: 'Pricing', icon: 'wallet-outline' as const },
+  { key: 'details', title: 'Extended details', icon: 'list-outline' as const },
   { key: 'location', title: 'Location', icon: 'location-outline' as const },
   { key: 'photos', title: 'Photos', icon: 'images-outline' as const },
 ] as const;
 
-export type PostPropertyStepIndex = 0 | 1 | 2 | 3;
+export type PostPropertyStepIndex = 0 | 1 | 2 | 3 | 4;
 
 export function listingCategoryToFlags(category: string): Pick<
   PostPropertyFormState,
@@ -74,6 +120,41 @@ export function listingCategoryToFlags(category: string): Pick<
   return { isForRent: true, isForSale: false, isForPg: false };
 }
 
+/** Reads back the richMetadataJson produced by buildRichMetadataJson() into form fields (edit mode). */
+function extendedFieldsFromRichMetadataJson(json: string | null | undefined): Partial<PostPropertyFormState> {
+  if (!json?.trim()) return {};
+  try {
+    const meta = JSON.parse(json) as RichMetadataPayload;
+    return {
+      metaTenantPreference: meta.tenantPreference ?? '',
+      metaPossessionStatus: meta.possessionStatus ?? '',
+      metaReraStatus: meta.reraStatus ?? '',
+      metaCarpetSqft: meta.carpetSqft != null ? String(meta.carpetSqft) : '',
+      metaConfiguration: meta.configuration ?? '',
+      metaFloorInfo: meta.floorInfo ?? '',
+      metaFacing: meta.facing ?? '',
+      metaOverlooking: meta.overlooking ?? '',
+      metaPropertyAge: meta.propertyAge ?? '',
+      metaTransactionType: meta.transactionType ?? '',
+      metaOwnership: meta.ownership ?? '',
+      metaFurnishingStatus: meta.furnishingStatus ?? '',
+      metaHighlights: meta.highlights?.join(', ') ?? '',
+      metaFurnishingIncluded: meta.furnishingIncluded?.join(', ') ?? '',
+      metaFurnishingExcluded: meta.furnishingExcluded?.join(', ') ?? '',
+      metaFeatures: meta.features?.join(', ') ?? '',
+      societyName: meta.society?.name ?? '',
+      metaFlooring: meta.flooring ?? '',
+      metaParking: meta.parking ?? '',
+      metaPowerBackup: meta.powerBackup ?? '',
+      metaWaterSource: meta.waterSource ?? '',
+      placesNearbyLines:
+        meta.placesNearby?.map((p) => (p.iconHint ? `${p.label}|${p.iconHint}` : p.label)).join('\n') ?? '',
+    };
+  } catch {
+    return {};
+  }
+}
+
 export function agentListingFormFromDetail(
   listing: AgentListingDetails
 ): PostPropertyFormState {
@@ -84,6 +165,7 @@ export function agentListingFormFromDetail(
       : '';
 
   return {
+    ...initialPostPropertyForm(),
     title: listing.title ?? '',
     description: listing.description ?? '',
     areaName: listing.areaName ?? '',
@@ -106,7 +188,156 @@ export function agentListingFormFromDetail(
       latitude: listing.latitude,
       longitude: listing.longitude,
     },
+    ...extendedFieldsFromRichMetadataJson(listing.richMetadataJson),
   };
+}
+
+/** Merges an AI-generated draft (from /api/ai/property/listing-draft) into the form state. */
+export function applyAiListingDraft(
+  form: PostPropertyFormState,
+  draft: PropertyAiListingDraftResponse
+): PostPropertyFormState {
+  const label = `${draft.address}, ${draft.areaName}`;
+  const selectedPlace: SelectedPlace = {
+    placeId: 'ai-draft',
+    label,
+    address: draft.address,
+    areaName: draft.areaName,
+    pincode: draft.pincode,
+    latitude: draft.latitude,
+    longitude: draft.longitude,
+  };
+
+  return {
+    ...form,
+    // Description, rent, and deposit are sensitive/user-owned figures — the AI draft only
+    // suggests them (shown in the preview); they're never auto-written into the form.
+    title: draft.title,
+    areaName: draft.areaName,
+    pincode: draft.pincode,
+    address: draft.address,
+    bhkConfiguration: draft.bhkConfiguration,
+    builtupSqft: draft.builtupSqft ? String(draft.builtupSqft) : form.builtupSqft,
+    isForRent: draft.isForRent,
+    isForSale: draft.isForSale,
+    isForPg: draft.isForPg,
+    locationQuery: label,
+    selectedPlace,
+    metaTenantPreference: draft.metaTenantPreference ?? form.metaTenantPreference,
+    metaPossessionStatus: draft.metaPossessionStatus ?? form.metaPossessionStatus,
+    metaReraStatus: draft.metaReraStatus ?? form.metaReraStatus,
+    metaCarpetSqft: draft.metaCarpetSqft != null ? String(draft.metaCarpetSqft) : form.metaCarpetSqft,
+    metaConfiguration: draft.metaConfiguration ?? form.metaConfiguration,
+    metaFloorInfo: draft.metaFloorInfo ?? form.metaFloorInfo,
+    metaFacing: draft.metaFacing ?? form.metaFacing,
+    metaOverlooking: draft.metaOverlooking ?? form.metaOverlooking,
+    metaPropertyAge: draft.metaPropertyAge ?? form.metaPropertyAge,
+    metaTransactionType: draft.metaTransactionType ?? form.metaTransactionType,
+    metaOwnership: draft.metaOwnership ?? form.metaOwnership,
+    metaFurnishingStatus: draft.metaFurnishingStatus ?? form.metaFurnishingStatus,
+    metaHighlights: draft.metaHighlights ?? form.metaHighlights,
+    metaFurnishingIncluded: draft.metaFurnishingIncluded ?? form.metaFurnishingIncluded,
+    metaFurnishingExcluded: draft.metaFurnishingExcluded ?? form.metaFurnishingExcluded,
+    metaFeatures: draft.metaFeatures ?? form.metaFeatures,
+    societyName: draft.societyName ?? form.societyName,
+    metaFlooring: draft.metaFlooring ?? form.metaFlooring,
+    metaParking: draft.metaParking ?? form.metaParking,
+    metaPowerBackup: draft.metaPowerBackup ?? form.metaPowerBackup,
+    metaWaterSource: draft.metaWaterSource ?? form.metaWaterSource,
+    placesNearbyLines: draft.placesNearbyLines ?? form.placesNearbyLines,
+  };
+}
+
+type RichMetadataPlaceNearby = { label: string; iconHint?: string };
+
+type RichMetadataPayload = {
+  tenantPreference?: string;
+  possessionStatus?: string;
+  reraStatus?: string;
+  carpetSqft?: number;
+  configuration?: string;
+  floorInfo?: string;
+  facing?: string;
+  overlooking?: string;
+  propertyAge?: string;
+  transactionType?: string;
+  ownership?: string;
+  furnishingStatus?: string;
+  highlights?: string[];
+  furnishingIncluded?: string[];
+  furnishingExcluded?: string[];
+  features?: string[];
+  flooring?: string;
+  parking?: string;
+  waterSource?: string;
+  powerBackup?: string;
+  placesNearby?: RichMetadataPlaceNearby[];
+  society?: { name?: string };
+  pricePerSqftNote?: string;
+};
+
+function splitCommaList(value: string): string[] {
+  return value
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function parsePlacesNearbyLines(lines: string): RichMetadataPlaceNearby[] {
+  return lines
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line): RichMetadataPlaceNearby[] => {
+      const [label, iconHint] = line.split('|').map((p) => p.trim());
+      return label ? [{ label, iconHint: iconHint || undefined }] : [];
+    });
+}
+
+/** Serializes the form's extended-details fields into the richMetadataJson carried on create requests
+ *  — same shape ThanePropertySearch.Web.Infrastructure.PropertyRichMetadataBuilder produces. */
+export function buildRichMetadataJson(form: PostPropertyFormState): string | null {
+  const highlights = splitCommaList(form.metaHighlights);
+  const furnishingIncluded = splitCommaList(form.metaFurnishingIncluded);
+  const furnishingExcluded = splitCommaList(form.metaFurnishingExcluded);
+  const features = splitCommaList(form.metaFeatures);
+  const placesNearby = parsePlacesNearbyLines(form.placesNearbyLines);
+  const carpetSqft = parseDecimal(form.metaCarpetSqft);
+
+  const meta: RichMetadataPayload = {
+    tenantPreference: form.metaTenantPreference.trim() || undefined,
+    possessionStatus: form.metaPossessionStatus.trim() || undefined,
+    reraStatus: form.metaReraStatus.trim() || undefined,
+    carpetSqft: carpetSqft != null ? carpetSqft : undefined,
+    configuration: form.metaConfiguration.trim() || undefined,
+    floorInfo: form.metaFloorInfo.trim() || undefined,
+    facing: form.metaFacing.trim() || undefined,
+    overlooking: form.metaOverlooking.trim() || undefined,
+    propertyAge: form.metaPropertyAge.trim() || undefined,
+    transactionType: form.metaTransactionType.trim() || undefined,
+    ownership: form.metaOwnership.trim() || undefined,
+    furnishingStatus: form.metaFurnishingStatus.trim() || undefined,
+    highlights: highlights.length > 0 ? highlights : undefined,
+    furnishingIncluded: furnishingIncluded.length > 0 ? furnishingIncluded : undefined,
+    furnishingExcluded: furnishingExcluded.length > 0 ? furnishingExcluded : undefined,
+    features: features.length > 0 ? features : undefined,
+    flooring: form.metaFlooring.trim() || undefined,
+    parking: form.metaParking.trim() || undefined,
+    waterSource: form.metaWaterSource.trim() || undefined,
+    powerBackup: form.metaPowerBackup.trim() || undefined,
+    placesNearby: placesNearby.length > 0 ? placesNearby : undefined,
+    society: form.societyName.trim() ? { name: form.societyName.trim() } : undefined,
+  };
+
+  const sellPrice = parseDecimal(form.sellPrice);
+  const sqft = parseDecimal(form.builtupSqft);
+  if (form.isForSale && sellPrice != null && sqft != null && sqft > 0) {
+    const perSqft = sellPrice / sqft;
+    meta.pricePerSqftNote = `₹ ${Math.round(perSqft).toLocaleString('en-IN')} per sq.ft. (built-up, indicative)`;
+  }
+
+  const hasAny = Object.values(meta).some((v) => v !== undefined);
+  return hasAny ? JSON.stringify(meta) : null;
 }
 
 export function validatePostPropertyStep(
@@ -144,6 +375,10 @@ export function validatePostPropertyStep(
   }
 
   if (step === 2) {
+    return null;
+  }
+
+  if (step === 3) {
     if (hasGoogleMapsKey() && !form.selectedPlace) {
       return 'Search and pick your property on Google Maps (Thane only).';
     }
@@ -181,7 +416,7 @@ export function validatePostPropertyForm(
   form: PostPropertyFormState,
   options?: { editMode?: boolean }
 ): string | null {
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const err = validatePostPropertyStep(
       i as PostPropertyStepIndex,
       form,
@@ -268,6 +503,7 @@ export function buildCreateAgentListingRequest(
     listingDurationDays,
     isNegotiable: overrides?.isNegotiable ?? false,
     availableFrom,
+    richMetadataJson: buildRichMetadataJson(form),
   };
 }
 
@@ -303,6 +539,7 @@ export function buildCreatePropertyRequest(
     imageUrl: primary,
     address: form.address.trim(),
     areaName: form.areaName.trim(),
+    pincode: form.pincode.trim() || null,
     latitude: lat,
     longitude: lng,
     isForRent: form.isForRent,
@@ -310,5 +547,6 @@ export function buildCreatePropertyRequest(
     isForPg: form.isForPg,
     imageUrls: deduped.length > 0 ? deduped : null,
     availableFrom,
+    richMetadataJson: buildRichMetadataJson(form),
   };
 }

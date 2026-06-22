@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { agentListingsApi, propertiesApi } from '../api/singleton';
+import { agentListingsApi, paymentsApi, propertiesApi } from '../api/singleton';
 import type { PropertyResponse } from '../api/types';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
@@ -43,7 +43,9 @@ import { normalizeAgentListing } from '../utils/normalizeAgentListing';
 import { resolveListingRera, shouldShowListingRera, isNewListing } from '../utils/listingRera';
 import { ReraBadge } from '../components/property/ReraBadge';
 import { NewListingRibbon } from '../components/property/NewListingRibbon';
+import { FavoriteButton } from '../components/property/FavoriteButton';
 import { isAgentRole, isOwnerRole, isUserRole } from '../utils/roles';
+import { hasActiveEssentialPlan } from '../utils/planDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyDetails'>;
 
@@ -245,6 +247,28 @@ function PropertyDetailsContent({
     profile?.userId != null &&
     item.ownerId === profile.userId;
 
+  const [essentialPlanActive, setEssentialPlanActive] = useState(false);
+  const showCopilot = showUserActions && !isAgentListing && !isOwnListing && essentialPlanActive;
+
+  useEffect(() => {
+    if (!showUserActions || isAgentListing || isOwnListing) {
+      setEssentialPlanActive(false);
+      return;
+    }
+    let active = true;
+    paymentsApi
+      .getEssentialStatus()
+      .then((status) => {
+        if (active) setEssentialPlanActive(hasActiveEssentialPlan(status));
+      })
+      .catch(() => {
+        if (active) setEssentialPlanActive(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [showUserActions, isAgentListing, isOwnListing]);
+
   function scrollToSection(targetRef: React.RefObject<View | null>) {
     const content = scrollContentRef.current;
     const target = targetRef.current;
@@ -420,6 +444,13 @@ function PropertyDetailsContent({
             compact
           />
           {isNewListing(item.createdAtUtc) ? <NewListingRibbon /> : null}
+          <View style={styles.favoriteOverlay}>
+            <FavoriteButton
+              resourceType={isAgentListing ? 'AgentListing' : 'PropertyListing'}
+              resourceId={propertyId}
+              variant="toolbar"
+            />
+          </View>
         </View>
 
         {showUserActions ? (
@@ -523,12 +554,16 @@ function PropertyDetailsContent({
         />
 
         {!isAgentListing ? (
-          <AiPropertyDetailsHub listingId={propertyId} propertyTitle={item.title} />
+          <AiPropertyDetailsHub
+            listingId={propertyId}
+            propertyTitle={item.title}
+            showCopilot={showCopilot}
+          />
         ) : null}
 
         {isOwnListing ? <AiFraudAssessment listingId={propertyId} /> : null}
 
-        {showUserActions && !isAgentListing && item.isForSale && item.sellPrice ? (
+        {showCopilot && item.isForSale && item.sellPrice ? (
           <AiNegotiationPanel listingId={propertyId} askingPrice={item.sellPrice} />
         ) : null}
 
@@ -645,6 +680,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     borderRadius: radius.lg,
     overflow: 'hidden',
+  },
+  favoriteOverlay: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
   },
   centered: {
     flex: 1,

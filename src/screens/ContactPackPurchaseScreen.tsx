@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { paymentsApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { PaymentMethodBadges } from '../components/payments/PaymentMethodBadges';
 import { ThaneFlatsLogo } from '../components/ui/ThaneFlatsLogo';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
@@ -21,10 +22,12 @@ export default function ContactPackPurchaseScreen({ navigation, route }: Props) 
   const returnPropertyId = route.params?.returnPropertyId;
   const [paying, setPaying] = useState(false);
   const [pack, setPack] = useState({ priceInr: 149, credits: 10 });
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
 
   React.useEffect(() => {
     paymentsApi.getPricing().then((p) => {
       if (p.userContactPack) setPack(p.userContactPack);
+      setPaymentMethods(p.paymentMethods ?? []);
     });
   }, []);
 
@@ -66,6 +69,9 @@ export default function ContactPackPurchaseScreen({ navigation, route }: Props) 
             <Text style={styles.payBtnText}>Pay with Cashfree</Text>
           )}
         </Pressable>
+        <View style={styles.paymentBadgesWrap}>
+          <PaymentMethodBadges methods={paymentMethods} />
+        </View>
       </View>
     </AuthenticatedScreenLayout>
   );
@@ -101,4 +107,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   payBtnText: { color: colors.heroText, fontWeight: '800', fontSize: 16 },
+  paymentBadgesWrap: {
+    marginTop: spacing.lg,
+  },
 });

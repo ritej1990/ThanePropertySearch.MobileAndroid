@@ -15,8 +15,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { PropertyListCard } from '../components/property/PropertyListCard';
+import { PropertyListSkeletonGroup } from '../components/property/PropertyListCardSkeleton';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { ScrollChromeBar } from '../components/ui/ScrollChromeBar';
+import { QuickFilterChips } from '../components/search/QuickFilterChips';
 import { getFloatingRailHeight } from '../components/layout/FloatingSupportChat';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { HomeSearchToolbar } from '../components/search/HomeSearchToolbar';
@@ -76,6 +78,7 @@ function HomeScreenContent({ navigation }: Props) {
   const [filtersSheetVisible, setFiltersSheetVisible] = useState(false);
   const [aiSearching, setAiSearching] = useState(false);
   const [toolbarHeight, setToolbarHeight] = useState(360);
+  const [aiScores, setAiScores] = useState<Map<number, number>>(new Map());
   const { location: userLocation, refresh: refreshUserLocation } = useUserLocation();
   const { scrollY, goToTopVisible, onScroll, resetCompactHeader } =
     useAuthenticatedScroll();
@@ -157,9 +160,30 @@ function HomeScreenContent({ navigation }: Props) {
   }
 
   const filtered = useMemo(
-    () => applyPropertySearch(items, filters, searchText),
-    [items, filters, searchText]
+    () => applyPropertySearch(items, filters, searchText, aiScores),
+    [items, filters, searchText, aiScores]
   );
+
+  useEffect(() => {
+    if (filters.sort !== 'ai_match' || items.length === 0) return;
+    const missingIds = items.map((i) => i.id).filter((id) => !aiScores.has(id));
+    if (missingIds.length === 0) return;
+    let cancelled = false;
+    aiApi
+      .cardIntelligence(missingIds)
+      .then((res) => {
+        if (cancelled) return;
+        setAiScores((prev) => {
+          const next = new Map(prev);
+          res.items.forEach((it) => next.set(it.listingId, it.card.investmentScore));
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.sort, items, aiScores]);
 
   const showScrollToTopFab =
     viewMode === 'list' && !loading && !error && filtered.length > 0 && goToTopVisible;
@@ -326,6 +350,7 @@ function HomeScreenContent({ navigation }: Props) {
           />
         </View>
         {placeBanner}
+        <QuickFilterChips filters={filters} onFiltersChange={setFilters} />
       </View>
     );
   }, [
@@ -373,6 +398,9 @@ function HomeScreenContent({ navigation }: Props) {
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
             />
+            <View style={styles.stickyChipsWrap}>
+              <QuickFilterChips filters={filters} onFiltersChange={setFilters} compact />
+            </View>
           </ScrollChromeBar>
         ) : null}
 
@@ -398,7 +426,14 @@ function HomeScreenContent({ navigation }: Props) {
             )}
           </View>
         ) : loading && items.length === 0 ? (
-          <BrandLoading message="Finding homes near you…" />
+          <View
+            style={[
+              styles.listContent,
+              { maxWidth: contentMaxWidth, alignSelf: 'center', width: '100%', paddingHorizontal: horizontalPad },
+            ]}
+          >
+            <PropertyListSkeletonGroup count={4} />
+          </View>
         ) : error ? (
           <View style={styles.centered}>
             <Text style={styles.errTitle}>Could not load listings</Text>
@@ -477,6 +512,13 @@ const styles = StyleSheet.create({
   },
   mapWrap: {
     flex: 1,
+  },
+  stickyChipsWrap: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
   },
   placeBanner: {
     flexDirection: 'row',

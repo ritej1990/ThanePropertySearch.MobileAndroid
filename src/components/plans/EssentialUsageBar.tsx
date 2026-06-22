@@ -53,6 +53,45 @@ export function EssentialUsageBar({ status, onPress, compact, collapsed }: Props
       ? `${t('plan.creditsUsed')} · ${hint}`
       : `${t('plan.creditsLeft', { left: usageLeft, max: usageMax })} · ${hint}`;
 
+  if (statusOnly) {
+    return (
+      <Pressable
+        style={[
+          styles.ctaWrap,
+          compact && styles.ctaWrapCompact,
+          { backgroundColor: palette.bg, borderColor: palette.border },
+        ]}
+        onPress={onPress}
+        disabled={collapsed}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+      >
+        <View style={[styles.ctaIconWrap, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+          <Ionicons
+            name={expired ? 'time-outline' : 'flash'}
+            size={compact ? 14 : 16}
+            color={palette.text}
+          />
+        </View>
+        <View style={styles.ctaTextWrap}>
+          <Text
+            style={[styles.ctaTitle, compact && styles.ctaTitleCompact, { color: palette.text }]}
+            numberOfLines={1}
+          >
+            {statusText}
+          </Text>
+          <Text style={[styles.ctaHint, { color: palette.text }]} numberOfLines={1}>
+            {hint}
+          </Text>
+        </View>
+        <View style={[styles.ctaBtn, { borderColor: palette.text }]}>
+          <Text style={[styles.ctaBtnText, { color: palette.text }]}>{t('plan.renewPlan')}</Text>
+          <Ionicons name="arrow-forward" size={12} color={palette.text} />
+        </View>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       style={[
@@ -74,49 +113,25 @@ export function EssentialUsageBar({ status, onPress, compact, collapsed }: Props
         />
       </View>
 
-      {statusOnly ? (
-        <View style={styles.statusRow}>
+      <View style={styles.row}>
+        <View style={styles.left}>
           <Ionicons
-            name={expired ? 'time-outline' : 'flash'}
+            name="flash"
             size={compact ? 12 : 14}
             color={palette.text}
+            style={styles.icon}
           />
-          <Text
-            style={[
-              styles.statusCentered,
-              compact && styles.statusCenteredCompact,
-              { color: palette.text },
-            ]}
-          >
-            {statusText}
+          <Text style={[styles.label, compact && styles.labelCompact, { color: palette.text }]}>
+            {t('plan.planCredits')}
           </Text>
-          <Ionicons name="chevron-forward" size={14} color={palette.text} />
         </View>
-      ) : (
-        <View style={styles.row}>
-          <View style={styles.left}>
-            <Ionicons
-              name="flash"
-              size={compact ? 12 : 14}
-              color={palette.text}
-              style={styles.icon}
-            />
-            <Text style={[styles.label, compact && styles.labelCompact, { color: palette.text }]}>
-              {t('plan.planCredits')}
-            </Text>
-          </View>
-          <Text style={[styles.count, compact && styles.countCompact, { color: palette.text }]}>
-            <Text style={styles.countStrong}>{usageLeft}</Text>
-            <Text style={styles.countOf}> of {usageMax}</Text>
-            <Text style={styles.countSuffix}> {t('plan.leftSuffix')}</Text>
-          </Text>
-          <Ionicons name="chevron-forward" size={14} color={palette.text} />
-        </View>
-      )}
-
-      {expired ? (
-        <Text style={[styles.subHint, { color: palette.text }]}>{t('plan.tapRenew')}</Text>
-      ) : null}
+        <Text style={[styles.count, compact && styles.countCompact, { color: palette.text }]}>
+          <Text style={styles.countStrong}>{usageLeft}</Text>
+          <Text style={styles.countOf}> of {usageMax}</Text>
+          <Text style={styles.countSuffix}> {t('plan.leftSuffix')}</Text>
+        </Text>
+        <Ionicons name="chevron-forward" size={14} color={palette.text} />
+      </View>
     </Pressable>
   );
 }
@@ -143,20 +158,57 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: radius.pill,
   },
-  statusRow: {
+  ctaWrap: {
+    marginTop: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
   },
-  statusCentered: {
+  ctaWrapCompact: {
+    marginTop: spacing.xs,
+    paddingVertical: 6,
+  },
+  ctaIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaTextWrap: {
     flex: 1,
-    textAlign: 'center',
+    minWidth: 0,
+  },
+  ctaTitle: {
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
-  statusCenteredCompact: {
+  ctaTitleCompact: {
+    fontSize: 12,
+  },
+  ctaHint: {
+    fontSize: 10,
+    fontWeight: '600',
+    opacity: 0.85,
+    marginTop: 1,
+  },
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  ctaBtnText: {
     fontSize: 11,
+    fontWeight: '800',
   },
   row: {
     flexDirection: 'row',
@@ -200,12 +252,5 @@ const styles = StyleSheet.create({
   countSuffix: {
     fontWeight: '600',
     opacity: 0.88,
-  },
-  subHint: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 6,
-    opacity: 0.92,
-    textAlign: 'center',
   },
 });

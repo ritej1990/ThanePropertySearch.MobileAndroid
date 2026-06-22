@@ -41,3 +41,11 @@ npm run start
 - Login
 - Home property list
 - Owner dashboard
+
+## Documentation
+
+All docs live in the **Web** repo (`d:\Project\Web\docs\`):
+
+- **[Functional spec (Web + Android)](d:\Project\Web\docs\FUNCTIONAL.md)** — flows, parity matrix, plan rules. Update on every feature change.
+- [Docs index](d:\Project\Web\docs\README.md)
+- [Mobile setup](d:\Project\Web\docs\ANDROID_MOBILE.md)

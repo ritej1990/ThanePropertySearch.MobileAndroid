@@ -14,13 +14,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackParamList } from '../navigation/types';
-import type { OwnerAvailabilityOutcome, OwnerDashboardItem } from '../api/ownerTypes';
+import type {
+  OwnerAvailabilityOutcome,
+  OwnerDashboardItem,
+  OwnerListingSummary,
+} from '../api/ownerTypes';
 import {
   readApiHidden,
   readApiMessage,
   readApiOutcome,
 } from '../api/normalizeOwnerDashboard';
-import { propertiesApi } from '../api/singleton';
+import { paymentsApi, propertiesApi } from '../api/singleton';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { ApiError } from '../api/client';
@@ -32,6 +36,7 @@ import { ScrollChromeBar } from '../components/ui/ScrollChromeBar';
 import { scrollLinkedHostStyle } from '../components/ui/ScrollLinkedOverlay';
 import { OwnerDashboardHeader } from '../components/owner/OwnerDashboardHeader';
 import { OwnerListingCard } from '../components/owner/OwnerListingCard';
+import { OwnerListingPlanCard } from '../components/owner/OwnerListingPlanCard';
 import { colors, gradients, radius, spacing } from '../theme';
 import {
   OWNER_LIST_FILTERS,
@@ -57,6 +62,7 @@ function OwnerDashboardContent({ navigation }: Props) {
   const { profile } = useAuth();
   const { showToast } = useToast();
   const [rows, setRows] = useState<OwnerDashboardItem[]>([]);
+  const [planSummary, setPlanSummary] = useState<OwnerListingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +81,10 @@ function OwnerDashboardContent({ navigation }: Props) {
     try {
       const data = await propertiesApi.ownerDashboard();
       setRows(data);
+      paymentsApi
+        .getOwnerListingSummary()
+        .then(setPlanSummary)
+        .catch(() => setPlanSummary(null));
     } catch (e) {
       if (e instanceof ApiError && e.status === 403) {
         setError('Owner access only. Sign in with an owner account.');
@@ -189,6 +199,37 @@ function OwnerDashboardContent({ navigation }: Props) {
     [showToast]
   );
 
+  const handleResubmit = useCallback(
+    async (item: OwnerDashboardItem) => {
+      try {
+        const res = await propertiesApi.resubmitForReview(item.id);
+        patchListing(item.id, { reviewStatus: res.reviewStatus, verificationDetail: null });
+        showToast({ message: res.message || 'Resubmitted for review', variant: 'success' });
+      } catch (e) {
+        showToast({
+          message: e instanceof ApiError ? e.message : 'Could not resubmit',
+          variant: 'error',
+        });
+        throw e;
+      }
+    },
+    [patchListing, showToast]
+  );
+
+  const handleViewVisitRequests = useCallback(
+    (item: OwnerDashboardItem) => {
+      navigation.navigate('VisitRequests', { propertyId: item.id, title: item.title });
+    },
+    [navigation]
+  );
+
+  const handleViewClarification = useCallback(
+    (ticketId: number) => {
+      navigation.navigate('SupportTicketDetails', { ticketId });
+    },
+    [navigation]
+  );
+
   if (!isOwner) {
     return (
       <BrandLoading message="Loading…" />
@@ -211,6 +252,8 @@ function OwnerDashboardContent({ navigation }: Props) {
         onBrowse={() => navigation.navigate('Home')}
         onPostProperty={() => navigation.navigate('PostProperty')}
       />
+
+      {planSummary ? <OwnerListingPlanCard summary={planSummary} /> : null}
 
       <Text style={styles.sectionTitle}>Your listings</Text>
       <Text style={styles.sectionSub}>
@@ -342,6 +385,9 @@ function OwnerDashboardContent({ navigation }: Props) {
               onOutcomeChange={(outcome) => handleOutcomeChange(item, outcome)}
               onHideToggle={(hidden) => handleHideToggle(item, hidden)}
               onDelete={() => handleDelete(item)}
+              onResubmit={() => handleResubmit(item)}
+              onViewVisitRequests={() => handleViewVisitRequests(item)}
+              onViewClarification={handleViewClarification}
             />
           )}
         />

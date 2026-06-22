@@ -20,6 +20,8 @@ import type {
   LocationIntelligenceResponse,
   PropertyIntelligenceReportResponse,
   AdvisorStartRequest,
+  PropertyAiListingDraftRequest,
+  PropertyAiListingDraftResponse,
 } from './aiTypes';
 
 /** Routes: ThanePropertySearch.Api.Controllers.Ai.AiController — [Route("api/ai")] */
@@ -122,6 +124,10 @@ export function createAiApi(client: ReturnType<typeof createApiClient>) {
 
     getFraudAssessment(listingId: number) {
       return client.get<FraudAssessmentResponse>(`/api/ai/fraud/listing/${listingId}`);
+    },
+
+    generateListingDraft(body: PropertyAiListingDraftRequest) {
+      return client.post<PropertyAiListingDraftResponse>('/api/ai/property/listing-draft', body);
     },
   };
 }

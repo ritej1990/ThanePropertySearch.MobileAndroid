@@ -62,6 +62,13 @@ export function normalizeOwnerDashboardItem(raw: unknown): OwnerDashboardItem {
     totalRequests: readNumber(r, 'totalRequests', 'TotalRequests'),
     pendingRequests: readNumber(r, 'pendingRequests', 'PendingRequests'),
     viewCount: readNullableNumber(r, 'viewCount', 'ViewCount') ?? undefined,
+    favoriteCount: readNullableNumber(r, 'favoriteCount', 'FavoriteCount') ?? undefined,
+    verificationDetail: readNullableString(r, 'verificationDetail', 'VerificationDetail'),
+    reviewClarificationTicketId: readNullableNumber(
+      r,
+      'reviewClarificationTicketId',
+      'ReviewClarificationTicketId'
+    ),
   };
 }
 

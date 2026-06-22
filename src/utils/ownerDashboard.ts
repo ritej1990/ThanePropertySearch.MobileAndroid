@@ -119,6 +119,12 @@ export function filterOwnerListings(
   return rows.filter((item) => ownerListingFilterTags(item).includes(filter));
 }
 
+/** Matches web: resubmit is offered when admin asked for changes or rejected the listing. */
+export function canResubmitListing(item: OwnerDashboardItem): boolean {
+  const s = item.reviewStatus?.trim().toLowerCase() ?? '';
+  return s.includes('awaiting') || s.includes('reject') || s.includes('declin');
+}
+
 export function ownerOutcomeLabel(outcome: string | null | undefined): string {
   const o = (outcome ?? '').trim();
   if (!o) return 'On market';

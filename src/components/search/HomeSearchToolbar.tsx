@@ -8,6 +8,7 @@ import { DEFAULT_SEARCH_RADIUS_KM, hasGoogleMapsKey } from '../../config/env';
 import type { ListingGeoAnchor } from '../../utils/listingGeo';
 import {
   nextSortOption,
+  sortLabel,
   type PropertySearchFilters,
 } from '../../utils/propertySearchFilters';
 import { SearchViewToggle, type SearchViewMode } from './SearchViewToggle';
@@ -210,8 +211,9 @@ export function HomeSearchToolbar({
           active={activeFilterCount > 0}
         />
         <ToolbarIconBtn
-          icon="swap-vertical"
-          label={t('common.changeSort')}
+          icon={filters.sort === 'ai_match' ? 'sparkles' : 'swap-vertical'}
+          label={`${t('common.changeSort')}: ${sortLabel(filters.sort)}`}
+          active={filters.sort !== 'newest'}
           onPress={() =>
             onFiltersChange({ ...filters, sort: nextSortOption(filters.sort) })
           }

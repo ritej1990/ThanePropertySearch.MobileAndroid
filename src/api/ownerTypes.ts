@@ -17,6 +17,20 @@ export type OwnerDashboardItem = {
   totalRequests: number;
   pendingRequests: number;
   viewCount?: number;
+  favoriteCount?: number;
+  verificationDetail?: string | null;
+  reviewClarificationTicketId?: number | null;
 };
 
 export type OwnerAvailabilityOutcome = '' | 'Rented' | 'Sold';
+
+/** GET /api/payments/owner-listing/summary */
+export type OwnerListingSummary = {
+  active: boolean;
+  tierCode: string | null;
+  amountPaid: number | null;
+  maxPosts: number;
+  postsRemaining: number;
+  daysLeft: number;
+  hasPendingApproval: boolean;
+};

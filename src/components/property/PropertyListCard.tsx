@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { PropertyResponse } from '../../api/types';
 import { PropertyChip } from './PropertyChip';
-import { PropertyImage } from './PropertyImage';
+import { PropertyCardGallery } from './PropertyCardGallery';
 import { PropertyListMetaPanel } from './PropertyListMetaPanel';
 import { colors, radius, spacing } from '../../theme';
 import { listingTypeChips } from '../../utils/propertyFormat';
@@ -14,11 +14,14 @@ import { resolveListingRera, shouldShowListingRera, isNewListing } from '../../u
 import { ReraBadge } from './ReraBadge';
 import { NewListingRibbon } from './NewListingRibbon';
 import { AiCardInsight } from './AiCardInsight';
+import { FavoriteButton } from './FavoriteButton';
 
 type Props = {
   item: PropertyResponse;
   onPress: () => void;
 };
+
+const MEDIA_HEIGHT = 176;
 
 function PropertyListCardBase({ item, onPress }: Props) {
   const chips = listingTypeChips(item);
@@ -37,7 +40,10 @@ function PropertyListCardBase({ item, onPress }: Props) {
       onPress={onPress}
     >
       <View style={styles.media}>
-        <PropertyImage uri={item.imageUrl} style={styles.image} />
+        <PropertyCardGallery
+          urls={item.imageUrls?.length ? item.imageUrls : [item.imageUrl].filter(Boolean) as string[]}
+          height={MEDIA_HEIGHT}
+        />
         {isNew ? <NewListingRibbon /> : null}
         <LinearGradient
           colors={['transparent', 'rgba(15, 23, 42, 0.75)']}
@@ -58,6 +64,11 @@ function PropertyListCardBase({ item, onPress }: Props) {
             <PropertyChip label="Featured" tone="featured" small />
           ) : null}
         </View>
+        <View style={styles.favoriteSlot}>
+          {/* Home feed only ever returns PropertyListings rows — isPostedByAgent just means
+              the owner has the Agent role, it's not the separate AgentListings entity. */}
+          <FavoriteButton resourceType="PropertyListing" resourceId={item.id} />
+        </View>
         <View style={styles.priceOverlay} pointerEvents="none">
           <Text style={styles.priceOverlayLabel}>{price.label}</Text>
           <Text style={styles.priceOverlayValue}>
@@ -67,12 +78,6 @@ function PropertyListCardBase({ item, onPress }: Props) {
             ) : null}
           </Text>
         </View>
-        {item.imageUrls.length > 1 ? (
-          <View style={styles.photoBadge}>
-            <Ionicons name="images-outline" size={12} color={colors.heroText} />
-            <Text style={styles.photoBadgeText}>{item.imageUrls.length}</Text>
-          </View>
-        ) : null}
       </View>
 
       <View style={styles.body}>
@@ -164,13 +169,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   media: {
-    height: 176,
+    height: MEDIA_HEIGHT,
     backgroundColor: colors.borderLight,
     overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
   },
   mediaGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -186,6 +187,11 @@ const styles = StyleSheet.create({
   },
   chipsTopNew: {
     left: 64,
+  },
+  favoriteSlot: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
   },
   priceOverlay: {
     position: 'absolute',
@@ -209,23 +215,6 @@ const styles = StyleSheet.create({
   priceOverlaySuffix: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  photoBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: radius.pill,
-  },
-  photoBadgeText: {
-    color: colors.heroText,
-    fontSize: 11,
-    fontWeight: '700',
   },
   body: {
     padding: spacing.md,

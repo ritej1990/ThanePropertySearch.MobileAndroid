@@ -319,3 +319,53 @@ export type AdvisorStartRequest = {
   title?: string | null;
   listingId?: number | null;
 };
+
+export type PropertyAiListingDraftRequest = {
+  prompt: string;
+  areaName?: string | null;
+  bhkConfiguration?: string | null;
+  listingMode?: string | null;
+  builtupSqft?: number | null;
+};
+
+export type PropertyAiListingDraftResponse = {
+  title: string;
+  description: string;
+  areaName: string;
+  address: string;
+  pincode: string;
+  bhkConfiguration: string;
+  builtupSqft: number;
+  rentAmount: number;
+  sellPrice: number | null;
+  depositAmount: number;
+  isForRent: boolean;
+  isForSale: boolean;
+  isForPg: boolean;
+  isNegotiable: boolean;
+  metaTenantPreference: string | null;
+  metaPossessionStatus: string | null;
+  metaReraStatus: string | null;
+  metaCarpetSqft: number | null;
+  metaConfiguration: string | null;
+  metaFloorInfo: string | null;
+  metaFacing: string | null;
+  metaOverlooking: string | null;
+  metaPropertyAge: string | null;
+  metaTransactionType: string | null;
+  metaOwnership: string | null;
+  metaFurnishingStatus: string | null;
+  metaHighlights: string | null;
+  metaFurnishingIncluded: string | null;
+  metaFurnishingExcluded: string | null;
+  metaFeatures: string | null;
+  societyName: string | null;
+  metaFlooring: string | null;
+  metaParking: string | null;
+  metaPowerBackup: string | null;
+  metaWaterSource: string | null;
+  placesNearbyLines: string | null;
+  latitude: number;
+  longitude: number;
+  insightLines: string[];
+};

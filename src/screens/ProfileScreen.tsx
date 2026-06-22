@@ -8,8 +8,9 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { usersApi } from '../api/singleton';
+import { agentProfilesApi, usersApi } from '../api/singleton';
 import { ApiError } from '../api/client';
+import type { AgentProfile } from '../api/agentTypes';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { PageHero } from '../components/ui/PageHero';
 import { AuthTextField } from '../components/ui/AuthTextField';
@@ -19,8 +20,13 @@ import { useAuth } from '../context/AuthContext';
 import { useResendEmailVerification } from '../hooks/useResendEmailVerification';
 import type { RootStackParamList } from '../navigation/types';
 import { getRoleLabel } from '../utils/profileDisplay';
-import { isOwnerRole } from '../utils/roles';
+import { isAgentRole, isOwnerRole } from '../utils/roles';
 import { isValidOptionalGst, normalizeGst } from '../utils/gstNumber';
+import {
+  agentApprovalStatusLabel,
+  isAgentProfileApproved,
+  isAgentProfileRejected,
+} from '../utils/agentApproval';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -28,21 +34,52 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 export default function ProfileScreen({ navigation }: Props) {
   const { profile, refreshProfile } = useAuth();
   const { resend, sending, emailConfirmed } = useResendEmailVerification();
+  const isAgent = isAgentRole(profile?.role);
+  const showGst = !isOwnerRole(profile?.role) && !isAgent;
+  const showMarketIntent = !isAgent;
+
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [authProvider, setAuthProvider] = useState('');
   const [phone, setPhone] = useState('');
   const [marketIntent, setMarketIntent] = useState('');
   const [gstNumber, setGstNumber] = useState('');
-  const showGst = !isOwnerRole(profile?.role);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const [agentProfile, setAgentProfile] = useState<AgentProfile | null>(null);
+  const [companyName, setCompanyName] = useState('');
+  const [whatsAppNumber, setWhatsAppNumber] = useState('');
+  const [reraNumber, setReraNumber] = useState('');
+  const [operatingLocalities, setOperatingLocalities] = useState('');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
+  const [reraCertificateUrl, setReraCertificateUrl] = useState('');
+  const [savingAgent, setSavingAgent] = useState(false);
+
+  const approved = isAgentProfileApproved(agentProfile?.approvalStatus);
+  const rejected = isAgentProfileRejected(agentProfile?.approvalStatus);
 
   const load = useCallback(async () => {
     try {
       const me = await usersApi.getMe();
       setFullName(me.fullName ?? '');
+      setEmail(me.email ?? '');
+      setAuthProvider(me.authProvider ?? '');
       setPhone(me.phoneNumber ?? '');
       setMarketIntent(me.marketIntent ?? '');
       setGstNumber(me.gstNumber ?? '');
+
+      if (isAgentRole(me.role)) {
+        const agent = await agentProfilesApi.getMe();
+        setAgentProfile(agent);
+        setCompanyName(agent.companyName ?? '');
+        setWhatsAppNumber(agent.whatsAppNumber ?? '');
+        setReraNumber(agent.reraNumber ?? '');
+        setOperatingLocalities(agent.operatingLocalities ?? '');
+        setProfilePhotoUrl(agent.profilePhotoUrl ?? '');
+        setReraCertificateUrl(agent.reraCertificateUrl ?? '');
+      }
+
       await refreshProfile();
     } catch (e) {
       Alert.alert(
@@ -62,8 +99,8 @@ export default function ProfileScreen({ navigation }: Props) {
   );
 
   async function handleSave() {
-    if (!fullName.trim() || !phone.trim()) {
-      Alert.alert('Missing details', 'Full name and phone are required.');
+    if (!fullName.trim() || !email.trim() || !phone.trim()) {
+      Alert.alert('Missing details', 'Full name, email and phone are required.');
       return;
     }
     if (showGst && gstNumber.trim() && !isValidOptionalGst(gstNumber)) {
@@ -72,12 +109,14 @@ export default function ProfileScreen({ navigation }: Props) {
     }
     setSaving(true);
     try {
-      await usersApi.updateMe({
+      const updated = await usersApi.updateMe({
         fullName: fullName.trim(),
+        email: email.trim(),
         phoneNumber: phone.trim(),
-        marketIntent: marketIntent.trim() || null,
+        marketIntent: showMarketIntent ? marketIntent.trim() || null : null,
         gstNumber: showGst && gstNumber.trim() ? normalizeGst(gstNumber) : null,
       });
+      setEmail(updated.email ?? email.trim());
       await refreshProfile();
       Alert.alert('Saved', 'Your profile has been updated.');
     } catch (e) {
@@ -89,6 +128,71 @@ export default function ProfileScreen({ navigation }: Props) {
       setSaving(false);
     }
   }
+
+  async function handleSaveAgent() {
+    if (!companyName.trim() || !whatsAppNumber.trim() || !reraNumber.trim()) {
+      Alert.alert(
+        'Missing details',
+        'Company name, WhatsApp number and RERA number are required.'
+      );
+      return;
+    }
+    setSavingAgent(true);
+    try {
+      const updated = await agentProfilesApi.updateMe({
+        profilePhotoUrl: profilePhotoUrl.trim() || null,
+        companyName: companyName.trim(),
+        whatsAppNumber: whatsAppNumber.trim(),
+        reraNumber: reraNumber.trim(),
+        operatingLocalities: operatingLocalities.trim(),
+      });
+      setAgentProfile(updated);
+      Alert.alert(
+        isAgentProfileApproved(updated.approvalStatus) ? 'Saved' : 'Sent for review',
+        isAgentProfileApproved(updated.approvalStatus)
+          ? 'Your agency profile has been updated.'
+          : 'Your agency profile was updated and sent back for admin review.'
+      );
+    } catch (e) {
+      Alert.alert(
+        'Could not save',
+        e instanceof ApiError ? e.message : 'Try again'
+      );
+    } finally {
+      setSavingAgent(false);
+    }
+  }
+
+  async function handleResubmit() {
+    if (!reraNumber.trim() || !reraCertificateUrl.trim()) {
+      Alert.alert(
+        'Missing details',
+        'RERA number and a RERA certificate link are required to resubmit.'
+      );
+      return;
+    }
+    setSavingAgent(true);
+    try {
+      const updated = await agentProfilesApi.resubmitMe({
+        reraNumber: reraNumber.trim(),
+        reraCertificateUrl: reraCertificateUrl.trim(),
+        companyName: companyName.trim() || null,
+        whatsAppNumber: whatsAppNumber.trim() || null,
+        operatingLocalities: operatingLocalities.trim() || null,
+      });
+      setAgentProfile(updated);
+      Alert.alert('Resubmitted', 'Your agency profile was sent back for admin review.');
+    } catch (e) {
+      Alert.alert(
+        'Could not resubmit',
+        e instanceof ApiError ? e.message : 'Try again'
+      );
+    } finally {
+      setSavingAgent(false);
+    }
+  }
+
+  const emailLocked = authProvider.toLowerCase() === 'google';
 
   return (
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
@@ -102,7 +206,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <PageHero
             variant="user"
             icon="person-circle-outline"
-            title="My profile"
+            title="Edit profile"
             subtitle="Account details synced with your Thane Flats login."
           />
 
@@ -124,15 +228,12 @@ export default function ProfileScreen({ navigation }: Props) {
           <View style={styles.card}>
             <Text style={styles.readLabel}>Username</Text>
             <Text style={styles.readValue}>{profile?.username ?? '—'}</Text>
-            <Text style={styles.readLabel}>Email</Text>
-            <Text style={styles.readValue}>{profile?.email ?? '—'}</Text>
             <Text style={styles.readLabel}>Role</Text>
-            <Text style={styles.readValue}>
-              {getRoleLabel(profile?.role)}
-            </Text>
+            <Text style={styles.readValue}>{getRoleLabel(profile?.role)}</Text>
           </View>
 
           <View style={styles.card}>
+            <Text style={styles.cardTitle}>Account details</Text>
             <AuthTextField
               label="Full name"
               icon="person-outline"
@@ -140,19 +241,43 @@ export default function ProfileScreen({ navigation }: Props) {
               onChangeText={setFullName}
             />
             <AuthTextField
+              label="Email"
+              icon="mail-outline"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!emailLocked}
+              style={emailLocked ? styles.lockedInput : undefined}
+            />
+            {emailLocked ? (
+              <Text style={styles.fieldHint}>
+                Email is managed by your Google sign-in and can't be changed here.
+              </Text>
+            ) : (
+              <Text style={styles.fieldHint}>
+                Changing your email marks it unverified again.
+              </Text>
+            )}
+            <AuthTextField
               label="Phone (10-digit Indian mobile)"
               icon="call-outline"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
-            <AuthTextField
-              label="Market intent (optional)"
-              icon="compass-outline"
-              placeholder="e.g. Rent in Thane West"
-              value={marketIntent}
-              onChangeText={setMarketIntent}
-            />
+            <Text style={styles.fieldHint}>
+              Changing your phone number marks it unverified again.
+            </Text>
+            {showMarketIntent ? (
+              <AuthTextField
+                label="Market intent (optional)"
+                icon="compass-outline"
+                placeholder="e.g. Rent in Thane West"
+                value={marketIntent}
+                onChangeText={setMarketIntent}
+              />
+            ) : null}
             {showGst ? (
               <AuthTextField
                 label="GSTIN (optional)"
@@ -169,6 +294,131 @@ export default function ProfileScreen({ navigation }: Props) {
               onPress={handleSave}
             />
           </View>
+
+          {isAgent ? (
+            <View style={styles.card}>
+              <View style={styles.agentHead}>
+                <Text style={styles.cardTitle}>Agency profile</Text>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    approved
+                      ? styles.statusApproved
+                      : rejected
+                        ? styles.statusRejected
+                        : styles.statusPending,
+                  ]}
+                >
+                  <Text style={styles.statusBadgeText}>
+                    {agentApprovalStatusLabel(agentProfile?.approvalStatus)}
+                  </Text>
+                </View>
+              </View>
+
+              {agentProfile?.verificationDetail ? (
+                <Text style={styles.verificationDetail}>
+                  {agentProfile.verificationDetail}
+                </Text>
+              ) : null}
+
+              {approved ? (
+                <>
+                  <Text style={styles.fieldHint}>
+                    Editing these details sends your profile back for admin review.
+                  </Text>
+                  <AuthTextField
+                    label="Company / agency name"
+                    icon="business-outline"
+                    value={companyName}
+                    onChangeText={setCompanyName}
+                  />
+                  <AuthTextField
+                    label="WhatsApp number"
+                    icon="logo-whatsapp"
+                    value={whatsAppNumber}
+                    onChangeText={setWhatsAppNumber}
+                    keyboardType="phone-pad"
+                  />
+                  <AuthTextField
+                    label="RERA number"
+                    icon="ribbon-outline"
+                    value={reraNumber}
+                    onChangeText={setReraNumber}
+                  />
+                  <AuthTextField
+                    label="Operating localities (optional)"
+                    icon="map-outline"
+                    placeholder="Areas you cover, comma separated"
+                    value={operatingLocalities}
+                    onChangeText={setOperatingLocalities}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <AuthTextField
+                    label="Profile photo URL (optional)"
+                    icon="image-outline"
+                    placeholder="https://…"
+                    autoCapitalize="none"
+                    value={profilePhotoUrl}
+                    onChangeText={setProfilePhotoUrl}
+                  />
+                  <GradientButton
+                    label="Save agency profile"
+                    loading={savingAgent}
+                    onPress={handleSaveAgent}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.fieldHint}>
+                    Your profile is read-only until it's approved. Update your RERA
+                    details and resubmit for review.
+                  </Text>
+                  <AuthTextField
+                    label="Company / agency name (optional)"
+                    icon="business-outline"
+                    value={companyName}
+                    onChangeText={setCompanyName}
+                  />
+                  <AuthTextField
+                    label="WhatsApp number (optional)"
+                    icon="logo-whatsapp"
+                    value={whatsAppNumber}
+                    onChangeText={setWhatsAppNumber}
+                    keyboardType="phone-pad"
+                  />
+                  <AuthTextField
+                    label="RERA number"
+                    icon="ribbon-outline"
+                    value={reraNumber}
+                    onChangeText={setReraNumber}
+                  />
+                  <AuthTextField
+                    label="RERA certificate link"
+                    icon="document-attach-outline"
+                    placeholder="https://… (upload link or document URL)"
+                    autoCapitalize="none"
+                    value={reraCertificateUrl}
+                    onChangeText={setReraCertificateUrl}
+                  />
+                  <AuthTextField
+                    label="Operating localities (optional)"
+                    icon="map-outline"
+                    placeholder="Areas you cover, comma separated"
+                    value={operatingLocalities}
+                    onChangeText={setOperatingLocalities}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <GradientButton
+                    label="Resubmit for review"
+                    loading={savingAgent}
+                    onPress={handleResubmit}
+                  />
+                </>
+              )}
+            </View>
+          ) : null}
         </ScrollView>
       )}
     </AuthenticatedScreenLayout>
@@ -199,6 +449,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.navy,
+    marginBottom: spacing.md,
+  },
   readLabel: {
     fontSize: 11,
     fontWeight: '700',
@@ -212,5 +468,53 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.navy,
     marginTop: 4,
+  },
+  fieldHint: {
+    fontSize: 11,
+    color: colors.slateLight,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+    lineHeight: 15,
+  },
+  lockedInput: {
+    color: colors.slateLight,
+  },
+  agentHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  statusApproved: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#6ee7b7',
+  },
+  statusPending: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fcd34d',
+  },
+  statusRejected: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  verificationDetail: {
+    fontSize: 12,
+    color: '#b91c1c',
+    backgroundColor: '#fef2f2',
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    lineHeight: 17,
   },
 });

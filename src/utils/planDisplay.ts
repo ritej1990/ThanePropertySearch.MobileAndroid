@@ -3,7 +3,12 @@ import type { EssentialStatus } from '../api/paymentTypes';
 export function normalizeEssentialUsage(status: EssentialStatus) {
   const usageMax = Math.max(0, status.usageMax);
   const apiUsed = Math.max(0, status.usageUsed);
-  const apiLeft = Math.max(0, status.usageLeft);
+  // Once the plan is inactive, the API's effectiveUsageLeft is the source of truth (0),
+  // even though raw usageLeft can still report leftover credits from the lapsed plan.
+  const apiLeft = Math.max(
+    0,
+    status.active ? status.usageLeft : status.effectiveUsageLeft ?? 0
+  );
 
   if (usageMax <= 0) {
     return { usageMax: 0, usageUsed: apiUsed, usageLeft: apiLeft };
@@ -48,19 +53,10 @@ export function getEssentialStatusLabel(status: EssentialStatus | null): {
 } {
   if (!status) return { label: 'Inactive', tone: 'expired' };
 
-  const { usageLeft, usageMax } = normalizeEssentialUsage(status);
+  const { usageLeft } = normalizeEssentialUsage(status);
 
-  const hasCreditsUsed =
-    !status.active &&
-    status.endsAtUtc &&
-    new Date(status.endsAtUtc) > new Date() &&
-    usageMax > 0 &&
-    usageLeft <= 0;
-
-  if (hasCreditsUsed) return { label: 'Credits used', tone: 'warn' };
-
-  const expired = !status.active;
-  if (expired) return { label: 'Expired', tone: 'expired' };
+  if (status.expiredReason === 'credits') return { label: 'Credits used', tone: 'warn' };
+  if (!status.active) return { label: 'Expired', tone: 'expired' };
 
   if (usageLeft <= 5) return { label: 'Low usage', tone: 'warn' };
 

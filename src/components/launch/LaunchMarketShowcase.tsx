@@ -53,19 +53,19 @@ export const MARKET_INTENTS: MarketIntent[] = [
     gradient: ['#92400e', '#d97706'],
   },
   {
-    key: 'pg',
-    label: 'PG',
-    icon: 'bed',
-    subtitle: 'Paying guest & shared stays',
+    key: 'owner',
+    label: 'Owner',
+    icon: 'business',
+    subtitle: 'List & manage your property, AI-priced',
     accent: '#0891b2',
     accentSoft: 'rgba(8, 145, 178, 0.28)',
     gradient: ['#0e7490', '#06b6d4'],
   },
   {
-    key: 'invest',
-    label: 'Invest',
-    icon: 'trending-up',
-    subtitle: 'Builder projects & towers',
+    key: 'agent',
+    label: 'Agent',
+    icon: 'briefcase',
+    subtitle: 'Brokers & agencies, verified leads',
     accent: '#7c3aed',
     accentSoft: 'rgba(124, 58, 237, 0.28)',
     gradient: ['#5b21b6', '#8b5cf6'],
@@ -255,7 +255,7 @@ export function LaunchMarketShowcase({ entrance }: Props) {
       ]}
     >
       <View style={styles.glassPanel}>
-        <Text style={styles.panelEyebrow}>What would you like to do?</Text>
+        <Text style={styles.panelEyebrow}>Everyone is welcome here</Text>
         <View style={styles.pillRow}>
         {MARKET_INTENTS.map((intent, i) => (
           <IntentPill

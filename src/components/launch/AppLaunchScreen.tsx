@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
 import { LaunchAnimatedBackdrop } from './LaunchAnimatedBackdrop';
 import { LaunchMarketShowcase } from './LaunchMarketShowcase';
+import { AiEngineBadge } from './AiEngineBadge';
+import { LaunchValueTicker } from './LaunchValueTicker';
 import { colors, radius, spacing, typography } from '../../theme';
 import { USE_NATIVE_DRIVER } from '../../utils/animation';
 
@@ -21,40 +23,41 @@ const EXIT_MS = 420;
 const LAUNCH_SAFETY_MS = MIN_VISIBLE_MS + EXIT_MS + 800;
 
 const STATUS_LINES = [
-  'Loading verified listings across Thane…',
-  'Warming up AI insights, pricing & advisor…',
-  'Preparing maps & neighbourhood filters…',
+  'Booting the AI matching engine…',
+  'Scanning verified listings across Thane…',
+  'Calculating lowest service charges for you…',
+  'Loading tools for owners & agents…',
   'Almost ready — your AI home search starts here…',
 ] as const;
 
 const FEATURE_HIGHLIGHTS = [
   {
-    icon: 'search' as const,
-    title: 'Smart search',
-    desc: 'Filter by area & budget',
-    tint: '#2563eb',
-    border: 'rgba(37, 99, 235, 0.45)',
+    icon: 'sparkles' as const,
+    title: 'AI matching',
+    desc: 'Smarter results, not just filters',
+    tint: '#7c3aed',
+    border: 'rgba(167, 139, 250, 0.4)',
   },
   {
-    icon: 'map' as const,
-    title: 'Live maps',
-    desc: 'Explore Thane visually',
-    tint: '#0d9488',
-    border: 'rgba(45, 212, 191, 0.4)',
-  },
-  {
-    icon: 'chatbubbles' as const,
-    title: 'Direct chat',
-    desc: 'Talk to owners instantly',
+    icon: 'pricetag' as const,
+    title: 'Lowest fees',
+    desc: 'Minimal service charges',
     tint: '#c9a227',
     border: 'rgba(252, 211, 77, 0.4)',
   },
   {
-    icon: 'add-circle' as const,
-    title: 'Post listing',
-    desc: 'Sell or rent in minutes',
-    tint: '#7c3aed',
-    border: 'rgba(167, 139, 250, 0.4)',
+    icon: 'home' as const,
+    title: 'For owners',
+    desc: 'Post & manage with ease',
+    tint: '#0d9488',
+    border: 'rgba(45, 212, 191, 0.4)',
+  },
+  {
+    icon: 'briefcase' as const,
+    title: 'For agents',
+    desc: 'Verified leads, less hassle',
+    tint: '#2563eb',
+    border: 'rgba(37, 99, 235, 0.45)',
   },
 ] as const;
 
@@ -241,34 +244,35 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
             },
           ]}
         >
-          <Animated.View style={{ transform: [{ scale: logoScale }] }}>
-            <ThaneFlatsLogo size={52} showWordmark animated onDark />
-          </Animated.View>
+          <View style={styles.brandRow}>
+            <Animated.View style={{ transform: [{ scale: logoScale }] }}>
+              <ThaneFlatsLogo size={44} showWordmark animated onDark />
+            </Animated.View>
+            <AiEngineBadge />
+          </View>
+
           <View style={styles.locationChip}>
             <Ionicons name="location" size={12} color={colors.goldAccent} />
             <Text style={styles.locationText}>Thane · Maharashtra</Text>
           </View>
-          <Text style={styles.tagline}>Your AI Thane property companion</Text>
+          <Text style={styles.tagline}>India's AI-powered property platform</Text>
           <Text style={styles.lead} numberOfLines={2}>
-            Buy, rent, sell & list — powered by AI
+            Buy, rent, sell & list — at the lowest service charges
           </Text>
-          <View style={styles.aiBadge}>
-            <Ionicons name="sparkles" size={12} color={colors.navyDeep} />
-            <Text style={styles.aiBadgeText}>AI-powered</Text>
+
+          <LaunchValueTicker />
+
+          <View style={styles.badgeRow}>
+            <View style={styles.aiBadge}>
+              <Ionicons name="sparkles" size={12} color={colors.navyDeep} />
+              <Text style={styles.aiBadgeText}>AI-powered</Text>
+            </View>
+            <View style={styles.feeBadge}>
+              <Ionicons name="pricetag" size={12} color={colors.heroText} />
+              <Text style={styles.feeBadgeText}>Lowest fees</Text>
+            </View>
           </View>
         </Animated.View>
-
-        <View style={styles.aiBanner}>
-          <View style={styles.aiBannerIcon}>
-            <Ionicons name="sparkles" size={16} color={colors.heroText} />
-          </View>
-          <View style={styles.aiBannerText}>
-            <Text style={styles.aiBannerTitle}>Now with AI assistance</Text>
-            <Text style={styles.aiBannerSub} numberOfLines={2}>
-              Smart pricing, area insights, negotiation & a property advisor
-            </Text>
-          </View>
-        </View>
 
         <LaunchMarketShowcase entrance={showcaseEntrance} />
 
@@ -400,11 +404,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
   aiBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: spacing.sm,
     paddingVertical: 4,
     paddingHorizontal: 12,
     borderRadius: radius.pill,
@@ -417,39 +430,23 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  aiBanner: {
+  feeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(124, 58, 237, 0.18)',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(13, 148, 136, 0.32)',
     borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.45)',
+    borderColor: 'rgba(94, 234, 212, 0.45)',
   },
-  aiBannerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#7c3aed',
-  },
-  aiBannerText: {
-    flex: 1,
-  },
-  aiBannerTitle: {
-    fontSize: 13,
+  feeBadgeText: {
+    fontSize: 11,
     fontWeight: '800',
     color: colors.heroText,
-  },
-  aiBannerSub: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(226, 232, 240, 0.9)',
-    marginTop: 1,
-    lineHeight: 15,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   featureGrid: {
     flexDirection: 'row',

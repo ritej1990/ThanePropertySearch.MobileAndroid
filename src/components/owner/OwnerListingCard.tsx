@@ -1,10 +1,11 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { OwnerAvailabilityOutcome, OwnerDashboardItem } from '../../api/ownerTypes';
 import { colors, radius, spacing } from '../../theme';
 import {
+  canResubmitListing,
   isOwnerClosedOutcome,
   listingVisibilityProgress,
   reviewStatusTone,
@@ -17,6 +18,9 @@ type Props = {
   onOutcomeChange: (outcome: OwnerAvailabilityOutcome) => Promise<void>;
   onHideToggle: (hidden: boolean) => Promise<void>;
   onDelete: () => Promise<void>;
+  onResubmit: () => Promise<void>;
+  onViewVisitRequests: () => void;
+  onViewClarification: (ticketId: number) => void;
 };
 
 const STATUS_STYLES = {
@@ -52,12 +56,28 @@ export function OwnerListingCard({
   onOutcomeChange,
   onHideToggle,
   onDelete,
+  onResubmit,
+  onViewVisitRequests,
+  onViewClarification,
 }: Props) {
   const tone = reviewStatusTone(item.reviewStatus);
   const statusStyle = STATUS_STYLES[tone];
   const visibility = listingVisibilityProgress(item);
   const hasPending = item.pendingRequests > 0;
   const closedOut = isOwnerClosedOutcome(item.ownerAvailabilityOutcome);
+  const canResubmit = canResubmitListing(item);
+  const [resubmitting, setResubmitting] = useState(false);
+
+  async function handleResubmit() {
+    setResubmitting(true);
+    try {
+      await onResubmit();
+    } catch {
+      Alert.alert('Could not resubmit', 'Please try again.');
+    } finally {
+      setResubmitting(false);
+    }
+  }
 
   return (
     <View style={[styles.card, closedOut && styles.cardClosed]}>
@@ -144,7 +164,48 @@ export function OwnerListingCard({
             <Text style={styles.metricValue}>{item.totalRequests}</Text>
             <Text style={styles.metricLabel}>Total requests</Text>
           </View>
+          <View style={styles.metricBox}>
+            <Text style={styles.metricValue}>{item.viewCount ?? 0}</Text>
+            <Text style={styles.metricLabel}>Views</Text>
+          </View>
+          <View style={styles.metricBox}>
+            <Text style={styles.metricValue}>{item.favoriteCount ?? 0}</Text>
+            <Text style={styles.metricLabel}>Favorites</Text>
+          </View>
         </View>
+
+        {item.verificationDetail ? (
+          <View style={styles.verificationBox}>
+            <Ionicons name="alert-circle" size={14} color="#b45309" />
+            <Text style={styles.verificationText}>{item.verificationDetail}</Text>
+          </View>
+        ) : null}
+
+        {item.reviewClarificationTicketId != null || canResubmit ? (
+          <View style={styles.actionRow}>
+            {item.reviewClarificationTicketId != null ? (
+              <Pressable
+                style={styles.actionBtn}
+                onPress={() => onViewClarification(item.reviewClarificationTicketId!)}
+              >
+                <Ionicons name="chatbubbles-outline" size={14} color={colors.navy} />
+                <Text style={styles.actionBtnText}>Clarification</Text>
+              </Pressable>
+            ) : null}
+            {canResubmit ? (
+              <Pressable
+                style={[styles.actionBtn, styles.actionBtnPrimary]}
+                onPress={handleResubmit}
+                disabled={resubmitting}
+              >
+                <Ionicons name="refresh" size={14} color={colors.heroText} />
+                <Text style={styles.actionBtnTextPrimary}>
+                  {resubmitting ? 'Resubmitting…' : 'Resubmit for review'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.visibilityBlock}>
           <View style={styles.visibilityHead}>
@@ -165,6 +226,11 @@ export function OwnerListingCard({
           <Text style={styles.footerCta}>View inquiries & listing</Text>
           <Ionicons name="arrow-forward" size={16} color={colors.primary} />
         </View>
+        </Pressable>
+
+        <Pressable style={styles.visitRequestsBtn} onPress={onViewVisitRequests}>
+          <Ionicons name="calendar-outline" size={14} color="#1e40af" />
+          <Text style={styles.visitRequestsText}>Visit requests</Text>
         </Pressable>
 
         <OwnerListingManageSection
@@ -336,12 +402,14 @@ const styles = StyleSheet.create({
   },
   metricsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
   metricBox: {
-    flex: 1,
-    padding: spacing.md,
+    flexGrow: 1,
+    flexBasis: '22%',
+    padding: spacing.sm,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
@@ -353,16 +421,81 @@ const styles = StyleSheet.create({
     borderColor: '#fdba74',
   },
   metricValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: colors.navy,
   },
   metricLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: colors.slateLight,
     marginTop: 2,
     textAlign: 'center',
     fontWeight: '600',
+  },
+  verificationBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: '#fffbeb',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  verificationText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400e',
+    lineHeight: 17,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.navy,
+  },
+  actionBtnPrimary: {
+    backgroundColor: '#0d9488',
+    borderColor: '#0d9488',
+  },
+  actionBtnTextPrimary: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.heroText,
+  },
+  visitRequestsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    backgroundColor: '#eff6ff',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  visitRequestsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1e40af',
   },
   visibilityBlock: {
     marginBottom: spacing.md,

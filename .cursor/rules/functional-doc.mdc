@@ -1,0 +1,14 @@
+---
+description: Keep Web docs/FUNCTIONAL.md updated when changing web or Android behaviour
+alwaysApply: true
+---
+
+# Functional document maintenance
+
+**Canonical path:** `d:\Project\Web\docs\FUNCTIONAL.md`
+
+Edit the functional spec in the **Web** repo (`d:\Project\Web\docs\`), not in `Android/docs/`.
+
+When changing mobile behaviour, update `d:\Project\Web\docs\FUNCTIONAL.md` in the same session (sections + §13 Changelog + Last updated date).
+
+See `d:\Project\Web\.cursor\rules\functional-doc.mdc` for full rules.

@@ -104,7 +104,12 @@ export default function PropertyChatScreen({ navigation, route }: Props) {
       : null;
 
   return (
-    <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
+    <AuthenticatedScreenLayout
+      showBack
+      onBack={() => navigation.goBack()}
+      showFloatingActions={false}
+      showLegalFooter={false}
+    >
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

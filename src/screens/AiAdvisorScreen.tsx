@@ -97,7 +97,12 @@ export default function AiAdvisorScreen({ navigation }: Props) {
 
   if (starting) {
     return (
-      <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
+      <AuthenticatedScreenLayout
+        showBack
+        onBack={() => navigation.goBack()}
+        showFloatingActions={false}
+        showLegalFooter={false}
+      >
         <BrandLoading message="Starting AI advisor…" />
       </AuthenticatedScreenLayout>
     );
@@ -105,7 +110,12 @@ export default function AiAdvisorScreen({ navigation }: Props) {
 
   if (startError) {
     return (
-      <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
+      <AuthenticatedScreenLayout
+        showBack
+        onBack={() => navigation.goBack()}
+        showFloatingActions={false}
+        showLegalFooter={false}
+      >
         <View style={styles.centered}>
           <Ionicons name="sparkles-outline" size={32} color={colors.slateLight} />
           <Text style={styles.errorTitle}>AI advisor unavailable</Text>
@@ -119,7 +129,12 @@ export default function AiAdvisorScreen({ navigation }: Props) {
   }
 
   return (
-    <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
+    <AuthenticatedScreenLayout
+      showBack
+      onBack={() => navigation.goBack()}
+      showFloatingActions={false}
+      showLegalFooter={false}
+    >
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

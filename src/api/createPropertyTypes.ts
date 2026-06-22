@@ -18,6 +18,7 @@ export type CreatePropertyRequest = {
   imageUrls?: string[] | null;
   richMetadataJson?: string | null;
   availableFrom?: string | null;
+  pincode?: string | null;
 };
 
 export type UploadImageResponse = {

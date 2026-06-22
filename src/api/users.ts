@@ -3,6 +3,8 @@ import type { UserProfile } from './userTypes';
 
 export type UpdateProfileBody = {
   fullName: string;
+  /** Required by the API even when unchanged — omitting it returns "Email is required." */
+  email: string;
   phoneNumber: string;
   marketIntent?: string | null;
   gstNumber?: string | null;

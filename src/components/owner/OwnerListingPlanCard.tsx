@@ -1,12 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { EssentialStatus } from '../../api/paymentTypes';
-import { formatPlanEndDate, getEssentialStatusLabel, normalizeEssentialUsage } from '../../utils/planDisplay';
+import type { OwnerListingSummary } from '../../api/ownerTypes';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
-  status: EssentialStatus;
+  summary: OwnerListingSummary;
 };
 
 type Tone = 'active' | 'warn' | 'expired';
@@ -70,19 +69,22 @@ function StatTile({
   );
 }
 
-export function EssentialSubscriptionCard({ status }: Props) {
-  const { label, tone } = getEssentialStatusLabel(status);
-  const { usageLeft, usageUsed, usageMax } = normalizeEssentialUsage(status);
-  const endLabel = formatPlanEndDate(status.endsAtUtc);
+/** Owner listing plan/credits status — mirrors web's owner-dashboard plan card. */
+export function OwnerListingPlanCard({ summary }: Props) {
+  const tone: Tone = !summary.active
+    ? 'expired'
+    : summary.postsRemaining <= 1
+      ? 'warn'
+      : 'active';
   const palette = TONE_PALETTE[tone];
-  const pctUsed = usageMax > 0 ? Math.min(100, Math.max(0, (usageUsed / usageMax) * 100)) : 0;
+  const label = !summary.active ? 'Expired' : summary.postsRemaining <= 1 ? 'Low posts' : 'Active';
 
   return (
     <View style={[styles.card, { backgroundColor: palette.wash, borderColor: palette.border }]}>
       <View style={styles.head}>
         <View style={styles.headLeft}>
-          <Ionicons name="shield-checkmark" size={14} color={palette.accent} />
-          <Text style={[styles.title, { color: palette.accent }]}>YOUR SUBSCRIPTION</Text>
+          <Ionicons name="home" size={14} color={palette.accent} />
+          <Text style={[styles.title, { color: palette.accent }]}>LISTING PLAN</Text>
         </View>
         <View
           style={[
@@ -94,14 +96,12 @@ export function EssentialSubscriptionCard({ status }: Props) {
         </View>
       </View>
 
-      {usageMax > 0 ? (
-        <View style={styles.meterTrack}>
-          <View
-            style={[
-              styles.meterFill,
-              { width: `${pctUsed}%`, backgroundColor: palette.accent },
-            ]}
-          />
+      {summary.hasPendingApproval ? (
+        <View style={styles.pendingNote}>
+          <Ionicons name="time-outline" size={13} color="#b45309" />
+          <Text style={styles.pendingNoteText}>
+            A listing is pending admin approval.
+          </Text>
         </View>
       ) : null}
 
@@ -109,27 +109,26 @@ export function EssentialSubscriptionCard({ status }: Props) {
         <StatTile
           icon="pricetag"
           label="TIER"
-          value={status.tier?.trim() || '—'}
+          value={summary.tierCode?.trim() || '—'}
           accent={palette.accent}
         />
         <StatTile
-          icon="arrow-down-circle"
-          label="REMAINING"
-          value={String(usageLeft)}
-          muted={`/ ${usageMax}`}
-          accent={palette.accent}
-        />
-        <StatTile
-          icon="trending-up"
-          label="USED"
-          value={String(usageUsed)}
-          muted={`/ ${usageMax}`}
+          icon="layers"
+          label="POSTS LEFT"
+          value={String(summary.postsRemaining)}
+          muted={`/ ${summary.maxPosts}`}
           accent={palette.accent}
         />
         <StatTile
           icon="calendar"
-          label="ACCESS UNTIL"
-          value={endLabel ?? '—'}
+          label="DAYS LEFT"
+          value={String(summary.daysLeft)}
+          accent={palette.accent}
+        />
+        <StatTile
+          icon="cash-outline"
+          label="AMOUNT PAID"
+          value={summary.amountPaid != null ? `₹${summary.amountPaid.toLocaleString('en-IN')}` : '—'}
           accent={palette.accent}
         />
       </View>
@@ -142,7 +141,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   head: {
     flexDirection: 'row',
@@ -170,16 +169,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
-  meterTrack: {
-    height: 5,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(15, 23, 42, 0.08)',
-    overflow: 'hidden',
-    marginBottom: spacing.md,
+  pendingNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.sm,
   },
-  meterFill: {
-    height: '100%',
-    borderRadius: radius.pill,
+  pendingNoteText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#92400e',
   },
   grid: {
     flexDirection: 'row',

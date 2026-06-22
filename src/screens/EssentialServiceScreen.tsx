@@ -17,6 +17,7 @@ import type { EssentialStatus, PricingPlan } from '../api/paymentTypes';
 import type { RootStackParamList } from '../navigation/types';
 import { EssentialPlanCard } from '../components/plans/EssentialPlanCard';
 import { EssentialSubscriptionCard } from '../components/plans/EssentialSubscriptionCard';
+import { PaymentMethodBadges } from '../components/payments/PaymentMethodBadges';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { ThaneFlatsLogo } from '../components/ui/ThaneFlatsLogo';
@@ -40,6 +41,7 @@ const PERKS = [
 export default function EssentialServiceScreen({ navigation, route }: Props) {
   const returnPropertyId = route.params?.returnPropertyId;
   const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
   const [status, setStatus] = useState<EssentialStatus | null>(null);
   const [selected, setSelected] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,7 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
       ]);
       const planList = pricing.userEssentialPlans ?? [];
       setPlans(planList);
+      setPaymentMethods(pricing.paymentMethods ?? []);
       setStatus(essential);
       setSelected((prev) => {
         const currentCode = findCurrentPlanCode(essential, planList);
@@ -230,6 +233,10 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
                   Protected payment through{' '}
                   <Text style={styles.secureBold}>Cashfree secure checkout</Text>.
                 </Text>
+              </View>
+
+              <View style={styles.paymentBadgesWrap}>
+                <PaymentMethodBadges methods={paymentMethods} />
               </View>
 
               <Pressable
@@ -411,6 +418,9 @@ const styles = StyleSheet.create({
   secureBold: {
     fontWeight: '800',
     color: '#2563eb',
+  },
+  paymentBadgesWrap: {
+    marginBottom: spacing.md,
   },
   payBtn: {
     flexDirection: 'row',

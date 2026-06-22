@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { PaymentSuccessCard } from '../components/payments/PaymentSuccessCard';
@@ -19,6 +19,21 @@ import { colors, radius, spacing } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentReturn'>;
 
 type Phase = 'activating' | 'success' | 'error';
+
+function routeForProduct(product?: PaymentProduct) {
+  switch (product) {
+    case 'contact_pack':
+      return 'ContactPackPurchase' as const;
+    case 'builder_upload':
+    case 'builder_leads':
+      return 'BuilderPayments' as const;
+    case 'agent_publish':
+    case 'agent_leads':
+      return 'AgentPayments' as const;
+    default:
+      return 'EssentialService' as const;
+  }
+}
 
 export default function PaymentReturnScreen({ navigation, route }: Props) {
   const [phase, setPhase] = useState<Phase>('activating');
@@ -85,10 +100,12 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
         setSuccessMessage(message);
         setPhase('success');
       } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Payment activation failed');
-          setPhase('error');
-        }
+        if (cancelled) return;
+        const message = e instanceof Error ? e.message : 'Payment activation failed';
+        // Cashfree redirects here on a leave/cancel just like a real payment — bounce
+        // straight back to the plan page instead of lingering on this activation screen.
+        navigation.replace(routeForProduct(product));
+        Alert.alert('Payment not completed', message);
       }
     })();
     return () => {
@@ -128,21 +145,10 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
     }
   }, [navigation, resolved]);
 
-  const retryRoute = useCallback(() => {
-    if (!resolved) return 'EssentialService' as const;
-    switch (resolved.product) {
-      case 'contact_pack':
-        return 'ContactPackPurchase' as const;
-      case 'builder_upload':
-      case 'builder_leads':
-        return 'BuilderPayments' as const;
-      case 'agent_publish':
-      case 'agent_leads':
-        return 'AgentPayments' as const;
-      default:
-        return 'EssentialService' as const;
-    }
-  }, [resolved]);
+  const retryRoute = useCallback(
+    () => routeForProduct(resolved?.product),
+    [resolved]
+  );
 
   return (
     <View style={styles.screen}>
