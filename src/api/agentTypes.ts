@@ -25,6 +25,19 @@ export type UpdateAgentProfileBody = {
   operatingLocalities: string;
 };
 
+/** A picked local file (image) to upload as a RERA verification document. */
+export type LocalUploadFile = {
+  uri: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+};
+
+/** Response from POST /api/agent-listings/upload-verification-document. */
+export type UploadVerificationDocumentResponse = {
+  documentUrl: string;
+  fileName?: string | null;
+};
+
 /** Matches ResubmitAgentProfileRequest — reopens a pending/rejected profile for review. */
 export type ResubmitAgentProfileBody = {
   reraNumber: string;
@@ -112,6 +125,19 @@ export type AgentPlanOption = {
   leadCount?: number;
 };
 
+/** Slider bounds + unit prices for the agent listing-publish configurator. */
+export type AgentListingUnitPricing = {
+  pricePerPropertyInr: number;
+  minPropertyCount: number;
+  maxPropertyCount: number;
+  minDurationDays: number;
+  maxDurationDays: number;
+  billingReferenceDays: number;
+  pricePerLeadInr: number;
+  minLeadCount: number;
+  maxLeadCount: number;
+};
+
 export type AgentPaymentSummaryResponse = {
   publishCredits: number;
   leadCredits: number;
@@ -123,6 +149,7 @@ export type AgentPaymentSummaryResponse = {
   leadPackageEndsAtUtc: string | null;
   publishPlans: AgentPlanOption[];
   leadPackages: AgentPlanOption[];
+  listingUnitPricing?: AgentListingUnitPricing | null;
 };
 
 export type AgentPaymentSummary = {

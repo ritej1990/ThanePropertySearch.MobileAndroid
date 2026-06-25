@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,7 +9,9 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { agentProfilesApi, usersApi } from '../api/singleton';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { agentListingsApi, agentProfilesApi, usersApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import type { AgentProfile } from '../api/agentTypes';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
@@ -55,6 +58,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
   const [reraCertificateUrl, setReraCertificateUrl] = useState('');
   const [savingAgent, setSavingAgent] = useState(false);
+  const [uploadingCert, setUploadingCert] = useState(false);
 
   const approved = isAgentProfileApproved(agentProfile?.approvalStatus);
   const rejected = isAgentProfileRejected(agentProfile?.approvalStatus);
@@ -160,6 +164,45 @@ export default function ProfileScreen({ navigation }: Props) {
       );
     } finally {
       setSavingAgent(false);
+    }
+  }
+
+  async function pickCertificate() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        'Photos access needed',
+        'Allow photo library access to upload your RERA certificate, or paste a link instead.'
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    const ext = asset.mimeType?.includes('png')
+      ? 'png'
+      : asset.mimeType?.includes('webp')
+        ? 'webp'
+        : 'jpg';
+    setUploadingCert(true);
+    try {
+      const res = await agentListingsApi.uploadVerificationDocument({
+        uri: asset.uri,
+        fileName: asset.fileName ?? `rera-${Date.now()}.${ext}`,
+        mimeType: asset.mimeType ?? 'image/jpeg',
+      });
+      setReraCertificateUrl(res.documentUrl);
+      Alert.alert('Certificate uploaded', 'Your RERA certificate is attached.');
+    } catch (e) {
+      Alert.alert(
+        'Upload failed',
+        e instanceof ApiError ? e.message : 'Try again, or paste a certificate link instead.'
+      );
+    } finally {
+      setUploadingCert(false);
     }
   }
 
@@ -340,11 +383,16 @@ export default function ProfileScreen({ navigation }: Props) {
                     keyboardType="phone-pad"
                   />
                   <AuthTextField
-                    label="RERA number"
+                    label="RERA number (locked)"
                     icon="ribbon-outline"
                     value={reraNumber}
-                    onChangeText={setReraNumber}
+                    editable={false}
+                    style={styles.lockedInput}
                   />
+                  <Text style={styles.fieldHint}>
+                    Your MahaRERA number is locked after approval. Contact support if
+                    it needs correcting.
+                  </Text>
                   <AuthTextField
                     label="Operating localities (optional)"
                     icon="map-outline"
@@ -393,10 +441,28 @@ export default function ProfileScreen({ navigation }: Props) {
                     value={reraNumber}
                     onChangeText={setReraNumber}
                   />
+                  <Pressable
+                    style={[styles.uploadBtn, uploadingCert && styles.uploadBtnDisabled]}
+                    onPress={pickCertificate}
+                    disabled={uploadingCert}
+                  >
+                    <Ionicons
+                      name={reraCertificateUrl ? 'checkmark-circle' : 'cloud-upload-outline'}
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.uploadBtnText}>
+                      {uploadingCert
+                        ? 'Uploading…'
+                        : reraCertificateUrl
+                          ? 'Certificate attached — replace'
+                          : 'Upload RERA certificate (jpg/png)'}
+                    </Text>
+                  </Pressable>
                   <AuthTextField
-                    label="RERA certificate link"
+                    label="…or paste a certificate link (PDF/URL)"
                     icon="document-attach-outline"
-                    placeholder="https://… (upload link or document URL)"
+                    placeholder="https://… (document URL)"
                     autoCapitalize="none"
                     value={reraCertificateUrl}
                     onChangeText={setReraCertificateUrl}
@@ -413,6 +479,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   <GradientButton
                     label="Resubmit for review"
                     loading={savingAgent}
+                    disabled={uploadingCert}
                     onPress={handleResubmit}
                   />
                 </>
@@ -479,6 +546,21 @@ const styles = StyleSheet.create({
   lockedInput: {
     color: colors.slateLight,
   },
+  uploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surfaceMuted,
+    marginBottom: spacing.md,
+  },
+  uploadBtnDisabled: { opacity: 0.6 },
+  uploadBtnText: { color: colors.primary, fontWeight: '700', fontSize: 14 },
   agentHead: {
     flexDirection: 'row',
     alignItems: 'center',

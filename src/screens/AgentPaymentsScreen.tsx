@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -11,14 +11,21 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { paymentsApi } from '../api/singleton';
-import type { AgentPlanOption, AgentPaymentSummaryResponse } from '../api/agentTypes';
+import type { AgentListingUnitPricing, AgentPaymentSummaryResponse } from '../api/agentTypes';
 import type { PaymentTransaction } from '../api/paymentHistoryTypes';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { PlanSlider } from '../components/ui/PlanSlider';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 import { formatInr } from '../utils/propertyFormat';
+import {
+  DEFAULT_AGENT_UNIT_PRICING,
+  clampToStep,
+  computeLeadSubtotal,
+  computeListingSubtotal,
+} from '../utils/agentPlanPricing';
 import {
   filterAgentPayments,
   formatPaymentDate,
@@ -32,9 +39,15 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
   const [summary, setSummary] = useState<AgentPaymentSummaryResponse | null>(null);
   const [payments, setPayments] = useState<PaymentTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [selectedPublish, setSelectedPublish] = useState<string | null>(null);
-  const [selectedLead, setSelectedLead] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [propertyCount, setPropertyCount] = useState(1);
+  const [durationDays, setDurationDays] = useState(30);
+  const [leadCount, setLeadCount] = useState(0);
+  const [initialized, setInitialized] = useState(false);
+
+  const unit: AgentListingUnitPricing =
+    summary?.listingUnitPricing ?? DEFAULT_AGENT_UNIT_PRICING;
 
   const load = useCallback(async () => {
     try {
@@ -49,16 +62,6 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
       };
       setSummary(normalizedSummary);
       setPayments(filterAgentPayments(txData));
-      setSelectedPublish((prev) => {
-        if (prev) return prev;
-        const first = normalizedSummary.publishPlans.find((p) => !p.isLocked);
-        return first?.code ?? normalizedSummary.publishPlans[0]?.code ?? null;
-      });
-      setSelectedLead((prev) => {
-        if (prev) return prev;
-        const first = normalizedSummary.leadPackages.find((p) => !p.isLocked);
-        return first?.code ?? normalizedSummary.leadPackages[0]?.code ?? null;
-      });
     } catch (e) {
       Alert.alert('Error', e instanceof ApiError ? e.message : 'Could not load plans');
     } finally {
@@ -73,73 +76,65 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
     }, [load])
   );
 
-  const publishPlan = useMemo(
-    () => summary?.publishPlans?.find((p) => p.code === selectedPublish) ?? null,
-    [summary, selectedPublish]
-  );
-  const leadPlan = useMemo(
-    () => summary?.leadPackages?.find((p) => p.code === selectedLead) ?? null,
-    [summary, selectedLead]
-  );
+  // Clamp/seed the configurator to the live bounds once pricing arrives.
+  useEffect(() => {
+    if (!summary?.listingUnitPricing) return;
+    const u = summary.listingUnitPricing;
+    setPropertyCount((prev) =>
+      clampToStep(initialized ? prev : Math.max(prev, u.minPropertyCount), u.minPropertyCount, u.maxPropertyCount, 1)
+    );
+    setDurationDays((prev) =>
+      clampToStep(initialized ? prev : prev, u.minDurationDays, u.maxDurationDays, 1)
+    );
+    setLeadCount((prev) => clampToStep(prev, u.minLeadCount, u.maxLeadCount, 5));
+    setInitialized(true);
+  }, [summary, initialized]);
 
-  const publishDays = publishPlan?.durationDays ?? 7;
-  const publishCount = publishPlan?.maxPosts ?? 1;
-  const leadCount = leadPlan?.leadCount ?? 0;
-  const listingPrice = publishPlan?.priceInr ?? 0;
-  const leadsPrice = leadPlan?.priceInr ?? 0;
+  const listingPrice = useMemo(
+    () => computeListingSubtotal(unit, propertyCount, durationDays),
+    [unit, propertyCount, durationDays]
+  );
+  const leadsPrice = useMemo(
+    () => computeLeadSubtotal(unit, leadCount),
+    [unit, leadCount]
+  );
   const totalPayable = listingPrice + leadsPrice;
+  const fromPrice = computeListingSubtotal(unit, unit.minPropertyCount, unit.minDurationDays);
 
-  async function buyPublish(plan: AgentPlanOption) {
-    if (plan.isLocked) {
-      Alert.alert('Plan active', plan.lockReason ?? 'This plan is already active.');
+  async function buyBundle() {
+    if (propertyCount <= 0 || durationDays <= 0) {
+      Alert.alert('Select a plan', 'Choose how many properties to publish and for how many days.');
       return;
     }
-    setBusy(plan.code);
+    setBusy(true);
     try {
-      const order = await paymentsApi.createAgentListingPublishOrder(plan.code);
+      const order = await paymentsApi.createAgentListingPublishOrder({
+        propertyCount,
+        durationDays,
+        leadCount,
+      });
       navigation.navigate('CashfreeCheckout', {
         product: 'agent_publish',
         paymentSessionId: order.paymentSessionId,
         orderId: order.orderId,
         environment: order.environment,
-        tierCode: plan.code,
-        amountInr: plan.priceInr,
+        tierCode: `CUSTOM-${propertyCount}-${durationDays}-L${leadCount}`,
+        amountInr: order.amountInr ?? totalPayable,
       });
     } catch (e) {
       Alert.alert('Checkout', e instanceof ApiError ? e.message : 'Could not start payment');
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  async function buyLead(plan: AgentPlanOption) {
-    if (plan.isLocked) {
-      Alert.alert('Pack active', plan.lockReason ?? 'This lead pack is already active.');
-      return;
-    }
-    setBusy(plan.code);
-    try {
-      const order = await paymentsApi.createAgentLeadCreditsOrder(plan.code);
-      navigation.navigate('CashfreeCheckout', {
-        product: 'agent_leads',
-        paymentSessionId: order.paymentSessionId,
-        orderId: order.orderId,
-        environment: order.environment,
-        tierCode: plan.code,
-        amountInr: plan.priceInr,
-      });
-    } catch (e) {
-      Alert.alert('Checkout', e instanceof ApiError ? e.message : 'Could not start payment');
-    } finally {
-      setBusy(null);
-    }
-  }
+  const outOfCredits = (summary?.publishCredits ?? 0) <= 0;
 
   return (
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
       <ScrollView contentContainerStyle={styles.wrap}>
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading plans…" />
+          <BrandLoading fullScreen={false} message="Loading plansâ€¦" />
         ) : summary ? (
           <>
             <View style={styles.heroCard}>
@@ -148,137 +143,177 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
                   <Ionicons name="shield-checkmark-outline" size={13} color={colors.teal} />
                   <Text style={styles.verifiedText}>Verified agent</Text>
                 </View>
-                <Text style={styles.usageLabel}>Plan used</Text>
-              </View>
-              <View style={styles.heroMainRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.heroTitle}>Plan & billing</Text>
-                  <Text style={styles.heroSub}>
-                    Configure listing visibility and lead credits in one checkout. Pricing
-                    updates live as you adjust selection.
-                  </Text>
+                <View style={styles.usageBadge}>
+                  <Text style={styles.usageLabel}>Plan used</Text>
+                  <Text style={styles.usagePercent}>{outOfCredits ? '100%' : '0%'}</Text>
                 </View>
-                <Text style={styles.heroPercent}>{summary.publishCredits <= 0 ? '100%' : '0%'}</Text>
               </View>
+
+              <Text style={styles.heroTitle}>Plan & billing</Text>
+              <Text style={styles.heroSub}>
+                Configure listing visibility and lead credits in one checkout. Pricing
+                updates live as you adjust the sliders.
+              </Text>
               <Text style={styles.heroHint}>
                 {summary.publishCredits} slots available to post
                 {summary.publishPlanEndsAtUtc
-                  ? ` · until ${formatPaymentDate(summary.publishPlanEndsAtUtc)}`
+                  ? ` Â· until ${formatPaymentDate(summary.publishPlanEndsAtUtc)}`
                   : ''}
               </Text>
             </View>
 
-            {summary.publishCredits <= 0 ? (
+            {outOfCredits ? (
               <View style={styles.warningBanner}>
                 <Ionicons name="alert-circle" size={16} color={colors.error} />
                 <Text style={styles.warningText}>
-                  Activate a publish plan under Payments before posting property details.
+                  Activate a publish plan below before posting property details.
                 </Text>
               </View>
             ) : null}
 
             <View style={styles.metricsRow}>
-              <MetricCard icon="home-outline" label="Publish" value={summary.publishCredits} hint="Listing slots you can submit" />
-              <MetricCard icon="people-outline" label="Leads" value={summary.leadCredits} hint="Buyer enquiry unlocks" />
-              <MetricCard icon="pricetag-outline" label="From" value={formatInr(Math.max(1, publishPlan?.priceInr ?? 1))} hint="1 listing · 7 days" />
+              <MetricCard
+                icon="home-outline"
+                label="Publish"
+                value={String(summary.publishCredits)}
+                hint="Listing slots"
+              />
+              <MetricCard
+                icon="people-outline"
+                label="Leads"
+                value={String(summary.leadCredits)}
+                hint="Enquiry unlocks"
+              />
+              <MetricCard
+                icon="pricetag-outline"
+                label="From"
+                value={formatInr(Math.max(1, fromPrice))}
+                hint={`${unit.minPropertyCount} listing Â· ${unit.minDurationDays} days`}
+              />
             </View>
 
-            <View style={styles.gridWrap}>
-              <View style={styles.leftCol}>
-                <Section title="Configure your plan" subtitle="Choose publish + lead options to match your business needs.">
-                  <View style={styles.infoBox}>
-                    <Ionicons name="information-circle-outline" size={15} color={colors.primary} />
-                    <Text style={styles.infoText}>
-                      You have {summary.publishCredits} slots available to submit.
-                      {summary.publishPlanEndsAtUtc
-                        ? ` Plan active until ${formatPaymentDate(summary.publishPlanEndsAtUtc)}.`
-                        : ''}
-                    </Text>
-                  </View>
-
-                  <Text style={styles.stepLabel}>Step 1 · Properties to publish</Text>
-                  {summary.publishPlans.map((plan) => (
-                    <PlanOption
-                      key={plan.code}
-                      plan={plan}
-                      selected={selectedPublish === plan.code}
-                      onSelect={() => setSelectedPublish(plan.code)}
-                    />
-                  ))}
-
-                  <Text style={styles.stepLabel}>Step 2 · Lead unlock packs</Text>
-                  {summary.leadPackages.map((plan) => (
-                    <PlanOption
-                      key={plan.code}
-                      plan={plan}
-                      selected={selectedLead === plan.code}
-                      onSelect={() => setSelectedLead(plan.code)}
-                      showLeadMeta
-                    />
-                  ))}
-                </Section>
-              </View>
-
-              <View style={styles.rightCol}>
-                <Section title="Order summary" subtitle="Review before you pay">
-                  <View style={styles.summaryPills}>
-                    <SummaryPill icon="document-text-outline" text={`${publishCount} property`} />
-                    <SummaryPill icon="calendar-outline" text={`${publishDays} days`} />
-                    <SummaryPill icon="people-outline" text={`${leadCount} leads`} />
-                  </View>
-
-                  <PriceRow label="Listing publish" value={formatInr(listingPrice)} sub={`1 × ${publishDays} days`} />
-                  <PriceRow label="Lead credits" value={formatInr(leadsPrice)} sub={leadCount > 0 ? `${leadCount} unlocks` : '0 unlocks'} />
-
-                  <View style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>Total payable</Text>
-                    <Text style={styles.totalValue}>{formatInr(totalPayable)}</Text>
-                  </View>
-
-                  {publishPlan ? (
-                    <Pressable
-                      style={[styles.payBtn, publishPlan.isLocked && styles.payBtnDisabled]}
-                      onPress={() => buyPublish(publishPlan)}
-                      disabled={busy === publishPlan.code || publishPlan.isLocked}
-                    >
-                      <Ionicons name="lock-closed" size={16} color={colors.heroText} />
-                      <Text style={styles.payBtnText}>
-                        {busy === publishPlan.code ? 'Starting checkout…' : 'Pay securely'}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-
-                  {leadPlan && !leadPlan.isLocked ? (
-                    <Pressable
-                      style={[styles.secondaryPayBtn]}
-                      onPress={() => buyLead(leadPlan)}
-                      disabled={busy === leadPlan.code}
-                    >
-                      <Ionicons name="flash-outline" size={16} color={colors.primary} />
-                      <Text style={styles.secondaryPayText}>
-                        {busy === leadPlan.code ? 'Starting lead checkout…' : 'Buy lead pack'}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-
-                  <Text style={styles.secureHint}>
-                    Secured by Cashfree · GST invoice available
-                  </Text>
-                </Section>
-              </View>
-            </View>
-
-            <Section title="What's included in your plan" subtitle="Everything you need to list properties and connect with buyers on Thane Flats.">
-              <FeatureRow icon="business-outline" title="Property listings" note="Publish rent or sale listings with photos, location, and pricing." chip="?1 per property (per 7 days base)" />
-              <FeatureRow icon="timer-outline" title="Visibility period" note="Your listing stays visible for the selected period, then hides until renewed." chip="Longer periods increase listing cost proportionally" />
-              <FeatureRow icon="chatbox-ellipses-outline" title="Buyer leads" note="Lead credits unlock buyer contact details and messages for follow-up." chip="?2 per lead — no fixed packs" />
+            {/* Configurator â€” pick quantities, price updates live */}
+            <Section
+              title="Configure your plan"
+              subtitle="Drag the sliders to match your business needs â€” the order summary updates live."
+            >
+              <PlanSlider
+                step="Step 1 Â· Properties to publish"
+                label="Total properties"
+                icon="business-outline"
+                value={propertyCount}
+                min={unit.minPropertyCount}
+                max={unit.maxPropertyCount}
+                increment={1}
+                accent={colors.primary}
+                valueLabel={String(propertyCount)}
+                minLabel={`${unit.minPropertyCount}`}
+                maxLabel={`${unit.maxPropertyCount} max`}
+                onChange={setPropertyCount}
+              />
+              <PlanSlider
+                step="Step 2 Â· Visibility duration"
+                label="Total days"
+                icon="calendar-outline"
+                value={durationDays}
+                min={unit.minDurationDays}
+                max={unit.maxDurationDays}
+                increment={1}
+                accent={colors.teal}
+                valueLabel={`${durationDays}d`}
+                minLabel={`${unit.minDurationDays} days`}
+                maxLabel={`${unit.maxDurationDays} days`}
+                onChange={setDurationDays}
+              />
+              <PlanSlider
+                step="Step 3 Â· Lead unlock credits"
+                label="Total leads"
+                icon="people-outline"
+                value={leadCount}
+                min={unit.minLeadCount}
+                max={unit.maxLeadCount}
+                increment={5}
+                accent={colors.warning}
+                valueLabel={String(leadCount)}
+                minLabel={`${unit.minLeadCount}`}
+                maxLabel={`${formatInr(unit.pricePerLeadInr)} each`}
+                onChange={setLeadCount}
+              />
             </Section>
 
-            <Section title="How pricing works" subtitle="Transparent, slider-based pricing — no hidden tiers.">
+            {/* Live order summary */}
+            <Section title="Order summary" subtitle="Review before you pay">
+              <View style={styles.summaryPills}>
+                <SummaryPill icon="document-text-outline" text={`${propertyCount} property`} />
+                <SummaryPill icon="calendar-outline" text={`${durationDays} days`} />
+                <SummaryPill icon="people-outline" text={`${leadCount} leads`} />
+              </View>
+
+              <PriceRow
+                label="Listing publish"
+                value={formatInr(listingPrice)}
+                sub={`${propertyCount} Ã— ${durationDays} days`}
+              />
+              <PriceRow
+                label="Lead credits"
+                value={formatInr(leadsPrice)}
+                sub={leadCount > 0 ? `${leadCount} Ã— ${formatInr(unit.pricePerLeadInr)}` : '0 unlocks'}
+              />
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total payable</Text>
+                <Text style={styles.totalValue}>{formatInr(totalPayable)}</Text>
+              </View>
+
+              <Pressable
+                style={[styles.payBtn, busy && styles.payBtnDisabled]}
+                onPress={buyBundle}
+                disabled={busy}
+              >
+                <Ionicons name="lock-closed" size={16} color={colors.heroText} />
+                <Text style={styles.payBtnText}>
+                  {busy ? 'Starting checkoutâ€¦' : `Pay ${formatInr(totalPayable)} securely`}
+                </Text>
+              </Pressable>
+
+              <Text style={styles.secureHint}>
+                Secured by Cashfree Â· GST invoice available
+              </Text>
+            </Section>
+
+            <Section
+              title="What's included"
+              subtitle="Everything you need to list properties and connect with buyers on Thane Flats."
+            >
+              <FeatureRow
+                icon="business-outline"
+                title="Property listings"
+                note="Publish rent or sale listings with photos, location, and pricing."
+                chip={`${formatInr(unit.pricePerPropertyInr)} per property (per ${unit.billingReferenceDays} days base)`}
+              />
+              <FeatureRow
+                icon="timer-outline"
+                title="Visibility period"
+                note="Your listing stays visible for the selected days, then hides until renewed."
+                chip="Longer periods cost proportionally more"
+              />
+              <FeatureRow
+                icon="chatbox-ellipses-outline"
+                title="Buyer leads"
+                note="Lead credits unlock buyer contact details and messages for follow-up."
+                chip={`${formatInr(unit.pricePerLeadInr)} per lead â€” no fixed packs`}
+              />
+            </Section>
+
+            <Section
+              title="How pricing works"
+              subtitle="Transparent, slider-based pricing â€” no hidden tiers."
+            >
               <View style={styles.pricingBox}>
                 <Text style={styles.pricingText}>
-                  Listings: properties × days × (?1 ÷ 7). Leads: count × ?2. Total updates as
-                  you change plan selections.
+                  Listings: properties Ã— days Ã— ({formatInr(unit.pricePerPropertyInr)} Ã·{' '}
+                  {unit.billingReferenceDays}). Leads: count Ã— {formatInr(unit.pricePerLeadInr)}.
+                  The total updates instantly as you move the sliders.
                 </Text>
               </View>
             </Section>
@@ -299,9 +334,15 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
               ) : (
                 payments.slice(0, 8).map((item) => (
                   <View key={item.id} style={styles.tableRow}>
-                    <Text style={[styles.td, styles.thDate]}>{formatPaymentDate(item.createdAtUtc)}</Text>
-                    <Text style={[styles.td, styles.thPlan]}>{paymentProductLabel(item.productType)}</Text>
-                    <Text style={[styles.td, styles.thAmt]}>{formatInr(item.amount)}</Text>
+                    <Text style={[styles.td, styles.thDate]} numberOfLines={1}>
+                      {formatPaymentDate(item.createdAtUtc)}
+                    </Text>
+                    <Text style={[styles.td, styles.thPlan]} numberOfLines={1}>
+                      {paymentProductLabel(item.productType)}
+                    </Text>
+                    <Text style={[styles.td, styles.thAmt]} numberOfLines={1}>
+                      {formatInr(item.amount)}
+                    </Text>
                     <StatusPill status={item.status} />
                   </View>
                 ))
@@ -331,10 +372,16 @@ function MetricCard({
 }) {
   return (
     <View style={styles.metricCard}>
-      <Ionicons name={icon} size={18} color={colors.teal} />
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricHint}>{hint}</Text>
+      <Ionicons name={icon} size={16} color={colors.teal} />
+      <Text style={styles.metricLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+        {value}
+      </Text>
+      <Text style={styles.metricHint} numberOfLines={2}>
+        {hint}
+      </Text>
     </View>
   );
 }
@@ -354,51 +401,6 @@ function Section({
       {subtitle ? <Text style={styles.sectionSub}>{subtitle}</Text> : null}
       {children}
     </View>
-  );
-}
-
-function PlanOption({
-  plan,
-  selected,
-  onSelect,
-  showLeadMeta,
-}: {
-  plan: AgentPlanOption;
-  selected: boolean;
-  onSelect: () => void;
-  showLeadMeta?: boolean;
-}) {
-  return (
-    <Pressable
-      style={[styles.planRow, selected && styles.planRowSelected, plan.isLocked && styles.planRowLocked]}
-      onPress={onSelect}
-      disabled={plan.isLocked}
-    >
-      <View style={styles.planBody}>
-        <Text style={styles.planLabel}>{plan.displayLabel || plan.code}</Text>
-        {showLeadMeta && plan.leadCount ? (
-          <Text style={styles.planMeta}>
-            {plan.leadCount} {plan.leadType ?? ''} leads
-            {plan.durationDays ? ` · ${plan.durationDays} days` : ''}
-          </Text>
-        ) : plan.durationDays ? (
-          <Text style={styles.planMeta}>{plan.durationDays} days visibility</Text>
-        ) : null}
-        {plan.isLocked && plan.lockReason ? (
-          <Text style={styles.planLock}>{plan.lockReason}</Text>
-        ) : null}
-      </View>
-      <View style={styles.planRight}>
-        <Text style={styles.planPrice}>{formatInr(plan.priceInr)}</Text>
-        {selected ? (
-          <Ionicons name="checkmark-circle" size={20} color={colors.teal} />
-        ) : plan.isLocked ? (
-          <Ionicons name="lock-closed" size={16} color={colors.slateLight} />
-        ) : (
-          <View style={styles.planRadio} />
-        )}
-      </View>
-    </Pressable>
   );
 }
 
@@ -427,8 +429,8 @@ function PriceRow({
   sub: string;
 }) {
   return (
-    <View style={styles.priceRow}> 
-      <View>
+    <View style={styles.priceRow}>
+      <View style={styles.priceLabelCol}>
         <Text style={styles.priceLabel}>{label}</Text>
         <Text style={styles.priceSub}>{sub}</Text>
       </View>
@@ -453,7 +455,7 @@ function FeatureRow({
       <View style={styles.featureIcon}>
         <Ionicons name={icon} size={18} color={colors.primary} />
       </View>
-      <View style={{ flex: 1 }}>
+      <View style={styles.featureBody}>
         <Text style={styles.featureTitle}>{title}</Text>
         <Text style={styles.featureNote}>{note}</Text>
         <Text style={styles.featureChip}>{chip}</Text>
@@ -468,7 +470,9 @@ function StatusPill({ status }: { status: string }) {
   const text = tone === 'success' ? colors.success : tone === 'failed' ? colors.error : colors.warning;
   return (
     <View style={[styles.statusPill, { backgroundColor: bg }]}>
-      <Text style={[styles.statusText, { color: text }]}>{status}</Text>
+      <Text style={[styles.statusText, { color: text }]} numberOfLines={1}>
+        {status}
+      </Text>
     </View>
   );
 }
@@ -487,7 +491,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   verifiedChip: {
     flexDirection: 'row',
@@ -506,11 +510,17 @@ const styles = StyleSheet.create({
     color: colors.tealDark,
     textTransform: 'uppercase',
   },
-  usageLabel: { fontSize: 11, color: colors.slateLight, textTransform: 'uppercase', fontWeight: '700' },
-  heroMainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  heroTitle: { fontSize: 33, fontWeight: '800', color: colors.navy },
-  heroSub: { fontSize: 13, color: colors.slateLight, lineHeight: 20, marginTop: spacing.xs, maxWidth: 480 },
-  heroPercent: { fontSize: 40, fontWeight: '900', color: colors.error, marginTop: spacing.sm },
+  usageBadge: { alignItems: 'flex-end' },
+  usageLabel: {
+    fontSize: 10,
+    color: colors.slateLight,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  usagePercent: { fontSize: 20, fontWeight: '900', color: colors.error, marginTop: 1 },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: colors.navy },
+  heroSub: { fontSize: 13, color: colors.slateLight, lineHeight: 19, marginTop: spacing.xs },
   heroHint: { fontSize: 12, color: colors.slateLight, marginTop: spacing.md },
   warningBanner: {
     flexDirection: 'row',
@@ -531,14 +541,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    padding: spacing.lg,
+    padding: spacing.md,
   },
-  metricLabel: { fontSize: 11, textTransform: 'uppercase', color: colors.slateLight, fontWeight: '700', marginTop: spacing.sm },
-  metricValue: { fontSize: 40, fontWeight: '800', color: colors.navy, lineHeight: 44, marginTop: spacing.sm },
-  metricHint: { fontSize: 12, color: colors.slateLight, marginTop: spacing.xs },
-  gridWrap: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg, alignItems: 'flex-start' },
-  leftCol: { flex: 1.35 },
-  rightCol: { flex: 1 },
+  metricLabel: {
+    fontSize: 10,
+    textTransform: 'uppercase',
+    color: colors.slateLight,
+    fontWeight: '700',
+    marginTop: spacing.sm,
+    letterSpacing: 0.3,
+  },
+  metricValue: { fontSize: 22, fontWeight: '800', color: colors.navy, marginTop: spacing.xs },
+  metricHint: { fontSize: 11, color: colors.slateLight, marginTop: spacing.xs, lineHeight: 14 },
   section: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -547,40 +561,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     marginBottom: spacing.lg,
   },
-  sectionTitle: { fontSize: 28, fontWeight: '800', color: colors.navy },
-  sectionSub: { fontSize: 13, color: colors.slateLight, marginBottom: spacing.md, marginTop: 3, lineHeight: 19 },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    backgroundColor: '#eff6ff',
-    borderColor: '#bfdbfe',
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  infoText: { flex: 1, color: colors.primaryDark, fontSize: 12, lineHeight: 18, fontWeight: '600' },
-  stepLabel: { fontSize: 12, textTransform: 'uppercase', color: colors.slateLight, fontWeight: '800', marginTop: spacing.sm, marginBottom: spacing.xs },
-  planRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.surfaceMuted,
-  },
-  planRowSelected: { borderColor: colors.primary, backgroundColor: '#eff6ff' },
-  planRowLocked: { opacity: 0.72 },
-  planBody: { flex: 1, minWidth: 0 },
-  planLabel: { fontSize: 14, fontWeight: '800', color: colors.navy },
-  planMeta: { fontSize: 12, color: colors.slateLight, marginTop: 2 },
-  planLock: { fontSize: 11, color: colors.warning, marginTop: 4 },
-  planRight: { alignItems: 'flex-end', gap: 4 },
-  planPrice: { fontSize: 15, fontWeight: '800', color: colors.tealDark },
-  planRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: colors.border },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.navy },
+  sectionSub: { fontSize: 13, color: colors.slateLight, marginBottom: spacing.md, marginTop: 3, lineHeight: 18 },
   summaryPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
   summaryPill: {
     flexDirection: 'row',
@@ -598,16 +580,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
+  priceLabelCol: { flex: 1, minWidth: 0 },
   priceLabel: { fontSize: 14, fontWeight: '700', color: colors.navy },
   priceSub: { fontSize: 12, color: colors.slateLight, marginTop: 2 },
   priceValue: { fontSize: 15, fontWeight: '800', color: colors.navy },
-  totalRow: { paddingTop: spacing.md, marginTop: spacing.sm },
+  totalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.md,
+    marginTop: spacing.xs,
+  },
   totalLabel: { fontSize: 12, color: colors.slateLight, textTransform: 'uppercase', fontWeight: '700' },
-  totalValue: { fontSize: 36, color: colors.navy, fontWeight: '900', marginTop: 2 },
+  totalValue: { fontSize: 26, color: colors.navy, fontWeight: '900' },
   payBtn: {
     marginTop: spacing.md,
     flexDirection: 'row',
@@ -619,20 +609,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   payBtnDisabled: { opacity: 0.7 },
-  payBtnText: { color: colors.heroText, fontWeight: '800', fontSize: 17 },
-  secondaryPayBtn: {
-    marginTop: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    backgroundColor: '#eff6ff',
-  },
-  secondaryPayText: { color: colors.primary, fontWeight: '800' },
+  payBtnText: { color: colors.heroText, fontWeight: '800', fontSize: 16 },
   secureHint: { textAlign: 'center', fontSize: 12, color: colors.slateLight, marginTop: spacing.md },
   featureRow: {
     flexDirection: 'row',
@@ -653,8 +630,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 2,
   },
-  featureTitle: { fontSize: 20, fontWeight: '800', color: colors.navy },
-  featureNote: { fontSize: 13, color: colors.slateLight, marginTop: 2, lineHeight: 19 },
+  featureBody: { flex: 1, minWidth: 0 },
+  featureTitle: { fontSize: 15, fontWeight: '800', color: colors.navy },
+  featureNote: { fontSize: 13, color: colors.slateLight, marginTop: 2, lineHeight: 18 },
   featureChip: {
     marginTop: spacing.sm,
     alignSelf: 'flex-start',
@@ -665,6 +643,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: radius.pill,
+    overflow: 'hidden',
   },
   pricingBox: {
     borderWidth: 1,
@@ -690,11 +669,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   td: { fontSize: 12, color: colors.navy },
-  thDate: { flex: 1.35 },
+  thDate: { flex: 1.3 },
   thPlan: { flex: 1.3 },
-  thAmt: { width: 70 },
-  thStatus: { width: 92 },
-  statusPill: { width: 92, paddingVertical: 4, borderRadius: radius.pill, alignItems: 'center' },
+  thAmt: { width: 64 },
+  thStatus: { width: 84 },
+  statusPill: { width: 84, paddingVertical: 4, borderRadius: radius.pill, alignItems: 'center' },
   statusText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
   emptyPayments: { alignItems: 'center', padding: spacing.xl },
   emptyText: { fontSize: 13, color: colors.slateLight, textAlign: 'center', marginTop: spacing.sm, lineHeight: 18 },

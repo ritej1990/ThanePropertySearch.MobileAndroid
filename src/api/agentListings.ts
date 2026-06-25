@@ -4,6 +4,8 @@ import type {
   AgentListingDetails,
   AgentListingSummary,
   CreateAgentListingRequest,
+  LocalUploadFile,
+  UploadVerificationDocumentResponse,
 } from './agentTypes';
 
 type AgentMinePayload =
@@ -52,6 +54,21 @@ export function createAgentListingsApi(client: ReturnType<typeof createApiClient
 
       if (lastError) throw lastError;
       return [];
+    },
+
+    /**
+     * Upload a RERA / verification document (jpg, png, webp — max 10 MB) and
+     * get back a stored blob URL. Mirrors web agent resubmit file upload.
+     */
+    uploadVerificationDocument(file: LocalUploadFile) {
+      const form = new FormData();
+      const name = file.fileName ?? `rera-${Date.now()}.jpg`;
+      const type = file.mimeType ?? 'image/jpeg';
+      form.append('file', { uri: file.uri, name, type } as unknown as Blob);
+      return client.post<UploadVerificationDocumentResponse>(
+        '/api/agent-listings/upload-verification-document',
+        form
+      );
     },
 
     create(body: CreateAgentListingRequest) {

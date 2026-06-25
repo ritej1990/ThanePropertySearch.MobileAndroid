@@ -101,10 +101,25 @@ export function createPaymentsApi(client: ReturnType<typeof createApiClient>) {
       );
     },
 
-    createAgentListingPublishOrder(tierCode: string) {
+    /**
+     * Quantity-based agent listing publish order (bundles properties + days + leads).
+     * The API computes the price/tier and returns `amountInr`. The custom tier code
+     * (CUSTOM-{p}-{d}-L{l}) is used for the return URL and post-payment activation.
+     */
+    createAgentListingPublishOrder(input: {
+      propertyCount: number;
+      durationDays: number;
+      leadCount: number;
+    }) {
+      const tierCode = `CUSTOM-${input.propertyCount}-${input.durationDays}-L${input.leadCount}`;
       return client.post<CashfreeOrderResponse>(
         '/api/payments/cashfree/create-agent-listing-publish-order',
-        { tierCode, returnUrl: agentListingPublishReturnUrl(tierCode) }
+        {
+          propertyCount: input.propertyCount,
+          durationDays: input.durationDays,
+          leadCount: input.leadCount,
+          returnUrl: agentListingPublishReturnUrl(tierCode),
+        }
       );
     },
 

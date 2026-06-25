@@ -7,6 +7,26 @@ export function isAgentProfileRejected(status: string | null | undefined): boole
   return status === 'Rejected';
 }
 
+/**
+ * Profile is awaiting the agent's own input ("Pending with you" on web).
+ * Mirrors `ListingReviewStatuses.AwaitingRequester`.
+ */
+export function agentProfileNeedsClarification(
+  status: string | null | undefined
+): boolean {
+  return status === 'AwaitingRequester';
+}
+
+/**
+ * Whether the agent can edit and resubmit the profile for another review.
+ * Matches web `PendingApproval` — needs-clarification or rejected profiles.
+ */
+export function canResubmitAgentProfile(
+  status: string | null | undefined
+): boolean {
+  return agentProfileNeedsClarification(status) || isAgentProfileRejected(status);
+}
+
 export function agentApprovalStatusLabel(status: string | null | undefined): string {
   switch (status) {
     case 'InProgress':

@@ -44,6 +44,8 @@ export type CashfreeOrderResponse = {
   paymentSessionId: string;
   orderId: string;
   environment: 'sandbox' | 'production';
+  /** Server-computed total for quantity-based orders (e.g. agent listing publish). */
+  amountInr?: number;
 };
 
 export type ActivateEssentialResponse = {
