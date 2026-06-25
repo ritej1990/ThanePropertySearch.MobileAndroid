@@ -41,6 +41,7 @@ import HomeLoanAdvisorScreen from './src/screens/HomeLoanAdvisorScreen';
 import AreaExplorerScreen from './src/screens/AreaExplorerScreen';
 import AgentPendingApprovalScreen from './src/screens/AgentPendingApprovalScreen';
 import AgentPaymentsScreen from './src/screens/AgentPaymentsScreen';
+import AgentLeadsScreen from './src/screens/AgentLeadsScreen';
 import BuilderPaymentsScreen from './src/screens/BuilderPaymentsScreen';
 import BuilderProjectFormScreen from './src/screens/BuilderProjectFormScreen';
 import InvoiceViewerScreen from './src/screens/InvoiceViewerScreen';
@@ -159,6 +160,12 @@ function AppNavigator() {
               />
             </>
           ) : isOwner ? (
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{ headerShown: false, title: 'Browse properties' }}
+            />
+          ) : isAgent ? (
             <Stack.Screen
               name="Home"
               component={HomeScreen}
@@ -305,6 +312,11 @@ function AppNavigator() {
           <Stack.Screen
             name="AgentPayments"
             component={AgentPaymentsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AgentLeads"
+            component={AgentLeadsScreen}
             options={{ headerShown: false }}
           />
           {BUILDER_PORTAL_ENABLED && (

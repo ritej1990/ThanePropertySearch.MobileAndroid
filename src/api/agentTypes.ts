@@ -135,3 +135,15 @@ export type AgentPaymentSummary = {
   leadTier: string | null;
   leadPackageEndsAtUtc: string | null;
 };
+
+/** GET /api/agent-listings/leads — buyer enquiries unlocked with lead credits. */
+export type AgentLead = {
+  id: number;
+  listingId: number;
+  listingTitle: string;
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  createdAtUtc: string;
+};

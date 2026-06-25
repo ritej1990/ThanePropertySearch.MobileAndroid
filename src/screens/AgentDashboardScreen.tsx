@@ -69,19 +69,33 @@ function AgentDashboardContent({ navigation }: Props) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [p, l, pay] = await Promise.all([
+      const [p, pay] = await Promise.all([
         agentProfilesApi.getMe(),
-        agentListingsApi.listMine(),
         paymentsApi.getAgentSummary().catch(() => null),
       ]);
       setProfile(p);
-      setListings(l);
       if (pay) {
         setPublishCredits(pay.publishCredits);
         setLeadCredits(pay.leadCredits);
       }
+
+      // Match web: pending/review profiles show dashboard cards/actions
+      // without surfacing listing API authorization errors.
       if (p.approvalStatus !== 'Approved') {
+        setListings([]);
         navigation.replace('AgentPendingApproval');
+        return;
+      }
+
+      try {
+        const l = await agentListingsApi.listMine();
+        setListings(l);
+      } catch (listingErr) {
+        if (listingErr instanceof ApiError && listingErr.status === 401) {
+          setListings([]);
+        } else {
+          throw listingErr;
+        }
       }
     } catch (e) {
       if (e instanceof ApiError && e.status === 403) {
@@ -108,7 +122,7 @@ function AgentDashboardContent({ navigation }: Props) {
       <ScrollChromeBar scrollY={scrollY} revealAt={280} overlay>
         <DashboardCompactBar
           title="Agent dashboard"
-          subtitle={`${listings.length} listings · ${publishCredits} publish credits`}
+          subtitle={`${listings.length} listings · ${publishCredits} publish slots`}
           onPress={scrollToTop}
         />
       </ScrollChromeBar>
@@ -126,19 +140,18 @@ function AgentDashboardContent({ navigation }: Props) {
             <>
               <AgentDashboardHeader
                 profile={profile}
-                listingCount={listings.length}
                 publishCredits={publishCredits}
                 leadCredits={leadCredits}
                 canPost={approved && publishCredits > 0}
                 onPayments={() => navigation.navigate('AgentPayments')}
+                onLeads={() => navigation.navigate('AgentLeads')}
                 onPost={() => {
-                  if (publishCredits <= 0) {
+                  if (!approved || publishCredits <= 0) {
                     navigation.navigate('AgentPayments');
                     return;
                   }
                   navigation.navigate('PostProperty');
                 }}
-                onBrowse={() => navigation.navigate('Home')}
               />
               {!loading && !error ? (
                 <Text style={styles.listTitle}>Your listings</Text>

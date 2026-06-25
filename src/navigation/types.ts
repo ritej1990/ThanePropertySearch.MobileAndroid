@@ -60,6 +60,7 @@ export type RootStackParamList = {
   AgentDashboard: undefined;
   AgentPendingApproval: undefined;
   AgentPayments: undefined;
+  AgentLeads: undefined;
   BuilderPayments: undefined;
   InvoiceViewer: { paymentTransactionId: number; invoiceNumber?: string };
 };
