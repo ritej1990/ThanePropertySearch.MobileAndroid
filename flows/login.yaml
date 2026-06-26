@@ -1,0 +1,27 @@
+# E2E: log in with a username/password and confirm we land in the app.
+# Parametrised — pass creds on the CLI, e.g.:
+#   maestro test flows/login.yaml -e USERNAME=Agent2 -e PASSWORD=Ritesh123
+#   maestro test flows/login.yaml -e USERNAME=Ritesh1990 -e PASSWORD=Ritesh123
+#   maestro test flows/login.yaml -e USERNAME=Tejashri1991 -e PASSWORD=Ritesh123
+appId: com.thaneflats.app
+env:
+  USERNAME: Agent2
+  PASSWORD: Ritesh123
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-username"
+- tapOn:
+    id: "login-username"
+- inputText: ${USERNAME}
+- tapOn:
+    id: "login-password"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit"
+# Logged-in shell: the bottom/search home or a role dashboard renders.
+# Any one of these confirms auth succeeded (login screen is gone).
+- assertNotVisible:
+    id: "login-submit"

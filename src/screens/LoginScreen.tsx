@@ -92,6 +92,7 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
 
           <AuthTextField
+            testID="login-username"
             label={t('auth.username')}
             icon="person-outline"
             placeholder={t('auth.usernamePlaceholder')}
@@ -105,6 +106,7 @@ export default function LoginScreen({ navigation }: Props) {
             onSubmitEditing={() => passwordRef.current?.focus()}
           />
           <AuthTextField
+            testID="login-password"
             ref={passwordRef}
             label={t('auth.password')}
             icon="lock-closed-outline"
@@ -128,6 +130,7 @@ export default function LoginScreen({ navigation }: Props) {
           </Pressable>
 
           <GradientButton
+            testID="login-submit"
             label={t('auth.signIn')}
             loading={loading}
             onPress={handleLogin}
@@ -145,6 +148,7 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
 
           <Pressable
+            testID="login-create-account"
             style={styles.secondaryBtn}
             onPress={() => {
               Keyboard.dismiss();

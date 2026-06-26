@@ -1,0 +1,49 @@
+# E2E: a signed-in user runs a property search and exercises filters/sort.
+#
+#   maestro test flows/search.yaml
+appId: com.thaneflats.app
+env:
+  USERNAME: Tejashri1991
+  PASSWORD: Ritesh123
+---
+- launchApp:
+    clearState: true
+# --- sign in ---
+- tapOn:
+    id: "login-username"
+- inputText: ${USERNAME}
+- tapOn:
+    id: "login-password"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit"
+- assertNotVisible:
+    id: "login-submit"
+
+# --- home / search surface ---
+# Type a locality into the search field, then trigger the search.
+- tapOn:
+    text: ".*[Ss]earch.*"   # search box / placeholder
+    optional: true
+- inputText: "Thane West"
+- hideKeyboard
+
+# Open filters (chip shows an active-filter count badge)
+- tapOn:
+    text: ".*[Ff]ilter.*"
+    optional: true
+
+# Pick a BHK filter if the sheet is open
+- tapOn:
+    text: "2 BHK"
+    optional: true
+
+# Apply / close the sheet
+- tapOn:
+    text: ".*[Aa]pply.*"
+    optional: true
+
+# Results list should render at least one property card or an empty state.
+- assertVisible:
+    text: ".*(BHK|RK|results|No properties).*"

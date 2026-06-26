@@ -1,0 +1,68 @@
+# E2E: agent opens the plan configurator, adjusts quantities, and reaches
+# the checkout screen. Payment is NOT completed (we stop at the Cashfree
+# hand-off) so no real money moves — this is the "bypass payment" boundary.
+#
+#   maestro test flows/agent-plan.yaml
+appId: com.thaneflats.app
+env:
+  USERNAME: Agent2
+  PASSWORD: Ritesh123
+---
+- launchApp:
+    clearState: true
+# --- sign in as the agent ---
+- tapOn:
+    id: "login-username"
+- inputText: ${USERNAME}
+- tapOn:
+    id: "login-password"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit"
+- assertNotVisible:
+    id: "login-submit"
+
+# --- open the plan (agent dashboard -> Plans). Text fallback if labels differ. ---
+- runFlow:
+    when:
+      visible: "Plans & payments"
+    commands:
+      - tapOn: "Plans & payments"
+- runFlow:
+    when:
+      notVisible: "Plan & billing"
+    commands:
+      - tapOn:
+          text: "Plans"
+          optional: true
+
+# --- the configurator ---
+- assertVisible: "Plan & billing"
+- assertVisible: "Configure your plan"
+- assertVisible: "Total properties"
+- assertVisible: "Total days"
+- assertVisible: "Total leads"
+
+# Adjust quantities via the +/- accessibility actions on the sliders.
+- tapOn:
+    text: "Increase Total properties"
+- tapOn:
+    text: "Increase Total leads"
+
+# --- order summary updates live ---
+- assertVisible: "Order summary"
+- assertVisible: "Total payable"
+
+# --- usage indicator restored at the top ---
+- scrollUntilVisible:
+    element:
+      text: "Plan used"
+    direction: UP
+    optional: true
+
+# --- proceed to checkout (real payment intentionally NOT completed) ---
+- tapOn:
+    id: "agent-plan-pay"
+# We reached the Cashfree checkout hand-off. Stop here — do not pay.
+- assertNotVisible: "Configure your plan"

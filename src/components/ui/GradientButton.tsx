@@ -17,6 +17,7 @@ type Props = {
   disabled?: boolean;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
 export function GradientButton({
@@ -25,9 +26,13 @@ export function GradientButton({
   disabled,
   onPress,
   style,
+  testID,
 }: Props) {
   return (
     <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({ pressed }) => [
         styles.wrap,
         pressed && !disabled && !loading && styles.pressed,

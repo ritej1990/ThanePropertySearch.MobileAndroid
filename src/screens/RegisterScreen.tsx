@@ -572,6 +572,7 @@ export default function RegisterScreen({ navigation }: Props) {
           ) : null}
 
           <GradientButton
+            testID="register-submit"
             label="Create account"
             loading={submitting}
             disabled={disabled}

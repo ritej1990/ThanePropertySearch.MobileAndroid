@@ -1,0 +1,53 @@
+# E2E: open registration, switch to the Agent role, and verify the
+# agent-specific fields (Company, RERA) appear, then fill the form.
+# Final submit is left commented so repeated runs don't create real accounts.
+#
+#   maestro test flows/register.yaml
+appId: com.thaneflats.app
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "login-create-account"
+
+# Registration screen
+- assertVisible:
+    text: "Full name"
+
+# Pick the Agent role -> agent-only fields should reveal
+- tapOn:
+    text: "Agent / broker"
+- assertVisible:
+    text: "Company / agency"
+- assertVisible:
+    text: "RERA number"
+
+# Fill the core fields (match by placeholder text)
+- tapOn:
+    text: "Full name"
+- inputText: "Maestro Test Agent"
+- tapOn:
+    text: "you@example.com"
+- inputText: "maestro.agent@example.com"
+- tapOn:
+    text: "Create a password"
+- inputText: "Ritesh123"
+- tapOn:
+    text: "Re-enter your password"
+- inputText: "Ritesh123"
+- tapOn:
+    text: "Agency name"
+- inputText: "Maestro Realty"
+- tapOn:
+    text: "MahaRERA ID"
+- inputText: "A52100012345"
+- hideKeyboard
+
+# The submit button exists and is reachable.
+- assertVisible:
+    id: "register-submit"
+
+# --- Real submission creates a backend account; enable deliberately ---
+# - tapOn:
+#     id: "register-submit"
+# - assertVisible: "verify"   # success modal / email-verification copy

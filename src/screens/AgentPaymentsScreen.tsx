@@ -39,6 +39,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
   const [summary, setSummary] = useState<AgentPaymentSummaryResponse | null>(null);
   const [payments, setPayments] = useState<PaymentTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [propertyCount, setPropertyCount] = useState(1);
@@ -50,20 +51,29 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
     summary?.listingUnitPricing ?? DEFAULT_AGENT_UNIT_PRICING;
 
   const load = useCallback(async () => {
+    setLoadError(null);
+    // The plan must load even if payment history fails — fetch them independently.
     try {
-      const [summaryData, txData] = await Promise.all([
-        paymentsApi.getAgentSummary(),
-        paymentsApi.getMyTransactions(),
-      ]);
+      const summaryData = await paymentsApi.getAgentSummary();
       const normalizedSummary: AgentPaymentSummaryResponse = {
         ...summaryData,
         publishPlans: Array.isArray(summaryData.publishPlans) ? summaryData.publishPlans : [],
         leadPackages: Array.isArray(summaryData.leadPackages) ? summaryData.leadPackages : [],
       };
       setSummary(normalizedSummary);
-      setPayments(filterAgentPayments(txData));
     } catch (e) {
-      Alert.alert('Error', e instanceof ApiError ? e.message : 'Could not load plans');
+      setLoadError(
+        e instanceof ApiError ? e.message : 'Could not load your plan. Check your connection and try again.'
+      );
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const txData = await paymentsApi.getMyTransactions();
+      setPayments(filterAgentPayments(txData));
+    } catch {
+      setPayments([]); // history is non-critical — keep the plan usable
     } finally {
       setLoading(false);
     }
@@ -128,6 +138,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
     }
   }
 
+  const usage = useMemo(() => computePlanUsage(summary), [summary]);
   const outOfCredits = (summary?.publishCredits ?? 0) <= 0;
 
   return (
@@ -135,6 +146,22 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.wrap}>
         {loading ? (
           <BrandLoading fullScreen={false} message="Loading plans…" />
+        ) : loadError && !summary ? (
+          <View style={styles.errorCard}>
+            <Ionicons name="cloud-offline-outline" size={40} color={colors.slateLight} />
+            <Text style={styles.errorTitle}>Couldn't load your plan</Text>
+            <Text style={styles.errorText}>{loadError}</Text>
+            <Pressable
+              style={styles.retryBtn}
+              onPress={() => {
+                setLoading(true);
+                load();
+              }}
+            >
+              <Ionicons name="refresh" size={16} color={colors.heroText} />
+              <Text style={styles.retryText}>Try again</Text>
+            </Pressable>
+          </View>
         ) : summary ? (
           <>
             <View style={styles.heroCard}>
@@ -143,10 +170,6 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
                   <Ionicons name="shield-checkmark-outline" size={13} color={colors.teal} />
                   <Text style={styles.verifiedText}>Verified agent</Text>
                 </View>
-                <View style={styles.usageBadge}>
-                  <Text style={styles.usageLabel}>Plan used</Text>
-                  <Text style={styles.usagePercent}>{outOfCredits ? '100%' : '0%'}</Text>
-                </View>
               </View>
 
               <Text style={styles.heroTitle}>Plan & billing</Text>
@@ -154,12 +177,32 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
                 Configure listing visibility and lead credits in one checkout. Pricing
                 updates live as you adjust the sliders.
               </Text>
-              <Text style={styles.heroHint}>
-                {summary.publishCredits} slots available to post
-                {summary.publishPlanEndsAtUtc
-                  ? ` · until ${formatPaymentDate(summary.publishPlanEndsAtUtc)}`
-                  : ''}
-              </Text>
+
+              <View style={styles.usageCard}>
+                <View style={styles.usageHead}>
+                  <Text style={styles.usageLabel}>
+                    {usage.expired ? 'Plan expired' : 'Plan used'}
+                  </Text>
+                  <Text style={[styles.usagePercent, { color: usage.color }]}>
+                    {usage.percent}%
+                  </Text>
+                </View>
+                <View style={styles.usageTrack}>
+                  <View
+                    style={[
+                      styles.usageFill,
+                      { width: `${usage.percent}%`, backgroundColor: usage.color },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.usageHint}>
+                  {usage.available} slot{usage.available === 1 ? '' : 's'} available to post
+                  {usage.reserved > 0 ? ` · ${usage.reserved} pending review` : ''}
+                  {summary.publishPlanEndsAtUtc
+                    ? ` · ${usage.expired ? 'expired' : 'until'} ${formatPaymentDate(summary.publishPlanEndsAtUtc)}`
+                    : ''}
+                </Text>
+              </View>
             </View>
 
             {outOfCredits ? (
@@ -266,6 +309,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
               </View>
 
               <Pressable
+                testID="agent-plan-pay"
                 style={[styles.payBtn, busy && styles.payBtnDisabled]}
                 onPress={buyBundle}
                 disabled={busy}
@@ -357,6 +401,33 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
       </ScrollView>
     </AuthenticatedScreenLayout>
   );
+}
+
+/** Mirrors the web Agent/Payments hero usage: real percent + slots + expiry. */
+function computePlanUsage(summary: AgentPaymentSummaryResponse | null) {
+  const available = summary?.availablePublishSlots ?? summary?.publishCredits ?? 0;
+  const reserved = summary?.reservedPublishSlots ?? 0;
+  const max = summary?.publishSlotsMax ?? 0;
+  const consumed = summary?.consumedPublishSlots ?? 0;
+  const raw = summary?.planUsagePercent;
+
+  let percent: number;
+  if (raw != null && raw >= 0 && raw <= 100) {
+    percent = Math.round(raw);
+  } else if (max > 0) {
+    percent = Math.min(100, Math.max(0, Math.round((100 * (consumed + reserved)) / max)));
+  } else {
+    percent = available <= 0 ? 100 : 0;
+  }
+
+  const endsAt = summary?.publishPlanEndsAtUtc;
+  const expired =
+    !!endsAt && !summary?.publishPlanActive && new Date(endsAt).getTime() < Date.now();
+
+  const color =
+    expired || percent >= 90 ? colors.error : percent >= 60 ? colors.warning : colors.teal;
+
+  return { percent, available, reserved, expired, color };
 }
 
 function MetricCard({
@@ -479,6 +550,40 @@ function StatusPill({ status }: { status: string }) {
 
 const styles = StyleSheet.create({
   wrap: { padding: spacing.lg, paddingBottom: spacing.xxxl },
+  errorCard: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.xxl,
+    marginTop: spacing.xl,
+  },
+  errorTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.navy,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 13,
+    color: colors.slateLight,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginTop: spacing.sm,
+  },
+  retryBtn: {
+    marginTop: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+  },
+  retryText: { color: colors.heroText, fontWeight: '800', fontSize: 14 },
   heroCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -510,18 +615,39 @@ const styles = StyleSheet.create({
     color: colors.tealDark,
     textTransform: 'uppercase',
   },
-  usageBadge: { alignItems: 'flex-end' },
-  usageLabel: {
-    fontSize: 10,
-    color: colors.slateLight,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  usagePercent: { fontSize: 20, fontWeight: '900', color: colors.error, marginTop: 1 },
   heroTitle: { fontSize: 22, fontWeight: '800', color: colors.navy },
   heroSub: { fontSize: 13, color: colors.slateLight, lineHeight: 19, marginTop: spacing.xs },
-  heroHint: { fontSize: 12, color: colors.slateLight, marginTop: spacing.md },
+  usageCard: {
+    marginTop: spacing.md,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.md,
+  },
+  usageHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  usageLabel: {
+    fontSize: 11,
+    color: colors.slateLight,
+    textTransform: 'uppercase',
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  usagePercent: { fontSize: 20, fontWeight: '900' },
+  usageTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.border,
+    overflow: 'hidden',
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  usageFill: { height: 8, borderRadius: 4 },
+  usageHint: { fontSize: 12, color: colors.slateLight, lineHeight: 17 },
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',

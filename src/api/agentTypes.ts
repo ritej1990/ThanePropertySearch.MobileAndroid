@@ -143,7 +143,14 @@ export type AgentPaymentSummaryResponse = {
   leadCredits: number;
   publishPlanActive: boolean;
   activePublishTier: string | null;
+  publishPlanStartUtc?: string | null;
   publishPlanEndsAtUtc: string | null;
+  /** 0–100 plan consumption; -1/absent when the API can't compute it. */
+  planUsagePercent?: number | null;
+  publishSlotsMax?: number | null;
+  availablePublishSlots?: number | null;
+  reservedPublishSlots?: number | null;
+  consumedPublishSlots?: number | null;
   leadPackageActive: boolean;
   activeLeadPackageTier: string | null;
   leadPackageEndsAtUtc: string | null;

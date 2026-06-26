@@ -1,0 +1,562 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for utils/propertySearchFilters.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">utils</a> propertySearchFilters.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/81</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/86</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/15</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/56</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { PropertyResponse } from '../api/types';
+&nbsp;
+export type ListingTypeFilter = 'all' | 'rent' | 'sale' | 'pg';
+&nbsp;
+export type SortOption = 'newest' | 'price_asc' | 'price_desc' | 'ai_match';
+&nbsp;
+export type RentPresetKey = 'any' | 'under15' | '15to25' | '25to40' | 'above40';
+&nbsp;
+export const BHK_FILTER_OPTIONS = <span class="cstat-no" title="statement not covered" >['1 RK', '1 BHK', '2 BHK', '3 BHK'] as const;</span>
+&nbsp;
+export const RENT_PRESETS: {
+  key: RentPresetKey;
+  label: string;
+  min: number | null;
+  max: number | null;
+}[] = <span class="cstat-no" title="statement not covered" >[</span>
+  { key: 'any', label: 'Any budget', min: null, max: null },
+  { key: 'under15', label: 'Under ₹15k', min: null, max: 15000 },
+  { key: '15to25', label: '₹15k–25k', min: 15000, max: 25000 },
+  { key: '25to40', label: '₹25k–40k', min: 25000, max: 40000 },
+  { key: 'above40', label: '₹40k+', min: 40000, max: null },
+];
+&nbsp;
+export type PropertySearchFilters = {
+  listingType: ListingTypeFilter;
+  bhk: string[];
+  rentPreset: RentPresetKey;
+  featuredOnly: boolean;
+  sort: SortOption;
+};
+&nbsp;
+export const defaultSearchFilters = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >()</span>: PropertySearchFilters =&gt; (<span class="cstat-no" title="statement not covered" >{</span></span>
+  listingType: 'all',
+  bhk: [],
+  rentPreset: 'any',
+  featuredOnly: false,
+  sort: 'newest',
+});
+&nbsp;
+function <span class="fstat-no" title="function not covered" >monthlyPrice(</span>item: PropertyResponse): number {
+<span class="cstat-no" title="statement not covered" >  if (item.isForPg || item.isForRent) <span class="cstat-no" title="statement not covered" >return item.rentAmount;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (item.isForSale &amp;&amp; item.sellPrice != null) <span class="cstat-no" title="statement not covered" >return item.sellPrice;</span></span>
+<span class="cstat-no" title="statement not covered" >  return item.rentAmount;</span>
+}
+&nbsp;
+function <span class="fstat-no" title="function not covered" >matchesListingType(</span>item: PropertyResponse, type: ListingTypeFilter): boolean {
+<span class="cstat-no" title="statement not covered" >  if (type === 'all') <span class="cstat-no" title="statement not covered" >return true;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (type === 'rent') <span class="cstat-no" title="statement not covered" >return item.isForRent &amp;&amp; !item.isForPg;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (type === 'sale') <span class="cstat-no" title="statement not covered" >return item.isForSale;</span></span>
+<span class="cstat-no" title="statement not covered" >  return item.isForPg;</span>
+}
+&nbsp;
+function <span class="fstat-no" title="function not covered" >matchesBhk(</span>item: PropertyResponse, bhk: string[]): boolean {
+<span class="cstat-no" title="statement not covered" >  if (bhk.length === 0) <span class="cstat-no" title="statement not covered" >return true;</span></span>
+  const config = <span class="cstat-no" title="statement not covered" >item.bhkConfiguration?.trim() ?? '';</span>
+<span class="cstat-no" title="statement not covered" >  return bhk.some(<span class="fstat-no" title="function not covered" >(b</span>) =&gt; <span class="cstat-no" title="statement not covered" >config.toLowerCase() === b.toLowerCase())</span>;</span>
+}
+&nbsp;
+function <span class="fstat-no" title="function not covered" >matchesRentPreset(</span>
+  item: PropertyResponse,
+  preset: RentPresetKey,
+  listingType: ListingTypeFilter
+): boolean {
+<span class="cstat-no" title="statement not covered" >  if (preset === 'any') <span class="cstat-no" title="statement not covered" >return true;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (listingType === 'sale') <span class="cstat-no" title="statement not covered" >return true;</span></span>
+&nbsp;
+  const p = <span class="cstat-no" title="statement not covered" >RENT_PRESETS.find(<span class="fstat-no" title="function not covered" >(r</span>) =&gt; <span class="cstat-no" title="statement not covered" >r.key === preset)</span>;</span>
+<span class="cstat-no" title="statement not covered" >  if (!p) <span class="cstat-no" title="statement not covered" >return true;</span></span>
+&nbsp;
+  const amount =
+<span class="cstat-no" title="statement not covered" >    item.isForSale &amp;&amp; item.sellPrice != null ? item.sellPrice : item.rentAmount;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  if (p.min != null &amp;&amp; amount &lt; p.min) <span class="cstat-no" title="statement not covered" >return false;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (p.max != null &amp;&amp; amount &gt; p.max) <span class="cstat-no" title="statement not covered" >return false;</span></span>
+<span class="cstat-no" title="statement not covered" >  return true;</span>
+}
+&nbsp;
+function <span class="fstat-no" title="function not covered" >matchesText(</span>item: PropertyResponse, query: string): boolean {
+  const q = <span class="cstat-no" title="statement not covered" >query.trim().toLowerCase();</span>
+<span class="cstat-no" title="statement not covered" >  if (!q) <span class="cstat-no" title="statement not covered" >return true;</span></span>
+<span class="cstat-no" title="statement not covered" >  return (</span>
+    item.title.toLowerCase().includes(q) ||
+    item.areaName.toLowerCase().includes(q) ||
+    (item.address?.toLowerCase().includes(q) ?? false) ||
+    (item.bhkConfiguration?.toLowerCase().includes(q) ?? false)
+  );
+}
+&nbsp;
+export function <span class="fstat-no" title="function not covered" >countActiveFilters(</span>filters: PropertySearchFilters): number {
+  let n = <span class="cstat-no" title="statement not covered" >0;</span>
+<span class="cstat-no" title="statement not covered" >  if (filters.listingType !== 'all') <span class="cstat-no" title="statement not covered" >n += 1;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (filters.bhk.length &gt; 0) <span class="cstat-no" title="statement not covered" >n += 1;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (filters.rentPreset !== 'any') <span class="cstat-no" title="statement not covered" >n += 1;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (filters.featuredOnly) <span class="cstat-no" title="statement not covered" >n += 1;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (filters.sort !== 'newest') <span class="cstat-no" title="statement not covered" >n += 1;</span></span>
+<span class="cstat-no" title="statement not covered" >  return n;</span>
+}
+&nbsp;
+export function <span class="fstat-no" title="function not covered" >applyPropertySearch(</span>
+  items: PropertyResponse[],
+  filters: PropertySearchFilters,
+  searchText: string,
+  aiScores?: Map&lt;number, number&gt; | Record&lt;number, number&gt;
+): PropertyResponse[] {
+  let list = <span class="cstat-no" title="statement not covered" >items.filter(</span>
+<span class="fstat-no" title="function not covered" >    (i</span>tem) =&gt;
+<span class="cstat-no" title="statement not covered" >      matchesListingType(item, filters.listingType) &amp;&amp;</span>
+      matchesBhk(item, filters.bhk) &amp;&amp;
+      matchesRentPreset(item, filters.rentPreset, filters.listingType) &amp;&amp;
+      matchesText(item, searchText) &amp;&amp;
+      (!filters.featuredOnly || item.isFeaturedInSearch)
+  );
+&nbsp;
+  function <span class="fstat-no" title="function not covered" >aiScoreOf(</span>item: PropertyResponse): number {
+<span class="cstat-no" title="statement not covered" >    if (!aiScores) <span class="cstat-no" title="statement not covered" >return 0;</span></span>
+    const v = <span class="cstat-no" title="statement not covered" >aiScores instanceof Map ? aiScores.get(item.id) : aiScores[item.id];</span>
+<span class="cstat-no" title="statement not covered" >    return v ?? 0;</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  list = [...list].sort(<span class="fstat-no" title="function not covered" >(a</span>, b) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (filters.sort === 'newest') {</span>
+<span class="cstat-no" title="statement not covered" >      return (</span>
+        new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime()
+      );
+    }
+<span class="cstat-no" title="statement not covered" >    if (filters.sort === 'ai_match') {</span>
+      const diff = <span class="cstat-no" title="statement not covered" >aiScoreOf(b) - aiScoreOf(a);</span>
+<span class="cstat-no" title="statement not covered" >      if (diff !== 0) <span class="cstat-no" title="statement not covered" >return diff;</span></span>
+<span class="cstat-no" title="statement not covered" >      return (</span>
+        new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime()
+      );
+    }
+    const pa = <span class="cstat-no" title="statement not covered" >monthlyPrice(a);</span>
+    const pb = <span class="cstat-no" title="statement not covered" >monthlyPrice(b);</span>
+<span class="cstat-no" title="statement not covered" >    return filters.sort === 'price_asc' ? pa - pb : pb - pa;</span>
+  });
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return list;</span>
+}
+&nbsp;
+export function <span class="fstat-no" title="function not covered" >sortLabel(</span>sort: SortOption): string {
+<span class="cstat-no" title="statement not covered" >  switch (sort) {</span>
+    case 'price_asc':
+<span class="cstat-no" title="statement not covered" >      return 'Price ↑';</span>
+    case 'price_desc':
+<span class="cstat-no" title="statement not covered" >      return 'Price ↓';</span>
+    case 'ai_match':
+<span class="cstat-no" title="statement not covered" >      return 'AI match';</span>
+    default:
+<span class="cstat-no" title="statement not covered" >      return 'Newest';</span>
+  }
+}
+&nbsp;
+export function <span class="fstat-no" title="function not covered" >nextSortOption(</span>current: SortOption): SortOption {
+<span class="cstat-no" title="statement not covered" >  if (current === 'newest') <span class="cstat-no" title="statement not covered" >return 'ai_match';</span></span>
+<span class="cstat-no" title="statement not covered" >  if (current === 'ai_match') <span class="cstat-no" title="statement not covered" >return 'price_asc';</span></span>
+<span class="cstat-no" title="statement not covered" >  if (current === 'price_asc') <span class="cstat-no" title="statement not covered" >return 'price_desc';</span></span>
+<span class="cstat-no" title="statement not covered" >  return 'newest';</span>
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-06-26T03:56:17.819Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    

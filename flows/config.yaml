@@ -1,0 +1,7 @@
+# Maestro shared config — https://maestro.mobile.dev
+# Run a single flow:   maestro test flows/login.yaml
+# Run the whole suite:  maestro test flows/
+appId: com.thaneflats.app
+---
+# This file documents the shared appId. Individual flows declare their own
+# `appId` + `---` header (Maestro requires it per flow) and can be run directly.

@@ -1,0 +1,56 @@
+# E2E: an owner opens the Post Property wizard and completes step 1 (details).
+# Uses placeholder text to target inputs (no testIDs on this screen yet).
+#
+#   maestro test flows/post-property.yaml
+appId: com.thaneflats.app
+env:
+  USERNAME: Ritesh1990
+  PASSWORD: Ritesh123
+---
+- launchApp:
+    clearState: true
+# --- sign in (owner can post listings) ---
+- tapOn:
+    id: "login-username"
+- inputText: ${USERNAME}
+- tapOn:
+    id: "login-password"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "login-submit"
+- assertNotVisible:
+    id: "login-submit"
+
+# --- open the Post Property wizard (label may vary by role/dashboard) ---
+- tapOn:
+    text: "Post.*"        # matches "Post", "Post property", "Post listing"
+    optional: false
+
+# --- Step 1: basics ---
+- assertVisible:
+    text: "Listing title"
+- tapOn:
+    text: "Bright 2 BHK with balcony — Hiranandani Estate"   # title placeholder
+- inputText: "Maestro 2 BHK near station"
+- tapOn:
+    text: "Furnishing, parking, nearby schools, metro access…" # description placeholder
+- inputText: "Spacious, well-ventilated test listing."
+- hideKeyboard
+
+# Select a BHK option (chips render the BHK labels)
+- tapOn:
+    text: "2 BHK"
+    optional: true
+
+# Advance to the next step
+- tapOn:
+    text: "Next"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+
+# --- Step 2: pricing/area fields are present ---
+- assertVisible:
+    text: "Built-up area (sq.ft.)"
