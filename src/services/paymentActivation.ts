@@ -16,7 +16,7 @@ export async function activateCashfreeOrder(
   orderId: string,
   tierCode: string | undefined,
   amountInr: number,
-  maxAttempts = 8
+  maxAttempts = 4
 ): Promise<string> {
   let lastError = 'Payment verification failed.';
 
@@ -77,7 +77,7 @@ export async function activateCashfreeOrder(
       if (!retryable || attempt === maxAttempts - 1) {
         throw new Error(msg);
       }
-      await sleep(2000);
+      await sleep(1500);
     }
   }
 

@@ -10,6 +10,7 @@ import { createInvoicesApi } from './invoices';
 import { createPaymentsApi } from './payments';
 import { createPropertiesApi } from './properties';
 import { createSupportApi } from './support';
+import { createSiteMaintenanceApi } from './siteMaintenance';
 import { createUsersApi } from './users';
 import { expoTokenStorage } from '../storage/tokenStorage';
 
@@ -26,3 +27,4 @@ export const agentLeadsApi = createAgentLeadsApi(api);
 export const invoicesApi = createInvoicesApi(api);
 export const aiApi = createAiApi(api);
 export const favoritesApi = createFavoritesApi(api);
+export const siteMaintenanceApi = createSiteMaintenanceApi(api);

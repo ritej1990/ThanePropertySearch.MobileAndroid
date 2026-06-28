@@ -10,7 +10,8 @@ import type {
   OwnerContact,
   PropertyInquirySummary,
 } from './inquiryTypes';
-import type { PropertyRatingItem } from './ratingTypes';
+import type { UnreadPreviewResponse } from './messageNotificationTypes';
+import type { PropertyRatingItem, RatingEligibility } from './ratingTypes';
 import type { VisitRequest } from './visitTypes';
 import type { PropertyResponse } from './types';
 import { normalizeOwnerDashboard } from './normalizeOwnerDashboard';
@@ -156,8 +157,21 @@ export function createPropertiesApi(client: ReturnType<typeof createApiClient>) 
       );
     },
 
+    /** GET /api/properties/{id}/ratings/eligibility — can the user write a review (completed-visit gate). */
+    getRatingEligibility(propertyId: number) {
+      return client.get<RatingEligibility>(
+        `/api/properties/${propertyId}/ratings/eligibility`
+      );
+    },
+
     getMyMessageCount() {
       return client.get<{ count: number }>('/api/properties/inquiries/my-message-count');
+    },
+
+    getMyUnreadPreview() {
+      return client.get<UnreadPreviewResponse>(
+        '/api/properties/inquiries/my-unread-preview'
+      );
     },
 
     getMyThreads() {

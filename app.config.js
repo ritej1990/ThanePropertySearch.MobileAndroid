@@ -12,6 +12,20 @@ module.exports = {
     ...appJson.expo,
     ios: {
       ...appJson.expo.ios,
+      infoPlist: {
+        ...appJson.expo.ios?.infoPlist,
+        LSApplicationQueriesSchemes: [
+          ...(appJson.expo.ios?.infoPlist?.LSApplicationQueriesSchemes ?? []),
+          'upi',
+          'tez',
+          'gpay',
+          'paytmmp',
+          'phonepe',
+          'bhim',
+          'credpay',
+          'amazonpay',
+        ],
+      },
       config: {
         ...appJson.expo.ios?.config,
         googleMapsApiKey,

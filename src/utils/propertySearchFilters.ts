@@ -100,7 +100,8 @@ export function applyPropertySearch(
   items: PropertyResponse[],
   filters: PropertySearchFilters,
   searchText: string,
-  aiScores?: Map<number, number> | Record<number, number>
+  aiScores?: Map<number, number> | Record<number, number>,
+  favoriteIds?: Set<number>
 ): PropertyResponse[] {
   let list = items.filter(
     (item) =>
@@ -134,6 +135,13 @@ export function applyPropertySearch(
     const pb = monthlyPrice(b);
     return filters.sort === 'price_asc' ? pa - pb : pb - pa;
   });
+
+  // Favorited listings always surface first, keeping the chosen sort within each group.
+  if (favoriteIds && favoriteIds.size > 0) {
+    const favs = list.filter((item) => favoriteIds.has(item.id));
+    const rest = list.filter((item) => !favoriteIds.has(item.id));
+    list = [...favs, ...rest];
+  }
 
   return list;
 }

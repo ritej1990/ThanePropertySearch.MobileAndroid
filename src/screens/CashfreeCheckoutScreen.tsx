@@ -1,10 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  Platform,
-  StyleSheet,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -13,11 +8,18 @@ import {
   parseCashfreeReturnUrl,
   resolveReturnUrl,
 } from '../api/paymentReturnUrls';
-import { savePendingPayment } from '../storage/pendingPaymentStorage';
+import {
+  clearPendingPayment,
+  savePendingPayment,
+} from '../storage/pendingPaymentStorage';
 import type { RootStackParamList } from '../navigation/types';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
-import { colors, spacing } from '../theme';
+import {
+  isPaymentAppDeepLink,
+  openPaymentAppDeepLink,
+} from '../utils/paymentDeepLinks';
+import { colors } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CashfreeCheckout'>;
 
@@ -55,13 +57,21 @@ function buildCheckoutHtml(
     (function () {
       var status = document.getElementById('status');
       var errEl = document.getElementById('err');
-      function fail(msg) {
+      function notifyNative(payload) {
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+        }
+      }
+      function fail(msg, cancelled) {
         status.textContent = 'Could not start payment';
         errEl.textContent = msg || 'Please go back and try again.';
+        if (cancelled) {
+          notifyNative({ type: 'checkout_cancelled', message: msg || 'Payment cancelled.' });
+        }
       }
       function start() {
         if (typeof Cashfree === 'undefined') {
-          fail('Cashfree SDK failed to load. Check your connection.');
+          fail('Cashfree SDK failed to load. Check your connection.', false);
           return;
         }
         try {
@@ -72,13 +82,13 @@ function buildCheckoutHtml(
             redirectTarget: '_self'
           }).then(function (result) {
             if (result && result.error) {
-              fail(result.error.message || 'Payment cancelled.');
+              fail(result.error.message || 'Payment cancelled.', true);
             }
           }).catch(function (e) {
-            fail(e && e.message ? e.message : String(e));
+            fail(e && e.message ? e.message : String(e), true);
           });
         } catch (e) {
-          fail(e && e.message ? e.message : String(e));
+          fail(e && e.message ? e.message : String(e), false);
         }
       }
       if (document.readyState === 'complete') start();
@@ -99,8 +109,8 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
     amountInr,
     returnPropertyId,
   } = route.params;
-  const [handlingReturn, setHandlingReturn] = useState(false);
   const handledRef = useRef(false);
+  const leavingRef = useRef(false);
 
   useEffect(() => {
     void savePendingPayment({
@@ -119,75 +129,140 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
     [paymentSessionId, environment, returnUrl]
   );
 
-  function handleReturn(url?: string) {
-    if (handledRef.current) return;
-    handledRef.current = true;
-    setHandlingReturn(true);
+  const exitCheckout = useCallback(
+    (message?: string) => {
+      if (handledRef.current || leavingRef.current) return;
+      leavingRef.current = true;
+      void clearPendingPayment();
+      navigation.goBack();
+      if (message) {
+        setTimeout(() => {
+          Alert.alert('Payment not completed', message);
+        }, 200);
+      }
+    },
+    [navigation]
+  );
 
-    const parsed = url ? parseCashfreeReturnUrl(url) : null;
-    navigation.replace('PaymentReturn', {
-      orderId: parsed?.orderId ?? orderId,
-      product: parsed?.product ?? product,
-      tierCode: parsed?.tierCode ?? tierCode,
-      amountInr,
-      returnPropertyId,
-    });
-  }
+  const handleReturn = useCallback(
+    (url?: string) => {
+      if (handledRef.current || leavingRef.current) return;
+      handledRef.current = true;
 
-  function interceptReturnUrl(url: string): boolean {
-    if (!isCashfreeReturnNavigation(url)) return false;
-    handleReturn(url);
-    return true;
-  }
+      const parsed = url ? parseCashfreeReturnUrl(url) : null;
+      navigation.replace('PaymentReturn', {
+        orderId: parsed?.orderId ?? orderId,
+        product: parsed?.product ?? product,
+        tierCode: parsed?.tierCode ?? tierCode,
+        amountInr,
+        returnPropertyId,
+      });
+    },
+    [navigation, orderId, product, tierCode, amountInr, returnPropertyId]
+  );
+
+  const shouldWebViewLoad = useCallback(
+    (url: string): boolean => {
+      if (!url || url === 'about:blank') return true;
+
+      if (url.startsWith('thaneproperty://') || isCashfreeReturnNavigation(url)) {
+        handleReturn(url);
+        return false;
+      }
+
+      if (isPaymentAppDeepLink(url)) {
+        void openPaymentAppDeepLink(url).then((opened) => {
+          if (!opened) {
+            Alert.alert(
+              'Payment app not found',
+              'Install Google Pay, PhonePe, Paytm, or another UPI app to complete payment.'
+            );
+          }
+        });
+        return false;
+      }
+
+      return true;
+    },
+    [handleReturn]
+  );
 
   function onNavigationChange(nav: WebViewNavigation) {
-    interceptReturnUrl(nav.url ?? '');
+    shouldWebViewLoad(nav.url ?? '');
+  }
+
+  function confirmLeaveCheckout() {
+    Alert.alert(
+      'Leave checkout?',
+      'Payment is not complete. You can return and try again anytime.',
+      [
+        { text: 'Stay', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => {
+            exitCheckout(
+              'You left checkout before payment finished. No charge was made.'
+            );
+          },
+        },
+      ]
+    );
   }
 
   return (
-    <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
+    <AuthenticatedScreenLayout
+      showBack
+      onBack={confirmLeaveCheckout}
+      showFloatingActions={false}
+      showLegalFooter={false}
+    >
       <View style={styles.wrap}>
-        {handlingReturn ? (
-          <BrandLoading fullScreen={false} message="Confirming your payment…" />
-        ) : (
-          <WebView
-            originWhitelist={['*']}
-            source={{ html, baseUrl: 'https://thaneflats.com' }}
-            onNavigationStateChange={onNavigationChange}
-            onLoadStart={(e) => {
-              interceptReturnUrl(e.nativeEvent.url);
-            }}
-            onShouldStartLoadWithRequest={(req) => {
-              const url = req.url ?? '';
-              if (url.startsWith('thaneproperty://')) {
-                handleReturn(url);
-                return false;
+        <WebView
+          originWhitelist={['*']}
+          source={{ html, baseUrl: 'https://thaneflats.com' }}
+          onNavigationStateChange={onNavigationChange}
+          onLoadStart={(e) => {
+            shouldWebViewLoad(e.nativeEvent.url ?? '');
+          }}
+          onShouldStartLoadWithRequest={(req) => shouldWebViewLoad(req.url ?? '')}
+          onMessage={(event) => {
+            try {
+              const data = JSON.parse(event.nativeEvent.data) as {
+                type?: string;
+                message?: string;
+              };
+              if (data.type === 'checkout_cancelled') {
+                exitCheckout(
+                  data.message ||
+                    'You left checkout before payment finished. No charge was made.'
+                );
               }
-              if (isCashfreeReturnNavigation(url)) {
-                handleReturn(url);
-                return false;
-              }
-              return true;
-            }}
-            onError={() => {
-              Alert.alert(
-                'Checkout error',
-                'Could not load secure payment page. Try again.',
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
-              );
-            }}
-            style={styles.webview}
-            javaScriptEnabled
-            domStorageEnabled
-            setSupportMultipleWindows={false}
-            thirdPartyCookiesEnabled
-            sharedCookiesEnabled={Platform.OS === 'android'}
-            startInLoadingState
-            renderLoading={() => (
-              <BrandLoading fullScreen={false} message="Opening secure checkout…" />
-            )}
-          />
-        )}
+            } catch {
+              /* ignore malformed messages */
+            }
+          }}
+          onError={() => {
+            Alert.alert(
+              'Checkout error',
+              'Could not load secure payment page. Try again.',
+              [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
+          }}
+          style={styles.webview}
+          javaScriptEnabled
+          domStorageEnabled
+          setSupportMultipleWindows={false}
+          thirdPartyCookiesEnabled
+          sharedCookiesEnabled={Platform.OS === 'android'}
+          startInLoadingState
+          renderLoading={() => (
+            <BrandLoading
+              fullScreen={false}
+              message="Opening secure checkout…"
+            />
+          )}
+        />
       </View>
     </AuthenticatedScreenLayout>
   );

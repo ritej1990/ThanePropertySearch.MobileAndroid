@@ -33,7 +33,8 @@ import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
 import type { RootStackParamList } from '../../navigation/types';
 import { AppNavMenu, type NavMenuTarget } from './AppNavMenu';
 import { buildQuickNavItems } from './navMenuConfig';
-import { propertiesApi } from '../../api/singleton';
+import { useUnreadMessages } from '../../context/UnreadMessagesContext';
+import { useSiteMaintenance, MAINTENANCE_BANNER_BODY_HEIGHT } from '../../context/SiteMaintenanceContext';
 import {
   getProfileFirstName,
   getProfileInitials,
@@ -99,23 +100,15 @@ export function AppProfileHeader({
   const [signOutVisible, setSignOutVisible] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [unreadChats, setUnreadChats] = useState(0);
+  const { unreadCount: unreadChats, refreshUnread } = useUnreadMessages();
+  const { enabled: maintenanceBanner } = useSiteMaintenance();
   const firstName = getProfileFirstName(profile?.fullName);
   const initials = getProfileInitials(profile?.fullName);
   const quickNav = buildQuickNavItems(profile?.role, t);
 
-  const refreshUnread = useCallback(async () => {
-    try {
-      const res = await propertiesApi.getMyMessageCount();
-      setUnreadChats(res.count ?? 0);
-    } catch {
-      setUnreadChats(0);
-    }
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      refreshUnread();
+      void refreshUnread();
     }, [refreshUnread])
   );
 
@@ -250,7 +243,7 @@ export function AppProfileHeader({
         style={[
           styles.gradient,
           backMode || slimHome ? styles.gradientCompact : null,
-          { paddingTop: insets.top + (backMode || slimHome ? 4 : spacing.xs) },
+          { paddingTop: insets.top + (maintenanceBanner ? MAINTENANCE_BANNER_BODY_HEIGHT : 0) + (backMode || slimHome ? 4 : spacing.xs) },
         ]}
       >
         <View style={styles.mainRow}>

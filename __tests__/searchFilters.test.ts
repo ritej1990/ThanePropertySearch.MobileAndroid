@@ -103,6 +103,30 @@ describe('applyPropertySearch — sorting (incl. AI match)', () => {
   });
 });
 
+describe('favorites pinned to top', () => {
+  const items = [
+    prop({ id: 1, rentAmount: 30000, createdAtUtc: '2026-06-01T00:00:00Z' }),
+    prop({ id: 2, rentAmount: 10000, createdAtUtc: '2026-06-10T00:00:00Z' }),
+    prop({ id: 3, rentAmount: 20000, createdAtUtc: '2026-06-05T00:00:00Z' }),
+  ];
+
+  it('moves favorited listings first, keeping sort within groups', () => {
+    const out = applyPropertySearch(items, filters({ sort: 'newest' }), '', undefined, new Set([1]));
+    expect(out.map((i) => i.id)).toEqual([1, 2, 3]); // 1 pinned, then newest-first (2,3)
+  });
+
+  it('keeps multiple favorites grouped on top by the chosen sort', () => {
+    const out = applyPropertySearch(items, filters({ sort: 'price_asc' }), '', undefined, new Set([1, 3]));
+    // favorites first by price asc (3=20k,1=30k), then rest (2)
+    expect(out.map((i) => i.id)).toEqual([3, 1, 2]);
+  });
+
+  it('no favorites set → unchanged order', () => {
+    const out = applyPropertySearch(items, filters({ sort: 'newest' }), '');
+    expect(out.map((i) => i.id)).toEqual([2, 3, 1]);
+  });
+});
+
 describe('sort option cycling (sort toggle button)', () => {
   it('cycles newest → ai_match → price_asc → price_desc → newest', () => {
     expect(nextSortOption('newest')).toBe('ai_match');

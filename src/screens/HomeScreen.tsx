@@ -30,7 +30,9 @@ import type { SearchViewMode } from '../components/search/SearchViewToggle';
 import type { SelectedPlace } from '../services/googlePlaces';
 import { BUILDER_PORTAL_ENABLED } from '../config/env';
 import type { RootStackParamList } from '../navigation/types';
-import { aiApi, propertiesApi } from '../api/singleton';
+import { aiApi, favoritesApi, propertiesApi } from '../api/singleton';
+import { primeCardIntelligenceCache } from '../hooks/useListingCardIntelligence';
+import { getCachedFavorite, subscribeToFavorites } from '../state/favoritesStore';
 import type { PropertyResponse } from '../api/types';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../api/client';
@@ -79,6 +81,8 @@ function HomeScreenContent({ navigation }: Props) {
   const [aiSearching, setAiSearching] = useState(false);
   const [toolbarHeight, setToolbarHeight] = useState(360);
   const [aiScores, setAiScores] = useState<Map<number, number>>(new Map());
+  const [serverFavIds, setServerFavIds] = useState<Set<number>>(new Set());
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const { location: userLocation, refresh: refreshUserLocation } = useUserLocation();
   const { scrollY, goToTopVisible, onScroll, resetCompactHeader } =
     useAuthenticatedScroll();
@@ -115,6 +119,21 @@ function HomeScreenContent({ navigation }: Props) {
         );
         const data = await propertiesApi.list(listingGeoQuery(anchor));
         setItems(data);
+        // Saved/favorited listings are pinned to the top of the results.
+        favoritesApi
+          .list()
+          .then((favs) =>
+            setServerFavIds(
+              new Set(
+                favs
+                  .filter((f) => f.resourceType === 'PropertyListing')
+                  .map((f) => f.resourceId)
+              )
+            )
+          )
+          .catch(() => {
+            /* guests / not signed in — no favorites to pin */
+          });
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : 'Could not load listings';
         setError(msg);
@@ -135,6 +154,21 @@ function HomeScreenContent({ navigation }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Keep the pinned-favorites set in sync with server + live toggles on cards.
+  useEffect(() => {
+    function recompute() {
+      const next = new Set<number>();
+      for (const it of items) {
+        const cached = getCachedFavorite('PropertyListing', it.id);
+        const fav = cached ? cached.isFavorite : serverFavIds.has(it.id);
+        if (fav) next.add(it.id);
+      }
+      setFavoriteIds(next);
+    }
+    recompute();
+    return subscribeToFavorites(recompute);
+  }, [items, serverFavIds]);
 
   function handlePlaceSelected(place: SelectedPlace | null) {
     setSelectedPlace(place);
@@ -160,19 +194,19 @@ function HomeScreenContent({ navigation }: Props) {
   }
 
   const filtered = useMemo(
-    () => applyPropertySearch(items, filters, searchText, aiScores),
-    [items, filters, searchText, aiScores]
+    () => applyPropertySearch(items, filters, searchText, aiScores, favoriteIds),
+    [items, filters, searchText, aiScores, favoriteIds]
   );
 
   useEffect(() => {
-    if (filters.sort !== 'ai_match' || items.length === 0) return;
-    const missingIds = items.map((i) => i.id).filter((id) => !aiScores.has(id));
-    if (missingIds.length === 0) return;
+    if (items.length === 0) return;
+    const ids = items.map((i) => i.id);
     let cancelled = false;
     aiApi
-      .cardIntelligence(missingIds)
+      .cardIntelligence(ids)
       .then((res) => {
         if (cancelled) return;
+        primeCardIntelligenceCache(res.items);
         setAiScores((prev) => {
           const next = new Map(prev);
           res.items.forEach((it) => next.set(it.listingId, it.card.investmentScore));
@@ -183,7 +217,7 @@ function HomeScreenContent({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [filters.sort, items, aiScores]);
+  }, [items]);
 
   const showScrollToTopFab =
     viewMode === 'list' && !loading && !error && filtered.length > 0 && goToTopVisible;
@@ -424,6 +458,18 @@ function HomeScreenContent({ navigation }: Props) {
                 onPropertyPress={openProperty}
               />
             )}
+
+            {/* Map mode hides the sticky bar — give an explicit way back to the list. */}
+            <Pressable
+              style={[styles.mapBackBtn, { top: insets.top + spacing.sm }]}
+              onPress={() => handleViewModeChange('list')}
+              accessibilityRole="button"
+              accessibilityLabel="Back to list view"
+              hitSlop={10}
+            >
+              <Ionicons name="chevron-back" size={20} color={colors.navy} />
+              <Text style={styles.mapBackText}>List</Text>
+            </Pressable>
           </View>
         ) : loading && items.length === 0 ? (
           <View
@@ -513,6 +559,27 @@ const styles = StyleSheet.create({
   mapWrap: {
     flex: 1,
   },
+  mapBackBtn: {
+    position: 'absolute',
+    left: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    paddingLeft: spacing.sm,
+    paddingRight: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
+    zIndex: 10,
+  },
+  mapBackText: { fontSize: 14, fontWeight: '700', color: colors.navy },
   stickyChipsWrap: {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,

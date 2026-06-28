@@ -21,6 +21,7 @@ import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScr
 import { BrandLoading } from '../components/ui/BrandLoading';
 import type { RootStackParamList } from '../navigation/types';
 import { useTranslation } from '../context/LocaleContext';
+import { useUnreadMessages } from '../context/UnreadMessagesContext';
 import {
   alertPlanRequired,
   handlePlanUsageError,
@@ -40,6 +41,7 @@ export default function PropertyChatScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const { t } = useTranslation();
+  const { setActiveInquiryId } = useUnreadMessages();
 
   const loadMessages = useCallback(async () => {
     try {
@@ -67,9 +69,11 @@ export default function PropertyChatScreen({ navigation, route }: Props) {
 
   useFocusEffect(
     useCallback(() => {
+      setActiveInquiryId(inquiryId);
       setLoading(true);
       refresh();
-    }, [refresh])
+      return () => setActiveInquiryId(null);
+    }, [inquiryId, refresh, setActiveInquiryId])
   );
 
   async function send() {

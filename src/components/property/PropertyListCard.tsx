@@ -1,20 +1,20 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { PropertyResponse } from '../../api/types';
 import { PropertyChip } from './PropertyChip';
 import { PropertyCardGallery } from './PropertyCardGallery';
-import { PropertyListMetaPanel } from './PropertyListMetaPanel';
+import { AiListingScoreBadge } from './AiListingScoreBadge';
+import { PropertyListCardMetaColumn } from './PropertyListCardMetaColumn';
 import { colors, radius, spacing } from '../../theme';
 import { listingTypeChips } from '../../utils/propertyFormat';
-import { formatRating, getPrimaryPrice } from '../../utils/propertyDisplay';
-import { buildPropertyListCardMeta } from '../../utils/propertyListMeta';
-import { resolveListingRera, shouldShowListingRera, isNewListing } from '../../utils/listingRera';
-import { ReraBadge } from './ReraBadge';
+import { getPrimaryPrice } from '../../utils/propertyDisplay';
+import { buildListCardBodyMeta } from '../../utils/propertyListMeta';
+import { isNewListing } from '../../utils/listingRera';
 import { NewListingRibbon } from './NewListingRibbon';
-import { AiCardInsight } from './AiCardInsight';
 import { FavoriteButton } from './FavoriteButton';
+import { useListingCardIntelligence } from '../../hooks/useListingCardIntelligence';
 
 type Props = {
   item: PropertyResponse;
@@ -26,13 +26,12 @@ const MEDIA_HEIGHT = 176;
 function PropertyListCardBase({ item, onPress }: Props) {
   const chips = listingTypeChips(item);
   const price = getPrimaryPrice(item);
-  const listMeta = useMemo(() => buildPropertyListCardMeta(item), [item]);
   const isNew = isNewListing(item.createdAtUtc);
-  const descSnippet = item.description?.trim()
-    ? item.description.trim().slice(0, 120) + (item.description.length > 120 ? '…' : '')
-    : null;
-  const rera = resolveListingRera(item);
-  const showRera = shouldShowListingRera(item);
+  const intelligence = useListingCardIntelligence(item.id);
+  const aiScore =
+    intelligence && intelligence.investmentScore > 0 ? intelligence.investmentScore : null;
+
+  const bodyMeta = buildListCardBodyMeta(item);
 
   return (
     <Pressable
@@ -57,16 +56,9 @@ function PropertyListCardBase({ item, onPress }: Props) {
           {item.isPostedByAgent ? (
             <PropertyChip label="Agent" tone="agent" small />
           ) : null}
-          {item.isNegotiable ? (
-            <PropertyChip label="Negotiable" tone="bhk" small />
-          ) : null}
-          {item.isFeaturedInSearch ? (
-            <PropertyChip label="Featured" tone="featured" small />
-          ) : null}
         </View>
-        <View style={styles.favoriteSlot}>
-          {/* Home feed only ever returns PropertyListings rows — isPostedByAgent just means
-              the owner has the Agent role, it's not the separate AgentListings entity. */}
+        <View style={styles.topActions}>
+          {aiScore != null ? <AiListingScoreBadge investmentScore={aiScore} /> : null}
           <FavoriteButton resourceType="PropertyListing" resourceId={item.id} />
         </View>
         <View style={styles.priceOverlay} pointerEvents="none">
@@ -81,73 +73,41 @@ function PropertyListCardBase({ item, onPress }: Props) {
       </View>
 
       <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={2}>
-            {item.title}
+        <Text style={styles.title} numberOfLines={2}>
+          {item.title}
+        </Text>
+
+        <View style={styles.locationRow}>
+          <Ionicons name="location-outline" size={14} color="#0d9488" />
+          <Text style={styles.areaName} numberOfLines={1}>
+            {item.areaName || 'Thane'}
           </Text>
-          {item.bhkConfiguration ? (
-            <PropertyChip label={item.bhkConfiguration} tone="bhk" small />
-          ) : null}
         </View>
 
-        <View style={styles.locationBlock}>
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={16} color="#0d9488" />
-            <Text style={styles.areaName} numberOfLines={1}>
-              {item.areaName || 'Thane'}
-            </Text>
-          </View>
-          {item.address?.trim() ? (
-            <Text style={styles.address} numberOfLines={2}>
-              {item.address.trim()}
-            </Text>
-          ) : null}
+        <View style={styles.contentRow}>
+          <PropertyListCardMetaColumn
+            facts={bodyMeta.leftFacts}
+            tags={bodyMeta.leftTags}
+            notes={bodyMeta.leftNotes}
+            edge="left"
+          />
+          <PropertyListCardMetaColumn
+            facts={bodyMeta.rightFacts}
+            tags={bodyMeta.rightTags}
+            notes={bodyMeta.rightNotes}
+            edge="right"
+          />
         </View>
-
-        <PropertyListMetaPanel meta={listMeta} />
-
-        {showRera && rera ? (
-          <View style={styles.reraRow}>
-            <ReraBadge rera={rera} compact />
-          </View>
-        ) : null}
-
-        {descSnippet ? (
-          <Text style={styles.descSnippet} numberOfLines={3}>
-            {descSnippet}
-          </Text>
-        ) : null}
-
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Ionicons name="star" size={14} color={colors.gold} />
-            <Text style={styles.metaText}>{formatRating(item)}</Text>
-          </View>
-          {item.ratingCount > 0 ? (
-            <View style={styles.ratingPill}>
-              <Ionicons name="chatbubble-ellipses-outline" size={12} color="#92400e" />
-              <Text style={styles.ratingPillText}>{item.ratingCount} reviews</Text>
-            </View>
-          ) : null}
-        </View>
-
-        <AiCardInsight listingId={item.id} />
 
         <View style={styles.ctaRow}>
-          <Text style={styles.ctaHint} numberOfLines={1}>
-            Tap for full details, photos & amenities
-          </Text>
-          <View style={styles.ctaLink}>
-            <Text style={styles.cta}>View details</Text>
-            <Ionicons name="arrow-forward" size={18} color={colors.primary} />
-          </View>
+          <Text style={styles.cta}>View details</Text>
+          <Ionicons name="arrow-forward" size={16} color={colors.primary} />
         </View>
       </View>
     </Pressable>
   );
 }
 
-/** Memoized: FlatList recycles rows on scroll — avoids re-render churn for off-screen data. */
 export const PropertyListCard = React.memo(PropertyListCardBase);
 
 const styles = StyleSheet.create({
@@ -180,7 +140,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
-    right: 52,
+    right: 110,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
@@ -188,10 +148,13 @@ const styles = StyleSheet.create({
   chipsTopNew: {
     left: 64,
   },
-  favoriteSlot: {
+  topActions: {
     position: 'absolute',
     top: spacing.sm,
     right: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   priceOverlay: {
     position: 'absolute',
@@ -217,111 +180,47 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   body: {
-    padding: spacing.md,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
   title: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '800',
     color: colors.navy,
     letterSpacing: -0.3,
-    lineHeight: 22,
-  },
-  locationBlock: {
-    marginBottom: spacing.md,
-    gap: 4,
+    lineHeight: 21,
+    marginBottom: 6,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
+    marginBottom: 6,
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   areaName: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#0f766e',
-  },
-  address: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.slateMuted,
-    paddingLeft: 22,
-  },
-  reraRow: {
-    marginBottom: spacing.sm,
-  },
-  descSnippet: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.slateLight,
-    marginBottom: spacing.sm,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 13,
-    color: colors.slate,
-    fontWeight: '500',
-  },
-  ratingPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: radius.pill,
-    backgroundColor: '#fffbeb',
-    borderWidth: 1,
-    borderColor: '#fde68a',
-  },
-  ratingPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#92400e',
-  },
-  ctaHint: {
-    flex: 1,
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.slateLight,
-    marginRight: spacing.sm,
-  },
-  ctaLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    flexShrink: 0,
   },
   ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    paddingTop: spacing.sm,
+    justifyContent: 'flex-end',
+    gap: 4,
+    paddingTop: spacing.xs,
     marginTop: spacing.xs,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
   cta: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.primary,
   },

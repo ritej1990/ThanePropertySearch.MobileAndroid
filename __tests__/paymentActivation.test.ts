@@ -65,7 +65,7 @@ describe('activateCashfreeOrder retry behaviour', () => {
 
     const promise = activateCashfreeOrder('agent_publish', 'order_6', 'CUSTOM-1-7-L0', 399, 5);
     // flush the 2s backoff between attempts
-    await jest.advanceTimersByTimeAsync(2100);
+    await jest.advanceTimersByTimeAsync(1600);
     const msg = await promise;
 
     expect(api.activateAgentListingPublish).toHaveBeenCalledTimes(2);

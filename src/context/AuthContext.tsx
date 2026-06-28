@@ -9,6 +9,7 @@ import React, {
 import { authApi, usersApi } from '../api/singleton';
 import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { AuthResponse } from '../api/types';
+import { normalizeAuthResponse } from '../utils/normalizeAuthResponse';
 import {
   clearAuthSession,
   expoTokenStorage,
@@ -23,6 +24,7 @@ type AuthState = {
   profile: AuthProfileSnapshot | null;
   ready: boolean;
   login: (username: string, password: string) => Promise<AuthResponse>;
+  loginWithOtp: (phoneNumber: string, otpCode: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   patchProfile: (patch: Partial<AuthProfileSnapshot>) => Promise<void>;
@@ -66,21 +68,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await authApi.login({ username: username.trim(), password });
-    const raw = res as AuthResponse & { Token?: string };
-    const accessToken = (raw.token ?? raw.Token ?? '').trim();
+  const applyAuthSession = useCallback(async (raw: AuthResponse) => {
+    const normalized = normalizeAuthResponse(raw);
+    const accessToken = normalized.token.trim();
     if (!accessToken) {
       throw new Error('Login succeeded but no token was returned from the API.');
     }
-    const normalized: AuthResponse = { ...res, token: accessToken };
-    const snap = toProfile(normalized);
+    const snap = toProfile({ ...normalized, token: accessToken });
     await expoTokenStorage.setAccessToken(accessToken);
     await saveAuthProfile(snap);
     setToken(accessToken);
     setProfile(snap);
-    return normalized;
+    return { ...normalized, token: accessToken };
   }, []);
+
+  const login = useCallback(
+    async (username: string, password: string) => {
+      const res = await authApi.login({ username: username.trim(), password });
+      return applyAuthSession(res);
+    },
+    [applyAuthSession]
+  );
+
+  const loginWithOtp = useCallback(
+    async (phoneNumber: string, otpCode: string) => {
+      const res = await authApi.verifyLoginOtp({
+        phoneNumber,
+        otpCode: otpCode.trim(),
+      });
+      return applyAuthSession(res);
+    },
+    [applyAuthSession]
+  );
 
   const logout = useCallback(async () => {
     await clearAuthSession();
@@ -126,11 +145,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       ready,
       login,
+      loginWithOtp,
       logout,
       refreshProfile,
       patchProfile,
     }),
-    [token, profile, ready, login, logout, refreshProfile, patchProfile]
+    [token, profile, ready, login, loginWithOtp, logout, refreshProfile, patchProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

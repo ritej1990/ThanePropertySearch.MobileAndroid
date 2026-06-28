@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { propertiesApi } from '../api/singleton';
 import type { MyChatThread } from '../api/inquiryTypes';
+import { useUnreadMessages } from '../context/UnreadMessagesContext';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import type { RootStackParamList } from '../navigation/types';
@@ -23,6 +24,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'MyChats'>;
 type RoleFilter = 'all' | 'buyer' | 'owner';
 
 export default function MyChatsScreen({ navigation }: Props) {
+  const { markInboxSeen } = useUnreadMessages();
   const [threads, setThreads] = useState<MyChatThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -42,8 +44,9 @@ export default function MyChatsScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
+      markInboxSeen();
       load();
-    }, [load])
+    }, [load, markInboxSeen])
   );
 
   const filtered = useMemo(() => {

@@ -15,6 +15,21 @@ export type LoginBody = {
   password: string;
 };
 
+export type LoginOtpSendBody = {
+  phoneNumber: string;
+};
+
+export type LoginOtpVerifyBody = {
+  phoneNumber: string;
+  otpCode: string;
+};
+
+export type LoginOtpSendResponse = {
+  message: string;
+  channel?: string;
+  retryAfterSeconds?: number;
+};
+
 export type UsernameCheckResponse = {
   exists: boolean;
   message: string;

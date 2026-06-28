@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { AppBootGate } from './src/components/launch/AppBootGate';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -8,6 +8,11 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LocaleProvider } from './src/context/LocaleContext';
 import { ToastProvider } from './src/context/ToastContext';
+import { SiteMaintenanceProvider } from './src/context/SiteMaintenanceContext';
+import { UnreadMessagesProvider } from './src/context/UnreadMessagesContext';
+import { MessageNotificationsListener } from './src/context/MessageNotificationsContext';
+import { MaintenanceBanner } from './src/components/layout/MaintenanceBanner';
+import { navigationRef } from './src/navigation/navigationRef';
 import type { RootStackParamList } from './src/navigation/types';
 import { colors } from './src/theme';
 import { isBuilderRole, isOwnerRole, isAgentRole } from './src/utils/roles';
@@ -350,12 +355,20 @@ export default function App() {
     <SafeAreaProvider>
       <LocaleProvider>
         <AuthProvider>
-          <ToastProvider>
-            <NavigationContainer linking={linking}>
-              <StatusBar style="auto" />
-              <AppNavigator />
-            </NavigationContainer>
-          </ToastProvider>
+          <SiteMaintenanceProvider>
+            <UnreadMessagesProvider>
+              <ToastProvider>
+                <View style={{ flex: 1 }}>
+                  <NavigationContainer ref={navigationRef} linking={linking}>
+                    <StatusBar style="auto" />
+                    <AppNavigator />
+                  </NavigationContainer>
+                  <MaintenanceBanner />
+                  <MessageNotificationsListener />
+                </View>
+              </ToastProvider>
+            </UnreadMessagesProvider>
+          </SiteMaintenanceProvider>
         </AuthProvider>
       </LocaleProvider>
     </SafeAreaProvider>

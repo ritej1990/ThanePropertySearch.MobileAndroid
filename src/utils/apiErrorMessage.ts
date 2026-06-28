@@ -1,31 +1,23 @@
-/** User-facing message from API error body. */
-export function parseApiErrorMessage(text: string, status: number): string {
-  const trimmed = text?.trim();
-  if (!trimmed) {
-    return status === 401
-      ? 'Invalid username or password.'
-      : `Request failed (${status}).`;
-  }
+import { ApiError } from '../api/client';
 
-  try {
-    const body = JSON.parse(trimmed) as {
-      message?: string;
-      title?: string;
-      errors?: Record<string, string[]>;
-    };
-    if (body.message) return body.message;
-    if (body.title && body.errors) {
-      const first = Object.values(body.errors).flat()[0];
-      return first ? `${body.title}: ${first}` : body.title;
+/** User-facing message from API JSON error bodies. */
+export function apiErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
+  if (error instanceof ApiError) {
+    if (error.rawBody) {
+      try {
+        const body = JSON.parse(error.rawBody) as {
+          message?: string;
+          error?: string;
+          retryAfterSeconds?: number;
+        };
+        const msg = body.message ?? body.error;
+        if (msg) return msg;
+      } catch {
+        /* use default */
+      }
     }
-    if (body.title) return body.title;
-  } catch {
-    /* plain text e.g. "Invalid credentials." */
+    return error.message || fallback;
   }
-
-  if (status === 401) {
-    return trimmed.includes('credential') ? trimmed : 'Invalid username or password.';
-  }
-
-  return trimmed.length > 200 ? `${trimmed.slice(0, 200)}…` : trimmed;
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
 }

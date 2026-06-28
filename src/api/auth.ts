@@ -3,6 +3,9 @@ import type {
   AuthResponse,
   EmailCheckResponse,
   LoginBody,
+  LoginOtpSendBody,
+  LoginOtpSendResponse,
+  LoginOtpVerifyBody,
   RegisterBody,
   UsernameCheckResponse,
 } from './types';
@@ -12,6 +15,16 @@ export function createAuthApi(client: ReturnType<typeof createApiClient>) {
   return {
     login(body: LoginBody) {
       return client.post<AuthResponse>('/api/auth/login', body, { auth: false });
+    },
+
+    sendLoginOtp(body: LoginOtpSendBody) {
+      return client.post<LoginOtpSendResponse>('/api/auth/login-otp/send', body, {
+        auth: false,
+      });
+    },
+
+    verifyLoginOtp(body: LoginOtpVerifyBody) {
+      return client.post<AuthResponse>('/api/auth/login-otp/verify', body, { auth: false });
     },
 
     register(body: RegisterBody) {

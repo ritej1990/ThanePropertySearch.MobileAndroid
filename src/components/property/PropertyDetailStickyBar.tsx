@@ -14,6 +14,8 @@ type Props = {
   hasMap?: boolean;
   latitude?: number;
   longitude?: number;
+  /** Shown as the pin label in Maps so users can verify the location by name. */
+  mapLabel?: string;
 };
 
 export function PropertyDetailStickyBar({
@@ -26,10 +28,20 @@ export function PropertyDetailStickyBar({
   hasMap,
   latitude,
   longitude,
+  mapLabel,
 }: Props) {
   const insets = useSafeAreaInsets();
   const showMap =
     hasMap && latitude != null && longitude != null;
+
+  function openMap() {
+    // Label the pin (q=lat,lng(Label)) so the place name is visible, not just coordinates.
+    const label = mapLabel?.trim();
+    const url = label
+      ? `https://www.google.com/maps?q=${latitude},${longitude}(${encodeURIComponent(label)})`
+      : `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    Linking.openURL(url);
+  }
 
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
@@ -49,12 +61,8 @@ export function PropertyDetailStickyBar({
       {showMap ? (
         <Pressable
           style={styles.iconBtn}
-          onPress={() =>
-            Linking.openURL(
-              `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
-            )
-          }
-          accessibilityLabel="Open in maps"
+          onPress={openMap}
+          accessibilityLabel="Open location in maps"
         >
           <Ionicons name="map-outline" size={22} color={colors.navy} />
         </Pressable>
@@ -85,6 +93,7 @@ const styles = StyleSheet.create({
   },
   primary: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -99,6 +108,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   iconBtn: {
+    flexShrink: 0,
     width: 48,
     height: 48,
     alignItems: 'center',

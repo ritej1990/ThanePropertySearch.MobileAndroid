@@ -1,10 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { propertiesApi } from '../../api/singleton';
+import { useUnreadMessagesOptional } from '../../context/UnreadMessagesContext';
 import type { RootStackParamList } from '../../navigation/types';
 import { colors, spacing } from '../../theme';
 
@@ -31,23 +31,9 @@ export function getFloatingRailHeight(showScrollToTop: boolean): number {
 
 export function FloatingSupportChat({ bottomOffset = 0, scrollToTop }: Props) {
   const navigation = useNavigation<Nav>();
-  const [messageCount, setMessageCount] = useState(0);
+  const unreadCtx = useUnreadMessagesOptional();
+  const messageCount = unreadCtx?.unreadCount ?? 0;
   const showTop = scrollToTop?.visible === true;
-
-  const refreshCount = useCallback(async () => {
-    try {
-      const res = await propertiesApi.getMyMessageCount();
-      setMessageCount(res.count ?? 0);
-    } catch {
-      setMessageCount(0);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      refreshCount();
-    }, [refreshCount])
-  );
 
   return (
     <View

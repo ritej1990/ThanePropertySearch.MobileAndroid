@@ -656,6 +656,7 @@ function PropertyDetailsContent({
           hasMap={hasMap}
           latitude={item.latitude ?? undefined}
           longitude={item.longitude ?? undefined}
+          mapLabel={item.address || item.areaName || item.title}
         />
       ) : null}
       </View>

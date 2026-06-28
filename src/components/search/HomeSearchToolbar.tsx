@@ -330,6 +330,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    // Keep the location-search results dropdown layered above the controls row.
+    zIndex: 30,
   },
   searchShadow: {
     flex: 1,

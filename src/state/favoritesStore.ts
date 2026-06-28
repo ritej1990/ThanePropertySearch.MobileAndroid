@@ -12,9 +12,26 @@ function keyOf(resourceType: FavoriteResourceType, resourceId: number) {
 const cache = new Map<string, FavoriteState>();
 const listeners = new Map<string, Set<() => void>>();
 const inFlight = new Map<string, Promise<FavoriteState>>();
+/** Fires on any favorite change so lists can re-pin favorites to the top. */
+const globalListeners = new Set<() => void>();
 
 function notify(key: string) {
   listeners.get(key)?.forEach((l) => l());
+  globalListeners.forEach((l) => l());
+}
+
+/** Subscribe to any favorite toggle (returns an unsubscribe fn). */
+export function subscribeToFavorites(cb: () => void): () => void {
+  globalListeners.add(cb);
+  return () => globalListeners.delete(cb);
+}
+
+/** Latest known favorite state for a resource, or null if not loaded/toggled yet. */
+export function getCachedFavorite(
+  resourceType: FavoriteResourceType,
+  resourceId: number
+): FavoriteState | null {
+  return cache.get(keyOf(resourceType, resourceId)) ?? null;
 }
 
 function loadStatus(

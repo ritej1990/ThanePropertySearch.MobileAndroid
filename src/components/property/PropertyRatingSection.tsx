@@ -63,6 +63,8 @@ export function PropertyRatingSection({
   const [review, setReview] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reviewsExpanded, setReviewsExpanded] = useState(true);
+  const [canReview, setCanReview] = useState(false);
+  const [reviewBlockReason, setReviewBlockReason] = useState<string | null>(null);
 
   const hasReviews = ratingCount > 0;
   const displayAverage = hasReviews ? averageRating.toFixed(1) : null;
@@ -79,10 +81,27 @@ export function PropertyRatingSection({
     }
   }, [propertyId]);
 
+  // Only seekers who completed a visit may write a review (gate the form).
+  const loadEligibility = useCallback(async () => {
+    if (!canSubmit) {
+      setCanReview(false);
+      return;
+    }
+    try {
+      const e = await propertiesApi.getRatingEligibility(propertyId);
+      setCanReview(e.canReview);
+      setReviewBlockReason(e.reason);
+    } catch {
+      setCanReview(false);
+      setReviewBlockReason(null);
+    }
+  }, [propertyId, canSubmit]);
+
   useFocusEffect(
     useCallback(() => {
       loadReviews();
-    }, [loadReviews])
+      loadEligibility();
+    }, [loadReviews, loadEligibility])
   );
 
   async function submit() {
@@ -173,7 +192,21 @@ export function PropertyRatingSection({
         </View>
       )}
 
-      {canSubmit ? (
+      {canSubmit && !canReview ? (
+        <View style={styles.lockedCard}>
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={20}
+            color={colors.slateMuted}
+          />
+          <Text style={styles.lockedText}>
+            {reviewBlockReason ??
+              'You can review this flat only after a completed visit.'}
+          </Text>
+        </View>
+      ) : null}
+
+      {canSubmit && canReview ? (
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Rate this property</Text>
           <View style={styles.row}>
@@ -319,6 +352,23 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
+  },
+  lockedCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  lockedText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.slateMuted,
+    fontWeight: '600',
   },
   formTitle: {
     fontSize: 16,

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { PaymentSuccessCard } from '../components/payments/PaymentSuccessCard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -13,27 +12,16 @@ import {
   loadPendingPayment,
 } from '../storage/pendingPaymentStorage';
 import type { RootStackParamList } from '../navigation/types';
-import { LoginBackdrop } from '../components/auth/LoginBackdrop';
+import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import {
+  paymentIncompleteAlert,
+  routeForPaymentProduct,
+} from '../utils/paymentFlow';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentReturn'>;
 
 type Phase = 'activating' | 'success' | 'error';
-
-function routeForProduct(product?: PaymentProduct) {
-  switch (product) {
-    case 'contact_pack':
-      return 'ContactPackPurchase' as const;
-    case 'builder_upload':
-    case 'builder_leads':
-      return 'BuilderPayments' as const;
-    case 'agent_publish':
-    case 'agent_leads':
-      return 'AgentPayments' as const;
-    default:
-      return 'EssentialService' as const;
-  }
-}
 
 export default function PaymentReturnScreen({ navigation, route }: Props) {
   const [phase, setPhase] = useState<Phase>('activating');
@@ -102,16 +90,19 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
       } catch (e) {
         if (cancelled) return;
         const message = e instanceof Error ? e.message : 'Payment activation failed';
-        // Cashfree redirects here on a leave/cancel just like a real payment — bounce
-        // straight back to the plan page instead of lingering on this activation screen.
-        navigation.replace(routeForProduct(product));
-        Alert.alert('Payment not completed', message);
+        await clearPendingPayment();
+        const dest = routeForPaymentProduct(product);
+        const alertCopy = paymentIncompleteAlert(message);
+        navigation.replace(dest);
+        setTimeout(() => {
+          Alert.alert(alertCopy.title, alertCopy.body);
+        }, 200);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [route.params]);
+  }, [navigation, route.params]);
 
   const continueAfterSuccess = useCallback(() => {
     if (!resolved) {
@@ -146,22 +137,23 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
   }, [navigation, resolved]);
 
   const retryRoute = useCallback(
-    () => routeForProduct(resolved?.product),
+    () => routeForPaymentProduct(resolved?.product),
     [resolved]
   );
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="light" />
-      <LoginBackdrop />
-
+    <AuthenticatedScreenLayout
+      showFloatingActions={false}
+      showLegalFooter={false}
+    >
       <View style={styles.content}>
         {phase === 'activating' ? (
           <View style={styles.centered}>
-            <BrandLoading message="Activating your purchase…" />
-            <Text style={styles.statusHint}>
-              Please wait — do not close the app.
-            </Text>
+            <BrandLoading
+              fullScreen={false}
+              message="Confirming your payment…"
+            />
+            <Text style={styles.statusHint}>This usually takes a few seconds.</Text>
           </View>
         ) : null}
 
@@ -214,15 +206,11 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
           </View>
         ) : null}
       </View>
-    </View>
+    </AuthenticatedScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.navyDeep,
-  },
   content: {
     flex: 1,
     justifyContent: 'center',
@@ -231,13 +219,13 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-    padding: spacing.xxl,
+    padding: spacing.xl,
   },
   statusHint: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(248, 250, 252, 0.75)',
+    color: colors.slateLight,
     textAlign: 'center',
   },
   errorCard: {
