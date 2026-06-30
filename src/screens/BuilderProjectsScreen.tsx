@@ -24,6 +24,7 @@ import { ScrollChromeBar } from '../components/ui/ScrollChromeBar';
 import { scrollLinkedHostStyle } from '../components/ui/ScrollLinkedOverlay';
 import { useListScrollChrome, useScrollCollapseEligibility } from '../hooks/useListScrollChrome';
 import type { RootStackParamList } from '../navigation/types';
+import { useTranslation } from '../context/LocaleContext';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BuilderProjects'>;
@@ -42,6 +43,7 @@ export default function BuilderProjectsScreen(props: Props) {
 
 function BuilderProjectsContent({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const listRef = useRef<FlatListType<BuilderProjectSummary>>(null);
   const [items, setItems] = useState<BuilderProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ function BuilderProjectsContent({ navigation }: Props) {
       );
       setItems(data);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not load builder projects');
+      setError(e instanceof ApiError ? e.message : t('builder.couldNotLoadProjects'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -97,7 +99,7 @@ function BuilderProjectsContent({ navigation }: Props) {
   });
 
   const searchSummary =
-    searchText.trim().length > 0 ? searchText.trim() : 'All builder projects';
+    searchText.trim().length > 0 ? searchText.trim() : t('builder.allProjects');
 
   const listHeader = (
     <View style={styles.header}>
@@ -107,7 +109,7 @@ function BuilderProjectsContent({ navigation }: Props) {
         <Ionicons name="search" size={20} color={colors.builder} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search project, builder, area…"
+          placeholder={t('builder.searchPlaceholder')}
           placeholderTextColor={colors.slateLight}
           value={searchText}
           onChangeText={setSearchText}
@@ -132,9 +134,9 @@ function BuilderProjectsContent({ navigation }: Props) {
       </View>
 
       <View style={styles.trustRow}>
-        <TrustChip icon="shield-checkmark-outline" label="RERA listed" />
-        <TrustChip icon="home-outline" label="Unit inventory" />
-        <TrustChip icon="chatbubbles-outline" label="Direct enquiry" />
+        <TrustChip icon="shield-checkmark-outline" label={t('builder.reraListed')} />
+        <TrustChip icon="home-outline" label={t('builder.unitInventory')} />
+        <TrustChip icon="chatbubbles-outline" label={t('builder.directEnquiry')} />
       </View>
     </View>
   );
@@ -143,24 +145,24 @@ function BuilderProjectsContent({ navigation }: Props) {
     <View style={scrollLinkedHostStyle}>
       <ScrollChromeBar scrollY={scrollY} revealAt={200} overlay>
         <DashboardCompactBar
-          title="Builder projects"
-          subtitle={`${filtered.length} projects · ${searchSummary}`}
+          title={t('builder.projects')}
+          subtitle={t('builder.projectsCount', { count: filtered.length, summary: searchSummary })}
           onPress={scrollToTop}
           variant="builder"
         />
       </ScrollChromeBar>
 
       {loading && items.length === 0 ? (
-        <BrandLoading message="Loading builder projects…" />
+        <BrandLoading message={t('builder.loadingProjects')} />
       ) : error ? (
         <View style={styles.centered}>
           <View style={styles.errIcon}>
             <Ionicons name="cloud-offline-outline" size={40} color={colors.slateLight} />
           </View>
-          <Text style={styles.errTitle}>Could not load projects</Text>
+          <Text style={styles.errTitle}>{t('builder.couldNotLoad')}</Text>
           <Text style={styles.err}>{error}</Text>
           <Pressable style={styles.retryBtn} onPress={() => load(searchText)}>
-            <Text style={styles.retryText}>Try again</Text>
+            <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
           </Pressable>
         </View>
       ) : (

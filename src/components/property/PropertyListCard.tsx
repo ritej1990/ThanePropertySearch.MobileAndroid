@@ -14,7 +14,10 @@ import { buildListCardBodyMeta } from '../../utils/propertyListMeta';
 import { isNewListing } from '../../utils/listingRera';
 import { NewListingRibbon } from './NewListingRibbon';
 import { FavoriteButton } from './FavoriteButton';
+import { PropertyVerificationBadge } from './PropertyVerificationBadge';
+import { verificationBadgeForListing } from '../../utils/propertyVerification';
 import { useListingCardIntelligence } from '../../hooks/useListingCardIntelligence';
+import { useTranslation } from '../../context/LocaleContext';
 
 type Props = {
   item: PropertyResponse;
@@ -24,6 +27,7 @@ type Props = {
 const MEDIA_HEIGHT = 176;
 
 function PropertyListCardBase({ item, onPress }: Props) {
+  const { t } = useTranslation();
   const chips = listingTypeChips(item);
   const price = getPrimaryPrice(item);
   const isNew = isNewListing(item.createdAtUtc);
@@ -32,6 +36,7 @@ function PropertyListCardBase({ item, onPress }: Props) {
     intelligence && intelligence.investmentScore > 0 ? intelligence.investmentScore : null;
 
   const bodyMeta = buildListCardBodyMeta(item);
+  const verificationBadge = verificationBadgeForListing(item);
 
   return (
     <Pressable
@@ -54,7 +59,7 @@ function PropertyListCardBase({ item, onPress }: Props) {
             <PropertyChip key={c.label} label={c.label} tone={c.tone} small />
           ))}
           {item.isPostedByAgent ? (
-            <PropertyChip label="Agent" tone="agent" small />
+            <PropertyChip label={t('propertyList.agent')} tone="agent" small />
           ) : null}
         </View>
         <View style={styles.topActions}>
@@ -80,9 +85,19 @@ function PropertyListCardBase({ item, onPress }: Props) {
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={14} color="#0d9488" />
           <Text style={styles.areaName} numberOfLines={1}>
-            {item.areaName || 'Thane'}
+            {item.areaName || t('propertyList.defaultArea')}
           </Text>
         </View>
+
+        {verificationBadge ? (
+          <View style={styles.verificationRow}>
+            <PropertyVerificationBadge
+              label={verificationBadge.label}
+              tone={verificationBadge.tone}
+              compact
+            />
+          </View>
+        ) : null}
 
         <View style={styles.contentRow}>
           <PropertyListCardMetaColumn
@@ -100,7 +115,7 @@ function PropertyListCardBase({ item, onPress }: Props) {
         </View>
 
         <View style={styles.ctaRow}>
-          <Text style={styles.cta}>View details</Text>
+          <Text style={styles.cta}>{t('propertyList.viewDetails')}</Text>
           <Ionicons name="arrow-forward" size={16} color={colors.primary} />
         </View>
       </View>
@@ -195,6 +210,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginBottom: 6,
+  },
+  verificationRow: {
     marginBottom: 6,
   },
   contentRow: {

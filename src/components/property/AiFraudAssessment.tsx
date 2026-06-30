@@ -5,6 +5,7 @@ import { aiApi } from '../../api/singleton';
 import { ApiError } from '../../api/client';
 import type { FraudAssessmentResponse } from '../../api/aiTypes';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useTranslation } from '../../context/LocaleContext';
 
 type Props = {
   listingId: number;
@@ -18,6 +19,7 @@ const RISK_TONE: Record<string, { bg: string; fg: string; icon: keyof typeof Ion
 
 /** Mirrors Web's fraud assessment — GET /api/ai/fraud/listing/{id} (Owner/Admin only). */
 export function AiFraudAssessment({ listingId }: Props) {
+  const { t } = useTranslation();
   const [data, setData] = useState<FraudAssessmentResponse | null>(null);
   const [hidden, setHidden] = useState(false);
 
@@ -47,10 +49,12 @@ export function AiFraudAssessment({ listingId }: Props) {
       <View style={styles.headerRow}>
         <Ionicons name={tone.icon} size={18} color={tone.fg} />
         <Text style={[styles.title, { color: tone.fg }]}>
-          Listing trust check — {data.riskLevel} risk
+          {t('aiFraud.title', { risk: data.riskLevel })}
         </Text>
       </View>
-      <Text style={styles.score}>Fraud score {data.fraudScore}/100 · {data.suggestedAction}</Text>
+      <Text style={styles.score}>
+        {t('aiFraud.score', { score: data.fraudScore, action: data.suggestedAction })}
+      </Text>
 
       {data.riskReasons.length > 0 ? (
         <View style={styles.reasons}>

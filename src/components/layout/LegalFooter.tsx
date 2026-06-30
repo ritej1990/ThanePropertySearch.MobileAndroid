@@ -9,8 +9,9 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
-import { LEGAL_COPYRIGHT_YEAR, LEGAL_LINKS } from '../../config/legalLinks';
+import { LEGAL_COPYRIGHT_YEAR, LEGAL_LINK_KINDS } from '../../config/legalLinks';
 import type { RootStackParamList } from '../../navigation/types';
+import { useTranslation } from '../../context/LocaleContext';
 import { colors, spacing } from '../../theme';
 
 type Variant = 'onDark' | 'onLight';
@@ -22,7 +23,15 @@ type Props = {
 
 export function LegalFooter({ variant = 'onLight', style }: Props) {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { t } = useTranslation();
   const onDark = variant === 'onDark';
+
+  const linkLabels: Record<(typeof LEGAL_LINK_KINDS)[number], string> = {
+    legal: t('legal.legal'),
+    privacy: t('legal.privacy'),
+    terms: t('legal.terms'),
+    refund: t('legal.refund'),
+  };
 
   return (
     <View
@@ -32,26 +41,26 @@ export function LegalFooter({ variant = 'onLight', style }: Props) {
         style,
       ]}
       accessibilityRole="toolbar"
-      accessibilityLabel="Legal and policy links"
+      accessibilityLabel={t('legal.a11y')}
     >
       <Text style={[styles.copyright, onDark && styles.copyrightOnDark]}>
-        © {LEGAL_COPYRIGHT_YEAR} Thane Flats
+        {t('legal.copyright', { year: LEGAL_COPYRIGHT_YEAR })}
       </Text>
 
       <View style={styles.linksRow}>
-        {LEGAL_LINKS.map((item, index) => (
-          <React.Fragment key={item.kind}>
+        {LEGAL_LINK_KINDS.map((kind, index) => (
+          <React.Fragment key={kind}>
             {index > 0 ? (
               <Text style={[styles.sep, onDark && styles.sepOnDark]}> · </Text>
             ) : null}
             <Pressable
-              onPress={() => navigation.navigate('Policy', { kind: item.kind })}
+              onPress={() => navigation.navigate('Policy', { kind })}
               hitSlop={6}
               accessibilityRole="link"
-              accessibilityLabel={item.label}
+              accessibilityLabel={linkLabels[kind]}
             >
               <Text style={[styles.link, onDark && styles.linkOnDark]}>
-                {item.label}
+                {linkLabels[kind]}
               </Text>
             </Pressable>
           </React.Fragment>

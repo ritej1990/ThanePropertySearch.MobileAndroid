@@ -11,18 +11,24 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supportApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import type { SupportTicketDetail, SupportTicketMessage } from '../api/supportTypes';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
+import type { AppLocale } from '../i18n/types';
+import { localeToCulture } from '../i18n/types';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SupportTicketDetails'>;
 
 export default function SupportTicketDetailsScreen({ navigation, route }: Props) {
+  const insets = useSafeAreaInsets();
+  const { t, locale } = useTranslation();
   const { ticketId, subject } = route.params;
   const [ticket, setTicket] = useState<SupportTicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,14 +41,14 @@ export default function SupportTicketDetailsScreen({ navigation, route }: Props)
       setTicket(data);
     } catch (e) {
       Alert.alert(
-        'Could not load ticket',
-        e instanceof ApiError ? e.message : 'Try again.'
+        t('support.couldNotLoadTicket'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
       navigation.goBack();
     } finally {
       setLoading(false);
     }
-  }, [ticketId, navigation]);
+  }, [ticketId, navigation, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,8 +67,8 @@ export default function SupportTicketDetailsScreen({ navigation, route }: Props)
       await load();
     } catch (e) {
       Alert.alert(
-        'Send failed',
-        e instanceof ApiError ? e.message : 'Could not send reply.'
+        t('support.sendFailed'),
+        e instanceof ApiError ? e.message : t('support.couldNotSend')
       );
     } finally {
       setSending(false);
@@ -84,7 +90,7 @@ export default function SupportTicketDetailsScreen({ navigation, route }: Props)
         keyboardVerticalOffset={88}
       >
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading ticket…" />
+          <BrandLoading fullScreen={false} message={t('support.loadingTicket')} />
         ) : ticket ? (
           <>
             <View style={styles.head}>
@@ -100,16 +106,18 @@ export default function SupportTicketDetailsScreen({ navigation, route }: Props)
               data={ticket.messages}
               keyExtractor={(m) => String(m.id)}
               contentContainerStyle={styles.messages}
-              renderItem={({ item }) => <MessageBubble message={item} />}
+              renderItem={({ item }) => (
+                <MessageBubble message={item} locale={locale} />
+              )}
             />
 
             {!closed ? (
-              <View style={styles.composer}>
+              <View style={[styles.composer, { paddingBottom: spacing.md + insets.bottom }]}>
                 <TextInput
                   style={styles.input}
                   value={reply}
                   onChangeText={setReply}
-                  placeholder="Add a reply…"
+                  placeholder={t('support.replyPlaceholder')}
                   placeholderTextColor={colors.slateLight}
                   multiline
                 />
@@ -118,11 +126,13 @@ export default function SupportTicketDetailsScreen({ navigation, route }: Props)
                   onPress={sendReply}
                   disabled={sending}
                 >
-                  <Text style={styles.sendText}>Send</Text>
+                  <Text style={styles.sendText}>{t('shared.send')}</Text>
                 </Pressable>
               </View>
             ) : (
-              <Text style={styles.closedNote}>This ticket is closed.</Text>
+              <Text style={[styles.closedNote, { paddingBottom: spacing.md + insets.bottom }]}>
+                {t('support.ticketClosed')}
+              </Text>
             )}
           </>
         ) : null}
@@ -131,13 +141,19 @@ export default function SupportTicketDetailsScreen({ navigation, route }: Props)
   );
 }
 
-function MessageBubble({ message }: { message: SupportTicketMessage }) {
+function MessageBubble({
+  message,
+  locale,
+}: {
+  message: SupportTicketMessage;
+  locale: AppLocale;
+}) {
   const mine = !message.isFromAdmin;
   return (
     <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
       <Text style={styles.sender}>
         {message.senderName} ·{' '}
-        {new Date(message.sentAtUtc).toLocaleString('en-IN', {
+        {new Date(message.sentAtUtc).toLocaleString(localeToCulture(locale), {
           day: 'numeric',
           month: 'short',
           hour: '2-digit',

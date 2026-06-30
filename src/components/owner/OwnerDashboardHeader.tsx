@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHero } from '../ui/PageHero';
+import { useTranslation } from '../../context/LocaleContext';
 import { colors, radius, spacing } from '../../theme';
 import type { OwnerDashboardStats } from '../../utils/ownerDashboard';
 import { OwnerStatCard } from './OwnerStatCard';
@@ -17,50 +18,57 @@ export function OwnerDashboardHeader({
   onBrowse,
   onPostProperty,
 }: Props) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.wrap}>
       <PageHero
         variant="owner"
         icon="speedometer-outline"
-        title="Owner dashboard"
-        subtitle="Listings, inquiries & visits"
+        title={t('owner.dashboard')}
+        subtitle={t('owner.heroSubtitle')}
       >
         <View style={styles.perks}>
-          <Perk icon="chatbubble-ellipses-outline" label="Reply fast" />
-          <Perk icon="calendar" label="Visits" />
-          <Perk icon="trending-up" label="Track pending" />
+          <Perk icon="chatbubble-ellipses-outline" label={t('owner.perkReplyFast')} />
+          <Perk icon="calendar" label={t('owner.perkVisits')} />
+          <Perk icon="trending-up" label={t('owner.perkTrackPending')} />
         </View>
         <View style={styles.quickActions}>
           <Pressable style={styles.quickPrimary} onPress={onBrowse}>
             <Ionicons name="search" size={18} color={colors.heroText} />
-            <Text style={styles.quickPrimaryText}>Browse</Text>
+            <Text style={styles.quickPrimaryText}>{t('shared.browse')}</Text>
           </Pressable>
           <Pressable style={styles.quickSecondary} onPress={onPostProperty}>
             <Ionicons name="add-circle-outline" size={18} color={colors.heroText} />
-            <Text style={styles.quickSecondaryText}>Post property</Text>
+            <Text style={styles.quickSecondaryText}>{t('shared.postProperty')}</Text>
           </Pressable>
         </View>
       </PageHero>
 
       <View style={styles.statsGrid}>
-        <OwnerStatCard icon="home" value={stats.total} label="Listings" accent="#38bdf8" />
+        <OwnerStatCard
+          icon="home"
+          value={stats.total}
+          label={t('owner.statListings')}
+          accent="#38bdf8"
+        />
         <OwnerStatCard
           icon="mail-unread"
           value={stats.pendingRequests}
-          label="Pending inquiries"
+          label={t('owner.statPendingInquiries')}
           accent="#f59e0b"
           highlight={stats.pendingRequests > 0}
         />
         <OwnerStatCard
           icon="checkmark-circle"
           value={stats.approved}
-          label="Approved"
+          label={t('owner.statApproved')}
           accent="#10b981"
         />
         <OwnerStatCard
           icon="star"
           value={stats.featured}
-          label="Featured"
+          label={t('owner.statFeatured')}
           accent={colors.gold}
         />
       </View>

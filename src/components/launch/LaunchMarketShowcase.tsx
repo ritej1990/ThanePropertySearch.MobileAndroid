@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   Animated,
   Easing,
@@ -9,63 +9,67 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../context/LocaleContext';
+import type { TranslationKey } from '../../i18n';
 import { colors, radius, spacing } from '../../theme';
 import { USE_NATIVE_DRIVER } from '../../utils/animation';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-export type MarketIntent = {
+type MarketIntentDef = {
   key: string;
-  label: string;
+  labelKey: TranslationKey;
   icon: IconName;
-  subtitle: string;
+  subtitleKey: TranslationKey;
   accent: string;
   accentSoft: string;
   gradient: readonly [string, string];
 };
 
-export const MARKET_INTENTS: MarketIntent[] = [
+export type MarketIntent = MarketIntentDef & { label: string; subtitle: string };
+
+const MARKET_INTENT_DEFS: MarketIntentDef[] = [
   {
     key: 'buy',
-    label: 'Buy',
+    labelKey: 'launch.marketBuy',
     icon: 'home',
-    subtitle: 'Resale flats & ready homes',
+    subtitleKey: 'launch.marketBuySub',
     accent: '#2563eb',
     accentSoft: 'rgba(37, 99, 235, 0.25)',
     gradient: ['#1e3a8a', '#2563eb'],
   },
   {
     key: 'rent',
-    label: 'Rent',
+    labelKey: 'launch.marketRent',
     icon: 'key',
-    subtitle: 'Monthly rentals across Thane',
+    subtitleKey: 'launch.marketRentSub',
     accent: '#0d9488',
     accentSoft: 'rgba(13, 148, 136, 0.28)',
     gradient: ['#0f766e', '#14b8a6'],
   },
   {
     key: 'sell',
-    label: 'Sell',
+    labelKey: 'launch.marketSell',
     icon: 'pricetag',
-    subtitle: 'List & reach serious buyers',
+    subtitleKey: 'launch.marketSellSub',
     accent: '#c9a227',
     accentSoft: 'rgba(201, 162, 39, 0.3)',
     gradient: ['#92400e', '#d97706'],
   },
   {
     key: 'owner',
-    label: 'Owner',
+    labelKey: 'launch.marketOwner',
     icon: 'business',
-    subtitle: 'List & manage your property, AI-priced',
+    subtitleKey: 'launch.marketOwnerSub',
     accent: '#0891b2',
     accentSoft: 'rgba(8, 145, 178, 0.28)',
     gradient: ['#0e7490', '#06b6d4'],
   },
   {
     key: 'agent',
-    label: 'Agent',
+    labelKey: 'launch.marketAgent',
     icon: 'briefcase',
-    subtitle: 'Brokers & agencies, verified leads',
+    subtitleKey: 'launch.marketAgentSub',
     accent: '#7c3aed',
     accentSoft: 'rgba(124, 58, 237, 0.28)',
     gradient: ['#5b21b6', '#8b5cf6'],
@@ -78,18 +82,20 @@ type Props = {
   entrance: Animated.Value;
 };
 
+type ResolvedIntent = MarketIntent;
+
 function IntentPill({
   intent,
   active,
   onPress,
 }: {
-  intent: MarketIntent;
+  intent: ResolvedIntent;
   active: boolean;
   onPress: () => void;
 }) {
-  const scale = useRef(new Animated.Value(active ? 1 : 0.92)).current;
+  const scale = React.useRef(new Animated.Value(active ? 1 : 0.92)).current;
 
-  useEffect(() => {
+  React.useEffect(() => {
     Animated.spring(scale, {
       toValue: active ? 1.06 : 0.92,
       friction: 6,
@@ -130,16 +136,34 @@ function IntentPill({
 }
 
 export function LaunchMarketShowcase({ entrance }: Props) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const heroScale = useRef(new Animated.Value(1)).current;
-  const heroOpacity = useRef(new Animated.Value(1)).current;
-  const ringSpin = useRef(new Animated.Value(0)).current;
-  const floatY = useRef(new Animated.Value(0)).current;
-  const glowPulse = useRef(new Animated.Value(0.4)).current;
+  const { t } = useTranslation();
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const heroScale = React.useRef(new Animated.Value(1)).current;
+  const heroOpacity = React.useRef(new Animated.Value(1)).current;
+  const ringSpin = React.useRef(new Animated.Value(0)).current;
+  const floatY = React.useRef(new Animated.Value(0)).current;
+  const glowPulse = React.useRef(new Animated.Value(0.4)).current;
 
-  const active = MARKET_INTENTS[activeIndex];
+  const marketIntents = useMemo<ResolvedIntent[]>(
+    () =>
+      MARKET_INTENT_DEFS.map((def) => ({
+        ...def,
+        label: t(def.labelKey),
+        subtitle: t(def.subtitleKey),
+      })),
+    [t]
+  );
 
-  useEffect(() => {
+  const tagKeys: TranslationKey[] = [
+    'launch.tagSearch',
+    'launch.tagPost',
+    'launch.tagChat',
+    'launch.tagMaps',
+  ];
+
+  const active = marketIntents[activeIndex];
+
+  React.useEffect(() => {
     const spinLoop = Animated.loop(
       Animated.timing(ringSpin, {
         toValue: 1,
@@ -190,7 +214,7 @@ export function LaunchMarketShowcase({ entrance }: Props) {
     };
   }, [floatY, glowPulse, ringSpin]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const interval = setInterval(() => {
       Animated.sequence([
         Animated.parallel([
@@ -207,7 +231,7 @@ export function LaunchMarketShowcase({ entrance }: Props) {
           }),
         ]),
       ]).start(() => {
-        setActiveIndex((i) => (i + 1) % MARKET_INTENTS.length);
+        setActiveIndex((i) => (i + 1) % marketIntents.length);
         Animated.parallel([
           Animated.spring(heroScale, {
             toValue: 1,
@@ -225,7 +249,7 @@ export function LaunchMarketShowcase({ entrance }: Props) {
       });
     }, CYCLE_MS);
     return () => clearInterval(interval);
-  }, [heroOpacity, heroScale]);
+  }, [heroOpacity, heroScale, marketIntents.length]);
 
   const containerOpacity = entrance.interpolate({
     inputRange: [0, 1],
@@ -255,9 +279,9 @@ export function LaunchMarketShowcase({ entrance }: Props) {
       ]}
     >
       <View style={styles.glassPanel}>
-        <Text style={styles.panelEyebrow}>Everyone is welcome here</Text>
+        <Text style={styles.panelEyebrow}>{t('launch.everyoneWelcome')}</Text>
         <View style={styles.pillRow}>
-        {MARKET_INTENTS.map((intent, i) => (
+        {marketIntents.map((intent, i) => (
           <IntentPill
             key={intent.key}
             intent={intent}
@@ -276,8 +300,8 @@ export function LaunchMarketShowcase({ entrance }: Props) {
         <Animated.View
           style={[styles.orbitRing, { transform: [{ rotate: ringRotate }] }]}
         >
-          {MARKET_INTENTS.map((intent, i) => {
-            const angle = (i / MARKET_INTENTS.length) * 2 * Math.PI - Math.PI / 2;
+          {marketIntents.map((intent, i) => {
+            const angle = (i / marketIntents.length) * 2 * Math.PI - Math.PI / 2;
             const x = Math.cos(angle) * 58;
             const y = Math.sin(angle) * 58;
             const isActive = i === activeIndex;
@@ -341,8 +365,8 @@ export function LaunchMarketShowcase({ entrance }: Props) {
       </Animated.View>
 
       <View style={styles.taglineRow}>
-        {['Search', 'Post', 'Chat', 'Maps'].map((word, i) => (
-          <LaunchTagChip key={word} label={word} delay={i * 80} entrance={entrance} />
+        {tagKeys.map((key, i) => (
+          <LaunchTagChip key={key} label={t(key)} delay={i * 80} entrance={entrance} />
         ))}
       </View>
       </View>
@@ -359,9 +383,9 @@ function LaunchTagChip({
   delay: number;
   entrance: Animated.Value;
 }) {
-  const bob = useRef(new Animated.Value(0)).current;
+  const bob = React.useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
+  React.useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(bob, {

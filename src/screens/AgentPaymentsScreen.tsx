@@ -17,6 +17,9 @@ import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { PlanSlider } from '../components/ui/PlanSlider';
+import { useTranslation } from '../context/LocaleContext';
+import type { AppLocale } from '../i18n/types';
+import { localeToCulture } from '../i18n/types';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 import { formatInr } from '../utils/propertyFormat';
@@ -28,14 +31,28 @@ import {
 } from '../utils/agentPlanPricing';
 import {
   filterAgentPayments,
-  formatPaymentDate,
   paymentProductLabel,
   paymentStatusTone,
 } from '../utils/paymentDisplay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AgentPayments'>;
 
+function formatPaymentWhen(iso: string, locale: AppLocale) {
+  try {
+    return new Date(iso).toLocaleString(localeToCulture(locale), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+}
+
 export default function AgentPaymentsScreen({ navigation }: Props) {
+  const { t, locale } = useTranslation();
   const [summary, setSummary] = useState<AgentPaymentSummaryResponse | null>(null);
   const [payments, setPayments] = useState<PaymentTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +80,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
       setSummary(normalizedSummary);
     } catch (e) {
       setLoadError(
-        e instanceof ApiError ? e.message : 'Could not load your plan. Check your connection and try again.'
+        e instanceof ApiError ? e.message : t('agent.couldNotLoadPlan')
       );
       setLoading(false);
       return;
@@ -77,7 +94,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -113,7 +130,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
 
   async function buyBundle() {
     if (propertyCount <= 0 || durationDays <= 0) {
-      Alert.alert('Select a plan', 'Choose how many properties to publish and for how many days.');
+      Alert.alert(t('agent.selectPlan'), t('agent.selectPlanBody'));
       return;
     }
     setBusy(true);
@@ -132,7 +149,10 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
         amountInr: order.amountInr ?? totalPayable,
       });
     } catch (e) {
-      Alert.alert('Checkout', e instanceof ApiError ? e.message : 'Could not start payment');
+      Alert.alert(
+        t('checkout.checkoutError'),
+        e instanceof ApiError ? e.message : t('checkout.couldNotStartPayment')
+      );
     } finally {
       setBusy(false);
     }
@@ -145,11 +165,11 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
       <ScrollView contentContainerStyle={styles.wrap}>
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading plans…" />
+          <BrandLoading fullScreen={false} message={t('agent.loadingPlans')} />
         ) : loadError && !summary ? (
           <View style={styles.errorCard}>
             <Ionicons name="cloud-offline-outline" size={40} color={colors.slateLight} />
-            <Text style={styles.errorTitle}>Couldn't load your plan</Text>
+            <Text style={styles.errorTitle}>{t('agent.couldNotLoadPlanTitle')}</Text>
             <Text style={styles.errorText}>{loadError}</Text>
             <Pressable
               style={styles.retryBtn}
@@ -159,7 +179,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
               }}
             >
               <Ionicons name="refresh" size={16} color={colors.heroText} />
-              <Text style={styles.retryText}>Try again</Text>
+              <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
             </Pressable>
           </View>
         ) : summary ? (
@@ -168,20 +188,17 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
               <View style={styles.heroTopRow}>
                 <View style={styles.verifiedChip}>
                   <Ionicons name="shield-checkmark-outline" size={13} color={colors.teal} />
-                  <Text style={styles.verifiedText}>Verified agent</Text>
+                  <Text style={styles.verifiedText}>{t('agent.verifiedAgent')}</Text>
                 </View>
               </View>
 
-              <Text style={styles.heroTitle}>Plan & billing</Text>
-              <Text style={styles.heroSub}>
-                Configure listing visibility and lead credits in one checkout. Pricing
-                updates live as you adjust the sliders.
-              </Text>
+              <Text style={styles.heroTitle}>{t('agent.planBilling')}</Text>
+              <Text style={styles.heroSub}>{t('agent.planHeroSub')}</Text>
 
               <View style={styles.usageCard}>
                 <View style={styles.usageHead}>
                   <Text style={styles.usageLabel}>
-                    {usage.expired ? 'Plan expired' : 'Plan used'}
+                    {usage.expired ? t('agent.planExpired') : t('agent.planUsed')}
                   </Text>
                   <Text style={[styles.usagePercent, { color: usage.color }]}>
                     {usage.percent}%
@@ -196,11 +213,17 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
                   />
                 </View>
                 <Text style={styles.usageHint}>
-                  {usage.available} slot{usage.available === 1 ? '' : 's'} available to post
-                  {usage.reserved > 0 ? ` · ${usage.reserved} pending review` : ''}
-                  {summary.publishPlanEndsAtUtc
-                    ? ` · ${usage.expired ? 'expired' : 'until'} ${formatPaymentDate(summary.publishPlanEndsAtUtc)}`
-                    : ''}
+                  {t('agent.usageHint', {
+                    available: usage.available,
+                    availableSuffix: usage.available === 1 ? '' : 's',
+                    reserved:
+                      usage.reserved > 0
+                        ? t('agent.usageReserved', { count: usage.reserved })
+                        : '',
+                    expiry: summary.publishPlanEndsAtUtc
+                      ? ` · ${usage.expired ? t('agent.usageExpired') : t('agent.usageUntil')} ${formatPaymentWhen(summary.publishPlanEndsAtUtc, locale)}`
+                      : '',
+                  })}
                 </Text>
               </View>
             </View>
@@ -208,41 +231,42 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
             {outOfCredits ? (
               <View style={styles.warningBanner}>
                 <Ionicons name="alert-circle" size={16} color={colors.error} />
-                <Text style={styles.warningText}>
-                  Activate a publish plan below before posting property details.
-                </Text>
+                <Text style={styles.warningText}>{t('agent.activatePlanWarning')}</Text>
               </View>
             ) : null}
 
             <View style={styles.metricsRow}>
               <MetricCard
                 icon="home-outline"
-                label="Publish"
+                label={t('agent.publish')}
                 value={String(summary.publishCredits)}
-                hint="Listing slots"
+                hint={t('agent.listingSlots')}
               />
               <MetricCard
                 icon="people-outline"
-                label="Leads"
+                label={t('agent.leads')}
                 value={String(summary.leadCredits)}
-                hint="Enquiry unlocks"
+                hint={t('agent.enquiryUnlocks')}
               />
               <MetricCard
                 icon="pricetag-outline"
-                label="From"
+                label={t('agent.from')}
                 value={formatInr(Math.max(1, fromPrice))}
-                hint={`${unit.minPropertyCount} listing · ${unit.minDurationDays} days`}
+                hint={t('agent.fromHint', {
+                  count: unit.minPropertyCount,
+                  days: unit.minDurationDays,
+                })}
               />
             </View>
 
             {/* Configurator — pick quantities, price updates live */}
             <Section
-              title="Configure your plan"
-              subtitle="Drag the sliders to match your business needs — the order summary updates live."
+              title={t('agent.configurePlan')}
+              subtitle={t('agent.configurePlanSub')}
             >
               <PlanSlider
-                step="Step 1 · Properties to publish"
-                label="Total properties"
+                step={t('agent.step1Properties')}
+                label={t('agent.totalProperties')}
                 icon="business-outline"
                 value={propertyCount}
                 min={unit.minPropertyCount}
@@ -255,8 +279,8 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
                 onChange={setPropertyCount}
               />
               <PlanSlider
-                step="Step 2 · Visibility duration"
-                label="Total days"
+                step={t('agent.step2Duration')}
+                label={t('agent.totalDays')}
                 icon="calendar-outline"
                 value={durationDays}
                 min={unit.minDurationDays}
@@ -269,8 +293,8 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
                 onChange={setDurationDays}
               />
               <PlanSlider
-                step="Step 3 · Lead unlock credits"
-                label="Total leads"
+                step={t('agent.step3Leads')}
+                label={t('agent.totalLeads')}
                 icon="people-outline"
                 value={leadCount}
                 min={unit.minLeadCount}
@@ -285,26 +309,49 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
             </Section>
 
             {/* Live order summary */}
-            <Section title="Order summary" subtitle="Review before you pay">
+            <Section title={t('agent.orderSummary')} subtitle={t('agent.reviewBeforePay')}>
               <View style={styles.summaryPills}>
-                <SummaryPill icon="document-text-outline" text={`${propertyCount} property`} />
-                <SummaryPill icon="calendar-outline" text={`${durationDays} days`} />
-                <SummaryPill icon="people-outline" text={`${leadCount} leads`} />
+                <SummaryPill
+                  icon="document-text-outline"
+                  text={
+                    propertyCount === 1
+                      ? t('agent.summaryProperty', { count: propertyCount })
+                      : t('agent.summaryProperty_plural', { count: propertyCount })
+                  }
+                />
+                <SummaryPill
+                  icon="calendar-outline"
+                  text={t('agent.summaryDays', { count: durationDays })}
+                />
+                <SummaryPill
+                  icon="people-outline"
+                  text={t('agent.summaryLeads', { count: leadCount })}
+                />
               </View>
 
               <PriceRow
-                label="Listing publish"
+                label={t('agent.listingPublish')}
                 value={formatInr(listingPrice)}
-                sub={`${propertyCount} × ${durationDays} days`}
+                sub={t('agent.listingPublishSub', {
+                  count: propertyCount,
+                  days: durationDays,
+                })}
               />
               <PriceRow
-                label="Lead credits"
+                label={t('agent.leadCredits')}
                 value={formatInr(leadsPrice)}
-                sub={leadCount > 0 ? `${leadCount} × ${formatInr(unit.pricePerLeadInr)}` : '0 unlocks'}
+                sub={
+                  leadCount > 0
+                    ? t('agent.leadCreditsSub', {
+                        count: leadCount,
+                        price: formatInr(unit.pricePerLeadInr),
+                      })
+                    : t('agent.leadCreditsNone')
+                }
               />
 
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total payable</Text>
+                <Text style={styles.totalLabel}>{t('agent.totalPayable')}</Text>
                 <Text style={styles.totalValue}>{formatInr(totalPayable)}</Text>
               </View>
 
@@ -316,70 +363,69 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
               >
                 <Ionicons name="lock-closed" size={16} color={colors.heroText} />
                 <Text style={styles.payBtnText}>
-                  {busy ? 'Starting checkout…' : `Pay ${formatInr(totalPayable)} securely`}
+                  {busy
+                    ? t('agent.startingCheckout')
+                    : t('agent.paySecurely', { amount: formatInr(totalPayable) })}
                 </Text>
               </Pressable>
 
-              <Text style={styles.secureHint}>
-                Secured by Cashfree · GST invoice available
-              </Text>
+              <Text style={styles.secureHint}>{t('agent.secureHint')}</Text>
             </Section>
 
-            <Section
-              title="What's included"
-              subtitle="Everything you need to list properties and connect with buyers on Thane Flats."
-            >
+            <Section title={t('agent.whatsIncluded')} subtitle={t('agent.whatsIncludedSub')}>
               <FeatureRow
                 icon="business-outline"
-                title="Property listings"
-                note="Publish rent or sale listings with photos, location, and pricing."
-                chip={`${formatInr(unit.pricePerPropertyInr)} per property (per ${unit.billingReferenceDays} days base)`}
+                title={t('agent.propertyListings')}
+                note={t('agent.propertyListingsNote')}
+                chip={t('agent.perPropertyChip', {
+                  price: formatInr(unit.pricePerPropertyInr),
+                  days: unit.billingReferenceDays,
+                })}
               />
               <FeatureRow
                 icon="timer-outline"
-                title="Visibility period"
-                note="Your listing stays visible for the selected days, then hides until renewed."
-                chip="Longer periods cost proportionally more"
+                title={t('agent.visibilityPeriod')}
+                note={t('agent.visibilityNote')}
+                chip={t('agent.longerPeriods')}
               />
               <FeatureRow
                 icon="chatbox-ellipses-outline"
-                title="Buyer leads"
-                note="Lead credits unlock buyer contact details and messages for follow-up."
-                chip={`${formatInr(unit.pricePerLeadInr)} per lead — no fixed packs`}
+                title={t('agent.buyerLeads')}
+                note={t('agent.buyerLeadsNote')}
+                chip={t('agent.perLeadChip', { price: formatInr(unit.pricePerLeadInr) })}
               />
             </Section>
 
-            <Section
-              title="How pricing works"
-              subtitle="Transparent, slider-based pricing — no hidden tiers."
-            >
+            <Section title={t('agent.howPricing')} subtitle={t('agent.howPricingSub')}>
               <View style={styles.pricingBox}>
                 <Text style={styles.pricingText}>
-                  Listings: properties × days × ({formatInr(unit.pricePerPropertyInr)} ÷{' '}
-                  {unit.billingReferenceDays}). Leads: count × {formatInr(unit.pricePerLeadInr)}.
-                  The total updates instantly as you move the sliders.
+                  {t('agent.pricingFormula', {
+                    propertyPrice: formatInr(unit.pricePerPropertyInr),
+                    refDays: unit.billingReferenceDays,
+                    leadPrice: formatInr(unit.pricePerLeadInr),
+                  })}
                 </Text>
               </View>
             </Section>
 
-            <Section title="Payment history" subtitle="Recent transactions on your agent account">
+            <Section title={t('agent.paymentHistory')} subtitle={t('agent.paymentHistorySub')}>
               <View style={styles.tableHead}>
-                <Text style={[styles.th, styles.thDate]}>Date</Text>
-                <Text style={[styles.th, styles.thPlan]}>Plan</Text>
-                <Text style={[styles.th, styles.thAmt]}>Amount</Text>
-                <Text style={[styles.th, styles.thStatus]}>Status</Text>
+                <Text style={[styles.th, styles.thDate]}>{t('agent.tableDate')}</Text>
+                <Text style={[styles.th, styles.thPlan]}>{t('agent.tablePlan')}</Text>
+                <Text style={[styles.th, styles.thAmt]}>{t('agent.tableAmount')}</Text>
+                <Text style={[styles.th, styles.thStatus]}>{t('agent.tableStatus')}</Text>
               </View>
 
               {payments.length === 0 ? (
                 <View style={styles.emptyPayments}>
                   <Ionicons name="wallet-outline" size={32} color={colors.slateLight} />
-                  <Text style={styles.emptyText}>No agent payments found yet.</Text>
+                  <Text style={styles.emptyText}>{t('agent.noAgentPayments')}</Text>
                 </View>
               ) : (
                 payments.slice(0, 8).map((item) => (
                   <View key={item.id} style={styles.tableRow}>
                     <Text style={[styles.td, styles.thDate]} numberOfLines={1}>
-                      {formatPaymentDate(item.createdAtUtc)}
+                      {formatPaymentWhen(item.createdAtUtc, locale)}
                     </Text>
                     <Text style={[styles.td, styles.thPlan]} numberOfLines={1}>
                       {paymentProductLabel(item.productType)}
@@ -393,7 +439,7 @@ export default function AgentPaymentsScreen({ navigation }: Props) {
               )}
 
               <Pressable style={styles.linkBtn} onPress={() => navigation.navigate('MyPayments')}>
-                <Text style={styles.linkBtnText}>All payments</Text>
+                <Text style={styles.linkBtnText}>{t('agent.allPayments')}</Text>
               </Pressable>
             </Section>
           </>

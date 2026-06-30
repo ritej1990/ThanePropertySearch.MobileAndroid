@@ -28,17 +28,14 @@ import {
   hasActiveEssentialPlan,
 } from '../utils/planDisplay';
 import { PageHero } from '../components/ui/PageHero';
+import { useTranslation } from '../context/LocaleContext';
+import { localeToCulture } from '../i18n/types';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EssentialService'>;
 
-const PERKS = [
-  { icon: 'chatbubbles' as const, label: 'Owner chat' },
-  { icon: 'send' as const, label: 'Formal requests' },
-  { icon: 'search' as const, label: 'Browse all live listings' },
-];
-
 export default function EssentialServiceScreen({ navigation, route }: Props) {
+  const { t, locale } = useTranslation();
   const returnPropertyId = route.params?.returnPropertyId;
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
@@ -70,13 +67,13 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
       });
     } catch (e) {
       Alert.alert(
-        'Could not load plans',
-        e instanceof ApiError ? e.message : 'Try again later.'
+        t('essential.couldNotLoadPlans'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -86,7 +83,27 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
 
   const hasActivePlan = hasActiveEssentialPlan(status);
   const canPurchase = canPurchaseEssentialPlan(status);
-  const endLabel = formatPlanEndDate(status?.endsAtUtc);
+  const endLabel = useMemo(() => {
+    if (!status?.endsAtUtc) return null;
+    const d = new Date(status.endsAtUtc);
+    if (Number.isNaN(d.getTime())) return formatPlanEndDate(status.endsAtUtc);
+    return d.toLocaleString(localeToCulture(locale), {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, [status?.endsAtUtc, locale]);
+
+  const perks = useMemo(
+    () => [
+      { icon: 'chatbubbles' as const, label: t('essential.perkChat') },
+      { icon: 'send' as const, label: t('essential.perkRequests') },
+      { icon: 'search' as const, label: t('essential.perkBrowse') },
+    ],
+    [t]
+  );
   const currentPlanCode = findCurrentPlanCode(status, plans);
   const selectedPlan = plans.find((p) => p.code === selected);
 
@@ -98,15 +115,15 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
   async function startCashfree() {
     if (!canPurchase || hasActivePlan) {
       Alert.alert(
-        'Active plan',
+        t('essential.activePlan'),
         endLabel
-          ? `Your plan is active until ${endLabel}. You can purchase another plan after it expires.`
-          : 'A plan is already active. Recharge opens after your current plan expires.'
+          ? t('essential.planActivePurchase', { date: endLabel })
+          : t('essential.planAlreadyActive')
       );
       return;
     }
     if (!selected) {
-      Alert.alert('Select a plan', 'Choose a plan card to continue.');
+      Alert.alert(t('essential.selectPlan'), t('essential.selectPlanBody'));
       return;
     }
     const plan = plans.find((p) => p.code === selected);
@@ -125,11 +142,11 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
         returnPropertyId,
       });
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : 'Could not start payment';
+      const msg = e instanceof ApiError ? e.message : t('essential.couldNotStartPayment');
       Alert.alert(
         hasActivePlan || msg.toLowerCase().includes('already active')
-          ? 'Active plan'
-          : 'Checkout failed',
+          ? t('essential.activePlan')
+          : t('essential.checkoutFailed'),
         msg
       );
     } finally {
@@ -146,12 +163,12 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
         <PageHero
           variant="user"
           icon="shield-checkmark"
-          title="Essential plan"
-          subtitle="Unlock owner chat and formal requests while you search Thane listings."
+          title={t('essential.title')}
+          subtitle={t('essential.subtitle')}
         />
 
         <View style={styles.perks}>
-          {PERKS.map((p) => (
+          {perks.map((p) => (
             <View key={p.label} style={styles.perk}>
               <Ionicons name={p.icon} size={16} color="#2563eb" />
               <Text style={styles.perkText}>{p.label}</Text>
@@ -160,7 +177,7 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
         </View>
 
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading plans…" />
+          <BrandLoading fullScreen={false} message={t('essential.loading')} />
         ) : (
           <>
             {status ? <EssentialSubscriptionCard status={status} /> : null}
@@ -169,12 +186,12 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
               <View style={styles.plansHead}>
                 <View style={styles.plansHeadLeft}>
                   <Ionicons name="grid-outline" size={16} color={colors.navy} />
-                  <Text style={styles.plansHeadLabel}>Choose plan</Text>
+                  <Text style={styles.plansHeadLabel}>{t('essential.choosePlan')}</Text>
                 </View>
                 <Text style={styles.plansHeadHint} numberOfLines={2}>
                   {hasActivePlan
-                    ? 'Recharge opens after your active plan expires'
-                    : 'Tap a card to select'}
+                    ? t('essential.rechargeAfterExpiry')
+                    : t('essential.tapToSelect')}
                 </Text>
               </View>
 
@@ -182,8 +199,7 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
                 <View style={styles.lockBanner}>
                   <Ionicons name="lock-closed" size={16} color="#1d4ed8" />
                   <Text style={styles.lockBannerText}>
-                    Your plan is active until {endLabel}. All plans will be enabled
-                    again after expiry.
+                    {t('essential.planActiveUntil', { date: endLabel })}
                   </Text>
                 </View>
               ) : null}
@@ -220,7 +236,7 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
               <View style={styles.amountRow}>
                 <Text style={styles.amountLabel}>
                   <Ionicons name="cash-outline" size={14} color={colors.slateMuted} />{' '}
-                  AMOUNT
+                  {t('essential.amount')}
                 </Text>
                 <View style={styles.amountBox}>
                   <Text style={styles.amountValue}>{amountLabel}</Text>
@@ -230,8 +246,8 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
               <View style={styles.secureNote}>
                 <Ionicons name="shield-checkmark" size={16} color="#15803d" />
                 <Text style={styles.secureNoteText}>
-                  Protected payment through{' '}
-                  <Text style={styles.secureBold}>Cashfree secure checkout</Text>.
+                  {t('essential.protectedPayment')}{' '}
+                  <Text style={styles.secureBold}>{t('essential.secureCheckout')}</Text>.
                 </Text>
               </View>
 
@@ -250,7 +266,7 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
                   <>
                     <Ionicons name="shield-checkmark" size={18} color={colors.heroText} />
                     <Text style={styles.payBtnText}>
-                      {!canPurchase ? 'Active plan' : 'Pay securely'}
+                      {!canPurchase ? t('essential.activePlan') : t('essential.paySecurely')}
                     </Text>
                   </>
                 )}
@@ -258,7 +274,7 @@ export default function EssentialServiceScreen({ navigation, route }: Props) {
             </View>
 
             <Pressable onPress={() => navigation.navigate('MyPayments', { essentialOnly: true })}>
-              <Text style={styles.footerLink}>My payments (Essential)</Text>
+              <Text style={styles.footerLink}>{t('essential.myPaymentsLink')}</Text>
             </Pressable>
           </>
         )}

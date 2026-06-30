@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnreadMessagesOptional } from '../../context/UnreadMessagesContext';
+import { useTranslation } from '../../context/LocaleContext';
 import type { RootStackParamList } from '../../navigation/types';
 import { colors, spacing } from '../../theme';
 
@@ -20,6 +21,7 @@ export type ScrollToTopAction = {
 
 type Props = {
   bottomOffset?: number;
+  rightInset?: number;
   scrollToTop?: ScrollToTopAction;
 };
 
@@ -29,21 +31,25 @@ export function getFloatingRailHeight(showScrollToTop: boolean): number {
   return FAB_SIZE * count + FAB_GAP * (count - 1) + 12;
 }
 
-export function FloatingSupportChat({ bottomOffset = 0, scrollToTop }: Props) {
+export function FloatingSupportChat({ bottomOffset = 0, rightInset = 0, scrollToTop }: Props) {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const unreadCtx = useUnreadMessagesOptional();
   const messageCount = unreadCtx?.unreadCount ?? 0;
   const showTop = scrollToTop?.visible === true;
 
   return (
     <View
-      style={[styles.anchor, { paddingBottom: bottomOffset }]}
       pointerEvents="box-none"
+      style={[
+        styles.rail,
+        { marginBottom: bottomOffset, marginRight: spacing.md + rightInset },
+      ]}
     >
       <View
         style={styles.stack}
         pointerEvents="box-none"
-        accessibilityLabel="Quick actions"
+        accessibilityLabel={t('fab.quickActions')}
       >
         {showTop && scrollToTop ? (
           <Pressable
@@ -53,7 +59,7 @@ export function FloatingSupportChat({ bottomOffset = 0, scrollToTop }: Props) {
               styles.fabTop,
               pressed && styles.pressed,
             ]}
-            accessibilityLabel="Back to top"
+            accessibilityLabel={t('fab.backToTop')}
             accessibilityRole="button"
             hitSlop={8}
           >
@@ -71,7 +77,7 @@ export function FloatingSupportChat({ bottomOffset = 0, scrollToTop }: Props) {
         <Pressable
           onPress={() => navigation.navigate('SupportTickets')}
           style={({ pressed }) => [styles.fab, styles.fabSupport, pressed && styles.pressed]}
-          accessibilityLabel="Support"
+          accessibilityLabel={t('fab.support')}
           accessibilityRole="button"
           hitSlop={8}
         >
@@ -93,7 +99,9 @@ export function FloatingSupportChat({ bottomOffset = 0, scrollToTop }: Props) {
             pressed && styles.pressed,
           ]}
           accessibilityLabel={
-            messageCount > 0 ? `Chats, ${messageCount} unread` : 'Chats'
+            messageCount > 0
+              ? t('fab.chatsUnread', { count: messageCount })
+              : t('fab.chats')
           }
           accessibilityRole="button"
           hitSlop={8}
@@ -120,11 +128,8 @@ export function FloatingSupportChat({ bottomOffset = 0, scrollToTop }: Props) {
 }
 
 const styles = StyleSheet.create({
-  anchor: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  rail: {
     alignItems: 'flex-end',
-    paddingRight: spacing.md,
   },
   stack: {
     alignItems: 'center',
@@ -135,6 +140,7 @@ const styles = StyleSheet.create({
     height: FAB_SIZE,
     borderRadius: FAB_SIZE / 2,
     backgroundColor: colors.surface,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.28,
@@ -154,11 +160,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.95)',
   },
   fabInner: {
-    flex: 1,
-    borderRadius: FAB_SIZE / 2,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
   badge: {
     position: 'absolute',

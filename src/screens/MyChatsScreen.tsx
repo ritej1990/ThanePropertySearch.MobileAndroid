@@ -13,17 +13,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { propertiesApi } from '../api/singleton';
 import type { MyChatThread } from '../api/inquiryTypes';
+import { dedupeChatThreads } from '../utils/dedupeChatThreads';
+import { formatRelativeActivity, threadActivityIso } from '../utils/chatFormat';
 import { useUnreadMessages } from '../context/UnreadMessagesContext';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { getFloatingRailHeight } from '../components/layout/FloatingSupportChat';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
+import { useTranslation } from '../context/LocaleContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MyChats'>;
 
 type RoleFilter = 'all' | 'buyer' | 'owner';
 
 export default function MyChatsScreen({ navigation }: Props) {
+  const { t, locale } = useTranslation();
   const { markInboxSeen } = useUnreadMessages();
   const [threads, setThreads] = useState<MyChatThread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +39,7 @@ export default function MyChatsScreen({ navigation }: Props) {
     setLoading(true);
     try {
       const data = await propertiesApi.getMyThreads();
-      setThreads(data);
+      setThreads(dedupeChatThreads(data));
     } catch {
       setThreads([]);
     } finally {
@@ -51,14 +56,19 @@ export default function MyChatsScreen({ navigation }: Props) {
 
   const filtered = useMemo(() => {
     let list = threads;
-    if (roleFilter === 'buyer') list = list.filter((t) => !t.isOwner);
-    if (roleFilter === 'owner') list = list.filter((t) => t.isOwner);
+    if (roleFilter === 'buyer') list = list.filter((th) => !th.isOwner);
+    if (roleFilter === 'owner') list = list.filter((th) => th.isOwner);
     const q = query.trim().toLowerCase();
     if (q) {
-      list = list.filter((t) => t.propertyTitle.toLowerCase().includes(q));
+      list = list.filter((th) => th.propertyTitle.toLowerCase().includes(q));
     }
     return list;
   }, [threads, roleFilter, query]);
+
+  const unreadTotal = useMemo(
+    () => threads.reduce((sum, th) => sum + (th.unreadCount ?? 0), 0),
+    [threads]
+  );
 
   function openThread(item: MyChatThread) {
     navigation.navigate('PropertyChat', {
@@ -73,30 +83,42 @@ export default function MyChatsScreen({ navigation }: Props) {
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[
+          styles.list,
+          { paddingBottom: spacing.xxxl + getFloatingRailHeight(false) },
+        ]}
         ListHeaderComponent={
           <>
             <LinearGradient
               colors={['#4c1d95', '#312e81', '#1e1b4b']}
               style={styles.hero}
             >
-              <Ionicons name="chatbubbles" size={28} color="#c4b5fd" />
-              <Text style={styles.heroTitle}>My conversations</Text>
-              <Text style={styles.heroSub}>
-                Continue threads about listings you own or are interested in.
-              </Text>
+              <View style={styles.heroTop}>
+                <Ionicons name="chatbubbles" size={28} color="#c4b5fd" />
+                {unreadTotal > 0 ? (
+                  <View style={styles.heroBadge}>
+                    <Text style={styles.heroBadgeText}>
+                      {unreadTotal > 99 ? '99+' : unreadTotal}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={styles.heroTitle}>{t('chats.title')}</Text>
+              <Text style={styles.heroSub}>{t('chats.subtitle')}</Text>
             </LinearGradient>
 
             <View style={styles.toolbar}>
               <Text style={styles.count}>
-                {threads.length} conversation{threads.length === 1 ? '' : 's'}
+                {threads.length === 1
+                  ? t('shared.conversations', { count: threads.length })
+                  : t('shared.conversations_plural', { count: threads.length })}
               </Text>
               <Pressable
                 style={styles.browseBtn}
                 onPress={() => navigation.navigate('Home')}
               >
                 <Ionicons name="add-circle-outline" size={16} color={colors.heroText} />
-                <Text style={styles.browseBtnText}>Browse</Text>
+                <Text style={styles.browseBtnText}>{t('shared.browse')}</Text>
               </Pressable>
             </View>
 
@@ -106,7 +128,7 @@ export default function MyChatsScreen({ navigation }: Props) {
                 style={styles.searchInput}
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Filter by title…"
+                placeholder={t('shared.filterByTitle')}
                 placeholderTextColor={colors.slateLight}
               />
             </View>
@@ -124,7 +146,11 @@ export default function MyChatsScreen({ navigation }: Props) {
                       roleFilter === key && styles.filterTextOn,
                     ]}
                   >
-                    {key === 'all' ? 'All' : key === 'buyer' ? 'Buyer' : 'Owner'}
+                    {key === 'all'
+                      ? t('shared.all')
+                      : key === 'buyer'
+                        ? t('shared.buyer')
+                        : t('shared.ownerRole')}
                   </Text>
                 </Pressable>
               ))}
@@ -133,51 +159,103 @@ export default function MyChatsScreen({ navigation }: Props) {
         }
         ListEmptyComponent={
           loading ? (
-            <BrandLoading fullScreen={false} message="Loading chats…" />
+            <BrandLoading fullScreen={false} message={t('chats.loading')} />
           ) : (
             <View style={styles.empty}>
               <Ionicons name="chatbox-ellipses-outline" size={40} color={colors.slateLight} />
-              <Text style={styles.emptyTitle}>No chat threads yet</Text>
-              <Text style={styles.emptySub}>
-                Open a property and send a request to start messaging the owner.
-              </Text>
+              <Text style={styles.emptyTitle}>{t('chats.emptyTitle')}</Text>
+              <Text style={styles.emptySub}>{t('chats.emptySub')}</Text>
               <Pressable style={styles.emptyBtn} onPress={() => navigation.navigate('Home')}>
-                <Text style={styles.emptyBtnText}>Browse properties</Text>
+                <Text style={styles.emptyBtnText}>{t('shared.browseProperties')}</Text>
               </Pressable>
             </View>
           )
         }
         renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => openThread(item)}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="home-outline" size={20} color="#0d9488" />
-            </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardTitle} numberOfLines={2}>
-                {item.propertyTitle}
-              </Text>
-              <Text style={styles.cardMeta}>
-                {item.isOwner ? 'You are the owner' : 'Buyer thread'} ·{' '}
-                {new Date(item.createdAtUtc).toLocaleDateString('en-IN', {
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.slateLight} />
-          </Pressable>
+          <ChatThreadCard item={item} locale={locale} t={t} onPress={() => openThread(item)} />
         )}
       />
     </AuthenticatedScreenLayout>
   );
 }
 
+function ChatThreadCard({
+  item,
+  locale,
+  t,
+  onPress,
+}: {
+  item: MyChatThread;
+  locale: Parameters<typeof formatRelativeActivity>[1];
+  t: Parameters<typeof formatRelativeActivity>[2];
+  onPress: () => void;
+}) {
+  const unread = item.unreadCount ?? 0;
+  const activity = formatRelativeActivity(threadActivityIso(item), locale, t);
+
+  return (
+    <Pressable
+      style={[styles.card, unread > 0 && styles.cardUnread]}
+      onPress={onPress}
+    >
+      <View style={[styles.cardIcon, item.isOwner ? styles.cardIconOwner : styles.cardIconBuyer]}>
+        <Ionicons
+          name={item.isOwner ? 'business-outline' : 'home-outline'}
+          size={20}
+          color={item.isOwner ? '#6d28d9' : '#0d9488'}
+        />
+      </View>
+      <View style={styles.cardBody}>
+        <View style={styles.cardTitleRow}>
+          <Text style={[styles.cardTitle, unread > 0 && styles.cardTitleUnread]} numberOfLines={2}>
+            {item.propertyTitle}
+          </Text>
+          <Text style={[styles.cardTime, unread > 0 && styles.cardTimeUnread]}>{activity}</Text>
+        </View>
+        <View style={styles.cardMetaRow}>
+          <View style={[styles.rolePill, item.isOwner ? styles.rolePillOwner : styles.rolePillBuyer]}>
+            <Text style={[styles.rolePillText, item.isOwner ? styles.roleTextOwner : styles.roleTextBuyer]}>
+              {item.isOwner ? t('shared.ownerRole') : t('shared.buyer')}
+            </Text>
+          </View>
+          {unread > 0 ? (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{unread > 9 ? '9+' : unread}</Text>
+            </View>
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={colors.slateLight} />
+          )}
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  list: { padding: spacing.lg, paddingBottom: spacing.xxxl },
+  list: { padding: spacing.lg },
   hero: {
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  heroBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  heroBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.heroText,
   },
   heroTitle: {
     fontSize: 22,
@@ -255,17 +333,92 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
+  cardUnread: {
+    borderColor: '#c4b5fd',
+    backgroundColor: '#faf5ff',
+  },
   cardIcon: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.md,
-    backgroundColor: '#ecfdf5',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardIconBuyer: {
+    backgroundColor: '#ecfdf5',
+  },
+  cardIconOwner: {
+    backgroundColor: '#f5f3ff',
+  },
   cardBody: { flex: 1, minWidth: 0 },
-  cardTitle: { fontSize: 15, fontWeight: '800', color: colors.navy },
-  cardMeta: { fontSize: 12, color: colors.slateLight, marginTop: 4 },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  cardTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.navy,
+    lineHeight: 20,
+  },
+  cardTitleUnread: {
+    fontWeight: '800',
+  },
+  cardTime: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.slateLight,
+    marginTop: 2,
+  },
+  cardTimeUnread: {
+    color: '#6d28d9',
+    fontWeight: '800',
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+  },
+  rolePill: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+  },
+  rolePillBuyer: {
+    backgroundColor: '#ecfdf5',
+  },
+  rolePillOwner: {
+    backgroundColor: '#ede9fe',
+  },
+  rolePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  roleTextBuyer: {
+    color: '#0f766e',
+  },
+  roleTextOwner: {
+    color: '#6d28d9',
+  },
+  unreadBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#6d28d9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  unreadBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.heroText,
+  },
   empty: {
     alignItems: 'center',
     padding: spacing.xxl,

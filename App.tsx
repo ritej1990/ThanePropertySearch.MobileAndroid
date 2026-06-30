@@ -51,6 +51,7 @@ import BuilderPaymentsScreen from './src/screens/BuilderPaymentsScreen';
 import BuilderProjectFormScreen from './src/screens/BuilderProjectFormScreen';
 import InvoiceViewerScreen from './src/screens/InvoiceViewerScreen';
 import PolicyScreen from './src/screens/PolicyScreen';
+import { SessionGuard } from './src/components/auth/SessionGuard';
 import { linking } from './src/navigation/linking';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -358,6 +359,7 @@ export default function App() {
           <SiteMaintenanceProvider>
             <UnreadMessagesProvider>
               <ToastProvider>
+                <SessionGuard />
                 <View style={{ flex: 1 }}>
                   <NavigationContainer ref={navigationRef} linking={linking}>
                     <StatusBar style="auto" />

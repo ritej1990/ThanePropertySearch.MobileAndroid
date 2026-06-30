@@ -1,4 +1,5 @@
-import { isBuilderRole, isOwnerRole } from './roles';
+import type { TranslateFn } from '../i18n';
+import { isAgentRole, isBuilderRole, isOwnerRole } from './roles';
 
 export function getProfileInitials(fullName?: string | null): string {
   const trimmed = fullName?.trim();
@@ -14,9 +15,15 @@ export function getProfileFirstName(fullName?: string | null): string {
   return fullName?.trim().split(/\s+/)[0] ?? 'there';
 }
 
-export function getRoleLabel(role?: string | null): string {
+export function getRoleLabel(role?: string | null, t?: TranslateFn): string {
+  if (t) {
+    if (isOwnerRole(role)) return t('roles.owner');
+    if (isBuilderRole(role)) return t('roles.builder');
+    if (isAgentRole(role)) return t('roles.agent');
+    return t('roles.user');
+  }
   if (isOwnerRole(role)) return 'Owner';
   if (isBuilderRole(role)) return 'Builder';
-  if (role?.trim().toLowerCase() === 'agent') return 'Agent';
+  if (isAgentRole(role)) return 'Agent';
   return 'User';
 }

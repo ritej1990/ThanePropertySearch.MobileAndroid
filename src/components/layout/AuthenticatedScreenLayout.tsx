@@ -18,6 +18,8 @@ type Props = {
   headerDensity?: 'default' | 'compact';
   showFloatingActions?: boolean;
   floatingBottomOffset?: number;
+  /** Extra padding from the right edge for the FAB stack (e.g. above a sticky action bar). */
+  floatingRightInset?: number;
   showLegalFooter?: boolean;
   scrollToTop?: ScrollToTopAction;
 };
@@ -29,6 +31,7 @@ function AuthenticatedScreenLayoutInner({
   headerDensity = 'default',
   showFloatingActions = true,
   floatingBottomOffset = 0,
+  floatingRightInset = 0,
   showLegalFooter = true,
   scrollToTop: scrollToTopProp,
 }: Props) {
@@ -57,7 +60,11 @@ function AuthenticatedScreenLayoutInner({
       <EmailVerificationReminder />
       {showFloatingActions ? (
         <View style={styles.floatingLayer} pointerEvents="box-none">
-          <FloatingSupportChat bottomOffset={floatBottom} scrollToTop={scrollToTop} />
+          <FloatingSupportChat
+            bottomOffset={floatBottom}
+            rightInset={floatingRightInset}
+            scrollToTop={scrollToTop}
+          />
         </View>
       ) : null}
     </View>
@@ -81,10 +88,12 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
   },
-  /** Full-screen overlay; touches pass through except on FABs. */
+  /** Full-screen overlay; FABs align bottom-right via flex. */
   floatingLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 999,
     elevation: 999,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
   },
 });

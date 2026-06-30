@@ -7,18 +7,25 @@ import { ApiError } from '../../api/client';
 import type { NegotiationAnalyzeResponse } from '../../api/aiTypes';
 import { formatInr } from '../../utils/propertyFormat';
 import { colors, radius, spacing, typography } from '../../theme';
+import { useTranslation } from '../../context/LocaleContext';
+import type { TranslationKey } from '../../i18n';
 
 type Props = {
   listingId: number;
   askingPrice: number;
 };
 
-const TRENDS = ['Stable', 'Rising', 'Cooling'] as const;
+const TREND_KEYS: { value: 'Stable' | 'Rising' | 'Cooling'; key: TranslationKey }[] = [
+  { value: 'Stable', key: 'aiNegotiation.trendStable' },
+  { value: 'Rising', key: 'aiNegotiation.trendRising' },
+  { value: 'Cooling', key: 'aiNegotiation.trendCooling' },
+];
 
 /** Mirrors Web's _AiNegotiationPanel.cshtml — POST /api/ai/negotiation/analyze */
 export function AiNegotiationPanel({ listingId, askingPrice }: Props) {
+  const { t } = useTranslation();
   const [budget, setBudget] = useState('');
-  const [trend, setTrend] = useState<(typeof TRENDS)[number]>('Stable');
+  const [trend, setTrend] = useState<'Stable' | 'Rising' | 'Cooling'>('Stable');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<NegotiationAnalyzeResponse | null>(null);
@@ -27,7 +34,7 @@ export function AiNegotiationPanel({ listingId, askingPrice }: Props) {
     Keyboard.dismiss();
     const buyerBudget = Number(budget.replace(/[^0-9.]/g, ''));
     if (!buyerBudget || buyerBudget <= 0) {
-      setError('Enter your budget to get a negotiation strategy.');
+      setError(t('aiNegotiation.enterBudget'));
       return;
     }
     setLoading(true);
@@ -42,7 +49,7 @@ export function AiNegotiationPanel({ listingId, askingPrice }: Props) {
       });
       setResult(res);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not analyze right now.');
+      setError(e instanceof ApiError ? e.message : t('aiNegotiation.couldNotAnalyze'));
     } finally {
       setLoading(false);
     }
@@ -52,32 +59,32 @@ export function AiNegotiationPanel({ listingId, askingPrice }: Props) {
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <Ionicons name="git-compare-outline" size={18} color="#7c3aed" />
-        <Text style={styles.title}>AI Negotiation Assistant</Text>
+        <Text style={styles.title}>{t('aiNegotiation.title')}</Text>
       </View>
       <Text style={styles.sub}>
-        Asking price {formatInr(askingPrice)}. Enter your budget for a tailored strategy.
+        {t('aiNegotiation.sub', { price: formatInr(askingPrice) })}
       </Text>
 
-      <Text style={styles.label}>Your budget (₹)</Text>
+      <Text style={styles.label}>{t('aiNegotiation.budgetLabel')}</Text>
       <TextInput
         style={styles.input}
         value={budget}
         onChangeText={setBudget}
         keyboardType="numeric"
-        placeholder="e.g. 8000000"
+        placeholder={t('aiNegotiation.budgetPlaceholder')}
         placeholderTextColor={colors.slateLight}
       />
 
-      <Text style={styles.label}>Market trend</Text>
+      <Text style={styles.label}>{t('aiNegotiation.marketTrend')}</Text>
       <View style={styles.trendRow}>
-        {TRENDS.map((t) => (
+        {TREND_KEYS.map(({ value, key }) => (
           <Pressable
-            key={t}
-            style={[styles.trendChip, trend === t && styles.trendChipActive]}
-            onPress={() => setTrend(t)}
+            key={value}
+            style={[styles.trendChip, trend === value && styles.trendChipActive]}
+            onPress={() => setTrend(value)}
           >
-            <Text style={[styles.trendChipText, trend === t && styles.trendChipTextActive]}>
-              {t}
+            <Text style={[styles.trendChipText, trend === value && styles.trendChipTextActive]}>
+              {t(key)}
             </Text>
           </Pressable>
         ))}
@@ -86,32 +93,32 @@ export function AiNegotiationPanel({ listingId, askingPrice }: Props) {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Pressable style={styles.analyzeBtn} onPress={analyze} disabled={loading}>
-        <Text style={styles.analyzeBtnText}>{loading ? 'Analyzing…' : 'Analyze'}</Text>
+        <Text style={styles.analyzeBtnText}>{loading ? t('aiNegotiation.analyzing') : t('aiNegotiation.analyze')}</Text>
       </Pressable>
 
       {result ? (
         <LinearGradient colors={['#faf5ff', '#f8fafc']} style={styles.resultCard}>
           <View style={styles.offerRow}>
             <View style={styles.offerCol}>
-              <Text style={styles.offerLabel}>First offer</Text>
+              <Text style={styles.offerLabel}>{t('aiNegotiation.firstOffer')}</Text>
               <Text style={styles.offerValue}>{formatInr(result.recommendedFirstOffer)}</Text>
             </View>
             <View style={styles.offerCol}>
-              <Text style={styles.offerLabel}>Final offer</Text>
+              <Text style={styles.offerLabel}>{t('aiNegotiation.finalOffer')}</Text>
               <Text style={styles.offerValue}>{formatInr(result.recommendedFinalOffer)}</Text>
             </View>
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.metaPill}>{result.negotiationStrength} position</Text>
+            <Text style={styles.metaPill}>{t('aiNegotiation.position', { strength: result.negotiationStrength })}</Text>
             <Text style={styles.metaPill}>
-              {Math.round(result.successProbability * 100)}% success
+              {t('aiNegotiation.successPct', { pct: Math.round(result.successProbability * 100) })}
             </Text>
           </View>
           <Text style={styles.strategy}>{result.strategySummary}</Text>
 
           {result.messages.whatsApp.length > 0 ? (
             <View style={styles.msgBlock}>
-              <Text style={styles.msgLabel}>WhatsApp scripts</Text>
+              <Text style={styles.msgLabel}>{t('aiNegotiation.whatsAppScripts')}</Text>
               {result.messages.whatsApp.map((m, i) => (
                 <Text key={i} style={styles.msgItem}>
                   “{m}”

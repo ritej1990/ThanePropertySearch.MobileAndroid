@@ -1,13 +1,53 @@
 import type { OwnerDashboardItem } from '../api/ownerTypes';
+import type { PropertyResponse } from '../api/types';
 
-export type ReviewStatusTone = 'approved' | 'pending' | 'rejected' | 'neutral';
+export type ReviewStatusTone = 'approved' | 'pending' | 'rejected' | 'neutral' | 'inactive';
 
 export function reviewStatusTone(status: string): ReviewStatusTone {
   const s = status.trim().toLowerCase();
+  if (s === 'inactive') return 'inactive';
   if (s.includes('approv')) return 'approved';
   if (s.includes('reject') || s.includes('declin')) return 'rejected';
   if (s.includes('pend') || s.includes('review')) return 'pending';
   return 'neutral';
+}
+
+export function shouldShowListingAsInactive(
+  reviewStatus: string,
+  isHiddenFromSearch?: boolean
+): boolean {
+  const s = reviewStatus.trim().toLowerCase();
+  return isHiddenFromSearch === true && s.includes('approv');
+}
+
+export function getOwnerListingDisplayStatus(item: OwnerDashboardItem): string {
+  if (
+    shouldShowListingAsInactive(item.reviewStatus, item.isHiddenFromSearch) &&
+    !isOwnerListingExpired(item)
+  ) {
+    return 'Inactive';
+  }
+  if (isOwnerListingExpired(item) && reviewStatusTone(item.reviewStatus) === 'approved') {
+    return 'Expired';
+  }
+  return item.reviewStatus?.trim() || 'Pending';
+}
+
+export function getPropertyListingDisplayStatus(
+  item: Pick<PropertyResponse, 'reviewStatus' | 'isHiddenFromSearch' | 'listingPeriodEndUtc'>
+): string {
+  const reviewStatus = item.reviewStatus?.trim() || 'Pending';
+  if (shouldShowListingAsInactive(reviewStatus, item.isHiddenFromSearch)) {
+    return 'Inactive';
+  }
+  if (
+    reviewStatus.toLowerCase().includes('approv') &&
+    item.listingPeriodEndUtc &&
+    Date.parse(item.listingPeriodEndUtc) <= Date.now()
+  ) {
+    return 'Expired';
+  }
+  return reviewStatus;
 }
 
 export function formatDaysRemaining(days: number | null): string {

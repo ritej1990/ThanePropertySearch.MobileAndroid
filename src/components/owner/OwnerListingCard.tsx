@@ -6,11 +6,15 @@ import type { OwnerAvailabilityOutcome, OwnerDashboardItem } from '../../api/own
 import { colors, radius, spacing } from '../../theme';
 import {
   canResubmitListing,
+  getOwnerListingDisplayStatus,
   isOwnerClosedOutcome,
   listingVisibilityProgress,
   reviewStatusTone,
 } from '../../utils/ownerDashboard';
 import { OwnerListingManageSection } from './OwnerListingManageSection';
+import { PropertyVerificationBadge } from '../property/PropertyVerificationBadge';
+import { verificationBadgeForListing } from '../../utils/propertyVerification';
+import { useTranslation } from '../../context/LocaleContext';
 
 type Props = {
   item: OwnerDashboardItem;
@@ -21,6 +25,7 @@ type Props = {
   onResubmit: () => Promise<void>;
   onViewVisitRequests: () => void;
   onViewClarification: (ticketId: number) => void;
+  onVerifyAvailability?: () => Promise<void>;
 };
 
 const STATUS_STYLES = {
@@ -48,6 +53,12 @@ const STATUS_STYLES = {
     border: '#93c5fd',
     text: '#1e40af',
   },
+  inactive: {
+    bar: '#64748b',
+    bg: '#f8fafc',
+    border: '#cbd5e1',
+    text: '#334155',
+  },
 } as const;
 
 export function OwnerListingCard({
@@ -59,8 +70,12 @@ export function OwnerListingCard({
   onResubmit,
   onViewVisitRequests,
   onViewClarification,
+  onVerifyAvailability,
 }: Props) {
-  const tone = reviewStatusTone(item.reviewStatus);
+  const { t } = useTranslation();
+  const displayStatus = getOwnerListingDisplayStatus(item);
+  const tone = reviewStatusTone(displayStatus);
+  const verificationBadge = verificationBadgeForListing(item);
   const statusStyle = STATUS_STYLES[tone];
   const visibility = listingVisibilityProgress(item);
   const hasPending = item.pendingRequests > 0;
@@ -73,7 +88,7 @@ export function OwnerListingCard({
     try {
       await onResubmit();
     } catch {
-      Alert.alert('Could not resubmit', 'Please try again.');
+      Alert.alert(t('owner.couldNotResubmit'), t('owner.couldNotResubmitBody'));
     } finally {
       setResubmitting(false);
     }
@@ -103,6 +118,13 @@ export function OwnerListingCard({
         </View>
 
         <View style={styles.chipRow}>
+          {verificationBadge ? (
+            <PropertyVerificationBadge
+              label={verificationBadge.label}
+              tone={verificationBadge.tone}
+              compact
+            />
+          ) : null}
           <View
             style={[
               styles.statusChip,
@@ -113,34 +135,34 @@ export function OwnerListingCard({
             ]}
           >
             <Text style={[styles.statusText, { color: statusStyle.text }]}>
-              {item.reviewStatus}
+              {displayStatus}
             </Text>
           </View>
           {item.isFeaturedInSearch && (
             <View style={styles.featuredChip}>
               <Ionicons name="star" size={11} color="#92400e" />
-              <Text style={styles.featuredText}>Featured</Text>
+              <Text style={styles.featuredText}>{t('owner.featured')}</Text>
             </View>
           )}
           {item.isForRent ? (
             <View style={styles.typeChipRent}>
-              <Text style={styles.typeChipTextRent}>Rent</Text>
+              <Text style={styles.typeChipTextRent}>{t('owner.rent')}</Text>
             </View>
           ) : null}
           {item.isForSale ? (
             <View style={styles.typeChipSale}>
-              <Text style={styles.typeChipTextSale}>Sale</Text>
+              <Text style={styles.typeChipTextSale}>{t('owner.sale')}</Text>
             </View>
           ) : null}
           {item.isForPg ? (
             <View style={styles.typeChipPg}>
-              <Text style={styles.typeChipTextPg}>PG</Text>
+              <Text style={styles.typeChipTextPg}>{t('owner.pg')}</Text>
             </View>
           ) : null}
           {item.isHiddenFromSearch ? (
             <View style={styles.hiddenChip}>
               <Ionicons name="eye-off" size={11} color={colors.slateMuted} />
-              <Text style={styles.hiddenText}>Hidden</Text>
+              <Text style={styles.hiddenText}>{t('owner.hidden')}</Text>
             </View>
           ) : null}
           {closedOut ? (
@@ -158,19 +180,19 @@ export function OwnerListingCard({
         <View style={styles.metricsRow}>
           <View style={[styles.metricBox, hasPending && styles.metricBoxAlert]}>
             <Text style={styles.metricValue}>{item.pendingRequests}</Text>
-            <Text style={styles.metricLabel}>Pending inquiries</Text>
+            <Text style={styles.metricLabel}>{t('owner.pendingInquiries')}</Text>
           </View>
           <View style={styles.metricBox}>
             <Text style={styles.metricValue}>{item.totalRequests}</Text>
-            <Text style={styles.metricLabel}>Total requests</Text>
+            <Text style={styles.metricLabel}>{t('owner.totalRequests')}</Text>
           </View>
           <View style={styles.metricBox}>
             <Text style={styles.metricValue}>{item.viewCount ?? 0}</Text>
-            <Text style={styles.metricLabel}>Views</Text>
+            <Text style={styles.metricLabel}>{t('owner.views')}</Text>
           </View>
           <View style={styles.metricBox}>
             <Text style={styles.metricValue}>{item.favoriteCount ?? 0}</Text>
-            <Text style={styles.metricLabel}>Favorites</Text>
+            <Text style={styles.metricLabel}>{t('owner.favorites')}</Text>
           </View>
         </View>
 
@@ -189,7 +211,7 @@ export function OwnerListingCard({
                 onPress={() => onViewClarification(item.reviewClarificationTicketId!)}
               >
                 <Ionicons name="chatbubbles-outline" size={14} color={colors.navy} />
-                <Text style={styles.actionBtnText}>Clarification</Text>
+                <Text style={styles.actionBtnText}>{t('owner.clarification')}</Text>
               </Pressable>
             ) : null}
             {canResubmit ? (
@@ -200,7 +222,7 @@ export function OwnerListingCard({
               >
                 <Ionicons name="refresh" size={14} color={colors.heroText} />
                 <Text style={styles.actionBtnTextPrimary}>
-                  {resubmitting ? 'Resubmitting…' : 'Resubmit for review'}
+                  {resubmitting ? t('owner.resubmitting') : t('owner.resubmitForReview')}
                 </Text>
               </Pressable>
             ) : null}
@@ -209,7 +231,7 @@ export function OwnerListingCard({
 
         <View style={styles.visibilityBlock}>
           <View style={styles.visibilityHead}>
-            <Text style={styles.visibilityLabel}>Listing visibility</Text>
+            <Text style={styles.visibilityLabel}>{t('owner.listingVisibility')}</Text>
             <Text style={styles.visibilityValue}>{visibility.label}</Text>
           </View>
           <View style={styles.progressTrack}>
@@ -223,14 +245,14 @@ export function OwnerListingCard({
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerCta}>View inquiries & listing</Text>
+          <Text style={styles.footerCta}>{t('owner.viewInquiriesListing')}</Text>
           <Ionicons name="arrow-forward" size={16} color={colors.primary} />
         </View>
         </Pressable>
 
         <Pressable style={styles.visitRequestsBtn} onPress={onViewVisitRequests}>
           <Ionicons name="calendar-outline" size={14} color="#1e40af" />
-          <Text style={styles.visitRequestsText}>Visit requests</Text>
+          <Text style={styles.visitRequestsText}>{t('owner.visitRequests')}</Text>
         </Pressable>
 
         <OwnerListingManageSection
@@ -238,6 +260,7 @@ export function OwnerListingCard({
           onOutcomeChange={onOutcomeChange}
           onHideToggle={onHideToggle}
           onDelete={onDelete}
+          onVerifyAvailability={onVerifyAvailability}
         />
       </View>
     </View>

@@ -6,6 +6,8 @@ import type { PropertyDetailInsightsResponse } from '../../api/aiTypes';
 import { formatInr } from '../../utils/propertyFormat';
 import { AiHubSection } from './AiHubSection';
 import { colors, radius, spacing } from '../../theme';
+import { useTranslation } from '../../context/LocaleContext';
+import type { TranslateFn } from '../../i18n';
 
 type Props = {
   listingId: number;
@@ -28,24 +30,30 @@ function CommuteRow({
   peakCarMinutes,
   metroMinutes,
   commuteScore,
+  t,
 }: {
   office: string;
   carMinutes: number;
   peakCarMinutes: number;
   metroMinutes: number;
   commuteScore: number;
+  t: TranslateFn;
 }) {
   return (
     <View style={styles.commuteRow}>
       <View style={styles.commuteMain}>
         <Text style={styles.commuteOffice}>{office}</Text>
         <Text style={styles.commuteMeta}>
-          Car {carMinutes} min · Peak {peakCarMinutes} min · Metro {metroMinutes} min
+          {t('aiInsights.commuteMeta', {
+            car: carMinutes,
+            peak: peakCarMinutes,
+            metro: metroMinutes,
+          })}
         </Text>
       </View>
       <View style={styles.commuteScore}>
         <Text style={styles.commuteScoreValue}>{commuteScore}</Text>
-        <Text style={styles.commuteScoreLabel}>score</Text>
+        <Text style={styles.commuteScoreLabel}>{t('aiInsights.score')}</Text>
       </View>
     </View>
   );
@@ -53,6 +61,7 @@ function CommuteRow({
 
 /** GET /api/ai/property/{id}/insights — mirrors web ThaneFlats AI Assistant panel. */
 export function AiPropertyInsights({ listingId }: Props) {
+  const { t } = useTranslation();
   const [data, setData] = useState<PropertyDetailInsightsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -80,14 +89,14 @@ export function AiPropertyInsights({ listingId }: Props) {
   if (loading) {
     return (
       <AiHubSection
-        eyebrow="ThaneFlats AI"
-        title="ThaneFlats AI Assistant"
-        subtitle="Fair price, fit score & questions to ask"
+        eyebrow={t('aiInsights.eyebrow')}
+        title={t('aiInsights.title')}
+        subtitle={t('aiInsights.subtitle')}
         collapsible={false}
       >
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color="#7c3aed" />
-          <Text style={styles.loadingText}>Analyzing this listing…</Text>
+          <Text style={styles.loadingText}>{t('aiInsights.analyzing')}</Text>
         </View>
       </AiHubSection>
     );
@@ -101,8 +110,8 @@ export function AiPropertyInsights({ listingId }: Props) {
 
   return (
     <AiHubSection
-      eyebrow="ThaneFlats AI"
-      title="ThaneFlats AI Assistant"
+      eyebrow={t('aiInsights.eyebrow')}
+      title={t('aiInsights.title')}
       subtitle={`${data.areaName} · ${data.listingType} · ${data.modelVersion}`}
     >
       {verdict ? (
@@ -110,7 +119,10 @@ export function AiPropertyInsights({ listingId }: Props) {
           <Text style={[styles.verdictTitle, { color: tone?.fg }]}>{verdict.verdict}</Text>
           <Text style={styles.verdictSummary}>{verdict.summary}</Text>
           <Text style={styles.verdictRange}>
-            Fair range {formatInr(verdict.priceRangeMin)} – {formatInr(verdict.priceRangeMax)}
+            {t('aiInsights.fairRange', {
+              min: formatInr(verdict.priceRangeMin),
+              max: formatInr(verdict.priceRangeMax),
+            })}
           </Text>
         </View>
       ) : null}
@@ -123,7 +135,7 @@ export function AiPropertyInsights({ listingId }: Props) {
           <Text style={styles.verdictSummary}>{rentVerdict.summary}</Text>
           {rentVerdict.estimatedMarketRent != null ? (
             <Text style={styles.verdictRange}>
-              Market rent ~ {formatInr(rentVerdict.estimatedMarketRent)} / mo
+              {t('aiInsights.marketRent', { amount: formatInr(rentVerdict.estimatedMarketRent) })}
             </Text>
           ) : null}
         </View>
@@ -143,7 +155,7 @@ export function AiPropertyInsights({ listingId }: Props) {
         <View style={styles.affordCard}>
           <View style={styles.affordHeader}>
             <Ionicons name="wallet-outline" size={16} color="#1d4ed8" />
-            <Text style={styles.sectionLabel}>Affordability check</Text>
+            <Text style={styles.sectionLabel}>{t('aiInsights.affordabilityCheck')}</Text>
           </View>
           <Text style={styles.affordVerdict}>{data.affordability.verdict}</Text>
           <Text style={styles.affordSummary}>{data.affordability.summary}</Text>
@@ -152,16 +164,16 @@ export function AiPropertyInsights({ listingId }: Props) {
 
       {data.commutePreview.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Commute preview</Text>
+          <Text style={styles.sectionLabel}>{t('aiInsights.commutePreview')}</Text>
           {data.commutePreview.map((c) => (
-            <CommuteRow key={c.office} {...c} />
+            <CommuteRow key={c.office} {...c} t={t} />
           ))}
         </View>
       ) : null}
 
       {data.highlights.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Highlights</Text>
+          <Text style={styles.sectionLabel}>{t('aiInsights.highlights')}</Text>
           {data.highlights.map((h) => (
             <Text key={h} style={styles.bulletItem}>
               ✓ {h}
@@ -172,14 +184,14 @@ export function AiPropertyInsights({ listingId }: Props) {
 
       {data.localityInsight ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Locality insight</Text>
+          <Text style={styles.sectionLabel}>{t('aiInsights.localityInsight')}</Text>
           <Text style={styles.bodyText}>{data.localityInsight}</Text>
         </View>
       ) : null}
 
       {data.questionsToAsk.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Questions to ask the owner</Text>
+          <Text style={styles.sectionLabel}>{t('aiInsights.questionsToAsk')}</Text>
           {data.questionsToAsk.map((q) => (
             <Text key={q} style={styles.bulletItem}>
               • {q}

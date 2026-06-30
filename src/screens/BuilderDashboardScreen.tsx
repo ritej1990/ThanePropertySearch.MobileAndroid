@@ -27,6 +27,7 @@ import { colors, radius, spacing } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { isBuilderRole } from '../utils/roles';
 import { formatBuilderPrice } from '../utils/builderFormat';
+import { useTranslation } from '../context/LocaleContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BuilderDashboard'>;
 
@@ -40,6 +41,7 @@ export default function BuilderDashboardScreen(props: Props) {
 
 function BuilderDashboardContent({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const listRef = useRef<FlatListType<BuilderProjectSummary>>(null);
   const { profile, ready } = useAuth();
   const isBuilder = isBuilderRole(profile?.role);
@@ -62,15 +64,15 @@ function BuilderDashboardContent({ navigation }: Props) {
       setRows(data);
     } catch (e) {
       if (e instanceof ApiError && e.status === 403) {
-        setError('Builder access only. Sign in with a builder account.');
+        setError(t('builder.builderOnly'));
       } else {
-        setError(e instanceof ApiError ? e.message : 'Could not load your projects');
+        setError(e instanceof ApiError ? e.message : t('builder.couldNotLoadDashboard'));
       }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -99,22 +101,22 @@ function BuilderDashboardContent({ navigation }: Props) {
       <PageHero
         variant="builder"
         icon="construct-outline"
-        title="Builder dashboard"
-        subtitle="Manage projects, track leads, and respond to enquiries."
+        title={t('builder.dashboard')}
+        subtitle={t('builder.dashboardSub')}
       />
 
       <View style={styles.statsRow}>
-        <StatCard label="Projects" value={String(stats.count)} icon="business" />
-        <StatCard label="Leads" value={String(stats.totalLeads)} icon="people" />
-        <StatCard label="Available units" value={String(stats.totalAvailable)} icon="home" />
-        <StatCard label="Published" value={String(stats.published)} icon="checkmark-circle" />
+        <StatCard label={t('builder.statProjects')} value={String(stats.count)} icon="business" />
+        <StatCard label={t('builder.statLeads')} value={String(stats.totalLeads)} icon="people" />
+        <StatCard label={t('builder.statAvailableUnits')} value={String(stats.totalAvailable)} icon="home" />
+        <StatCard label={t('builder.statPublished')} value={String(stats.published)} icon="checkmark-circle" />
       </View>
 
       <Pressable
         style={styles.browseBtn}
         onPress={() => navigation.navigate('BuilderProjects')}
       >
-        <Text style={styles.browseBtnText}>Browse all builder projects</Text>
+        <Text style={styles.browseBtnText}>{t('builder.browseAllProjects')}</Text>
       </Pressable>
 
       <Pressable
@@ -122,7 +124,7 @@ function BuilderDashboardContent({ navigation }: Props) {
         onPress={() => navigation.navigate('BuilderPayments')}
       >
         <Ionicons name="card-outline" size={18} color={colors.builder} />
-        <Text style={styles.paymentsBtnText}>Plans & upload credits</Text>
+        <Text style={styles.paymentsBtnText}>{t('builder.plansUploadCredits')}</Text>
       </Pressable>
 
       <Pressable
@@ -130,10 +132,10 @@ function BuilderDashboardContent({ navigation }: Props) {
         onPress={() => navigation.navigate('BuilderProjectForm')}
       >
         <Ionicons name="add-circle-outline" size={20} color={colors.heroText} />
-        <Text style={styles.postProjectBtnText}>Post new project</Text>
+        <Text style={styles.postProjectBtnText}>{t('builder.postNewProject')}</Text>
       </Pressable>
 
-      <Text style={styles.sectionLabel}>Your projects</Text>
+      <Text style={styles.sectionLabel}>{t('builder.yourProjects')}</Text>
     </View>
   );
 
@@ -141,23 +143,23 @@ function BuilderDashboardContent({ navigation }: Props) {
     <View style={[styles.wrap, scrollLinkedHostStyle]}>
       <ScrollChromeBar scrollY={scrollY} revealAt={260} overlay>
         <DashboardCompactBar
-          title="Builder dashboard"
-          subtitle={`${stats.count} projects · ${stats.totalLeads} leads`}
+          title={t('builder.dashboard')}
+          subtitle={t('builder.dashboardSubtitle', { count: stats.count, leads: stats.totalLeads })}
           onPress={scrollToTop}
           variant="builder"
         />
       </ScrollChromeBar>
 
       {!ready || (loading && rows.length === 0) ? (
-        <BrandLoading message="Loading builder dashboard…" />
+        <BrandLoading message={t('builder.loadingDashboard')} />
       ) : !isBuilder ? (
-        <BrandLoading message="Redirecting…" />
+        <BrandLoading message={t('builder.redirecting')} />
       ) : error ? (
         <View style={styles.centered}>
-          <Text style={styles.errTitle}>Dashboard unavailable</Text>
+          <Text style={styles.errTitle}>{t('builder.dashboardUnavailable')}</Text>
           <Text style={styles.err}>{error}</Text>
           <Pressable style={styles.retryBtn} onPress={load}>
-            <Text style={styles.retryText}>Try again</Text>
+            <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -182,10 +184,8 @@ function BuilderDashboardContent({ navigation }: Props) {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="construct-outline" size={48} color={colors.slateLight} />
-              <Text style={styles.emptyTitle}>No projects yet</Text>
-              <Text style={styles.emptySub}>
-                Post your first builder project — same fields as the web dashboard.
-              </Text>
+              <Text style={styles.emptyTitle}>{t('builder.noProjectsYet')}</Text>
+              <Text style={styles.emptySub}>{t('builder.emptyFirstSub')}</Text>
               <Pressable
                 style={styles.emptyCta}
                 onPress={() => navigation.navigate('BuilderProjectForm')}
@@ -229,7 +229,10 @@ function BuilderDashboardContent({ navigation }: Props) {
               >
                 <Ionicons name="mail-unread-outline" size={14} color={colors.builder} />
                 <Text style={styles.leadStripText}>
-                  {item.leadCount} {item.leadCount === 1 ? 'lead' : 'leads'} · tap to view
+                  {t(
+                    (item.leadCount ?? 0) === 1 ? 'builder.leadCount' : 'builder.leadCount_plural',
+                    { count: item.leadCount ?? 0 }
+                  )}
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.slateLight} />
               </Pressable>

@@ -14,11 +14,13 @@ import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScr
 import { PaymentMethodBadges } from '../components/payments/PaymentMethodBadges';
 import { ThaneFlatsLogo } from '../components/ui/ThaneFlatsLogo';
 import type { RootStackParamList } from '../navigation/types';
+import { useTranslation } from '../context/LocaleContext';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ContactPackPurchase'>;
 
 export default function ContactPackPurchaseScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const returnPropertyId = route.params?.returnPropertyId;
   const [paying, setPaying] = useState(false);
   const [pack, setPack] = useState({ priceInr: 149, credits: 10 });
@@ -45,8 +47,8 @@ export default function ContactPackPurchaseScreen({ navigation, route }: Props) 
       });
     } catch (e) {
       Alert.alert(
-        'Checkout failed',
-        e instanceof ApiError ? e.message : 'Could not start payment'
+        t('contactPack.checkoutFailed'),
+        e instanceof ApiError ? e.message : t('contactPack.couldNotStartPayment')
       );
     } finally {
       setPaying(false);
@@ -57,16 +59,15 @@ export default function ContactPackPurchaseScreen({ navigation, route }: Props) 
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
       <View style={styles.wrap}>
         <ThaneFlatsLogo size={48} showWordmark />
-        <Text style={styles.title}>Contact reveal pack</Text>
+        <Text style={styles.title}>{t('contactPack.title')}</Text>
         <Text style={styles.sub}>
-          ₹{pack.priceInr} — {pack.credits} owner phone & email reveals. Separate from
-          the chat plan.
+          {t('contactPack.subtitle', { price: pack.priceInr, credits: pack.credits })}
         </Text>
         <Pressable style={styles.payBtn} onPress={pay} disabled={paying}>
           {paying ? (
             <ThaneFlatsLogo size={22} animated onDark />
           ) : (
-            <Text style={styles.payBtnText}>Pay with Cashfree</Text>
+            <Text style={styles.payBtnText}>{t('contactPack.payCashfree')}</Text>
           )}
         </Pressable>
         <View style={styles.paymentBadgesWrap}>

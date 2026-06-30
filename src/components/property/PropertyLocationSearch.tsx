@@ -235,6 +235,7 @@ const styles = StyleSheet.create({
   wrap: {
     zIndex: 100,
     marginBottom: spacing.sm,
+    overflow: 'visible',
   },
   wrapCompact: {
     marginBottom: 0,

@@ -53,9 +53,19 @@ import {
   type PostPropertyFormState,
   type PostPropertyStepIndex,
 } from '../utils/postPropertyForm';
+import type { TranslationKey } from '../i18n';
+import { useTranslation } from '../context/LocaleContext';
 import { isAgentRole, isOwnerRole } from '../utils/roles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostProperty'>;
+
+const STEP_TITLE_KEYS: TranslationKey[] = [
+  'postProperty.stepBasics',
+  'postProperty.stepPricing',
+  'postProperty.stepDetails',
+  'postProperty.stepLocation',
+  'postProperty.stepPhotos',
+];
 
 function ErrorBanner({ message }: { message: string }) {
   return (
@@ -71,6 +81,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
   const isAgentEdit = listingId != null;
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const isAgent = isAgentRole(profile?.role);
   const isOwner = isOwnerRole(profile?.role);
   const scrollRef = useRef<ScrollView>(null);
@@ -115,9 +126,9 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
       setImages([]);
     } catch (e) {
       Alert.alert(
-        'Could not load listing',
-        e instanceof ApiError ? e.message : 'Try again.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        t('postProperty.couldNotLoadListing'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain'),
+        [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
       );
     } finally {
       setLoadingListing(false);
@@ -154,15 +165,16 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
   const stepMeta = POST_PROPERTY_STEPS[step];
   const canAgentPost = !isAgent || isAgentEdit || publishCredits > 0;
   const screenTitle = isAgentEdit
-    ? 'Edit listing'
+    ? t('postProperty.editListing')
     : isAgent
-      ? 'Post agent listing'
-      : 'Post your property';
+      ? t('postProperty.postAgentListing')
+      : t('postProperty.postYourProperty');
   const submitLabel = isAgentEdit
-    ? 'Save changes'
+    ? t('postProperty.saveChanges')
     : isAgent
-      ? 'Post listing'
-      : 'Post property';
+      ? t('postProperty.postListing')
+      : t('postProperty.postProperty');
+  const stepTitle = t(STEP_TITLE_KEYS[step]);
 
   function applyAiDraft(draft: PropertyAiListingDraftResponse) {
     setForm((prev) => applyAiListingDraft(prev, draft));
@@ -227,7 +239,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
 
   async function getAiPriceSuggestion() {
     if (!form.bhkConfiguration.trim() || !form.builtupSqft.trim()) {
-      Alert.alert('Missing details', 'Select BHK and enter built-up area first.');
+      Alert.alert(t('postProperty.missingDetails'), t('postProperty.missingBhkArea'));
       return;
     }
     setPriceLoading(true);
@@ -242,7 +254,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
       });
       setPriceSuggestion(res);
     } catch (e) {
-      setPriceError(e instanceof ApiError ? e.message : 'Could not get an AI price suggestion right now.');
+      setPriceError(e instanceof ApiError ? e.message : t('postProperty.couldNotGetAiPrice'));
     } finally {
       setPriceLoading(false);
     }
@@ -260,10 +272,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
   async function pickImages() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
-        'Photos access needed',
-        'Allow photo library access to add property images.'
-      );
+      Alert.alert(t('postProperty.photosAccessTitle'), t('postProperty.photosAccessBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -287,11 +296,11 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
   async function handleSubmit() {
     if (isAgent && !isAgentEdit && publishCredits <= 0) {
       Alert.alert(
-        'Publish credit required',
-        'Purchase a listing publish plan before posting. One credit is used per listing.',
+        t('postProperty.publishCreditTitle'),
+        t('postProperty.publishCreditBody'),
         [
-          { text: 'View plans', onPress: () => navigation.navigate('AgentPayments') },
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('shared.viewPlans'), onPress: () => navigation.navigate('AgentPayments') },
+          { text: t('common.cancel'), style: 'cancel' },
         ]
       );
       return;
@@ -331,14 +340,14 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
           );
           await agentListingsApi.update(listingId, body);
           Alert.alert(
-            'Listing updated',
-            'Your changes were saved and sent back for admin review.',
+            t('postProperty.listingUpdated'),
+            t('postProperty.listingUpdatedBody'),
             [
               {
-                text: 'Agent dashboard',
+                text: t('postProperty.agentDashboard'),
                 onPress: () => navigation.navigate('AgentDashboard'),
               },
-              { text: 'OK', style: 'cancel' },
+              { text: t('common.ok'), style: 'cancel' },
             ]
           );
         } else {
@@ -346,14 +355,14 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
           const body = buildCreateAgentListingRequest(form, uploadedUrls, duration);
           await agentListingsApi.create(body);
           Alert.alert(
-            'Listing submitted',
-            'Your agent listing is pending admin review. It will appear on your dashboard once approved.',
+            t('postProperty.listingSubmitted'),
+            t('postProperty.listingSubmittedBody'),
             [
               {
-                text: 'Agent dashboard',
+                text: t('postProperty.agentDashboard'),
                 onPress: () => navigation.navigate('AgentDashboard'),
               },
-              { text: 'OK', style: 'cancel' },
+              { text: t('common.ok'), style: 'cancel' },
             ]
           );
         }
@@ -361,11 +370,11 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
         const body = buildCreatePropertyRequest(form, uploadedUrls);
         const created = await propertiesApi.create(body);
         Alert.alert(
-          'Posted successfully',
-          'Your property is pending approval review. It will appear on your dashboard once reviewed.',
+          t('postProperty.postedSuccess'),
+          t('postProperty.postedSuccessBody'),
           [
             {
-              text: 'View listing',
+              text: t('postProperty.viewListing'),
               onPress: () =>
                 navigation.replace('PropertyDetails', {
                   propertyId: created.id,
@@ -373,7 +382,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
                 }),
             },
             {
-              text: 'Back to dashboard',
+              text: t('postProperty.backToDashboard'),
               style: 'cancel',
               onPress: () => navigation.navigate('OwnerDashboard'),
             },
@@ -387,8 +396,8 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
           : e instanceof Error
             ? e.message
             : isAgent
-              ? 'Could not post listing'
-              : 'Could not post property';
+              ? t('postProperty.couldNotPostListing')
+              : t('postProperty.couldNotPostProperty');
       setFormError(message);
     } finally {
       setSubmitting(false);
@@ -402,28 +411,28 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
           <>
             {!isAgentEdit ? <AiListingDraftPanel onApply={applyAiDraft} /> : null}
             <SectionCard
-            title="Tell us about your property"
-            subtitle="A clear title and description help renters find you faster."
+            title={t('postProperty.sectionAboutTitle')}
+            subtitle={t('postProperty.sectionAboutSub')}
             icon="home-outline"
           >
             <AuthTextField
-              label="Listing title"
+              label={t('postProperty.listingTitle')}
               icon="pricetag-outline"
               value={form.title}
               onChangeText={(v) => patch('title', v)}
-              placeholder="Bright 2 BHK with balcony — Hiranandani Estate"
+              placeholder={t('postProperty.titlePlaceholder')}
             />
-            <Text style={styles.fieldLabel}>Flat configuration</Text>
+            <Text style={styles.fieldLabel}>{t('postProperty.flatConfig')}</Text>
             <BhkSelector
               value={form.bhkConfiguration}
               onChange={(v) => patch('bhkConfiguration', v)}
             />
             <AuthTextField
-              label="Description"
+              label={t('postProperty.description')}
               icon="document-text-outline"
               value={form.description}
               onChangeText={(v) => patch('description', v)}
-              placeholder="Furnishing, parking, nearby schools, metro access…"
+              placeholder={t('postProperty.descriptionPlaceholder')}
               multiline
               numberOfLines={5}
               style={styles.textArea}
@@ -435,8 +444,8 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
       case 1:
         return (
           <SectionCard
-            title="Pricing & listing type"
-            subtitle="Select how you want to list. You can choose more than one."
+            title={t('postProperty.sectionPricingTitle')}
+            subtitle={t('postProperty.sectionPricingSub')}
             icon="wallet-outline"
             accent="#7c3aed"
           >
@@ -447,7 +456,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
               onToggle={(key) => patch(key, !form[key])}
             />
             <AuthTextField
-              label="Rent / PG amount (₹ per month)"
+              label={t('postProperty.rentAmount')}
               icon="cash-outline"
               value={form.rentAmount}
               onChangeText={(v) => patch('rentAmount', v)}
@@ -456,7 +465,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
             />
             {form.isForSale && (
               <AuthTextField
-                label="Sale price (₹)"
+                label={t('postProperty.salePrice')}
                 icon="trending-up-outline"
                 value={form.sellPrice}
                 onChangeText={(v) => patch('sellPrice', v)}
@@ -465,7 +474,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
               />
             )}
             <AuthTextField
-              label="Security deposit (₹)"
+              label={t('postProperty.securityDeposit')}
               icon="receipt-outline"
               value={form.depositAmount}
               onChangeText={(v) => patch('depositAmount', v)}
@@ -473,7 +482,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
               keyboardType="numeric"
             />
             <AuthTextField
-              label="Built-up area (sq.ft.)"
+              label={t('postProperty.builtupArea')}
               icon="resize-outline"
               value={form.builtupSqft}
               onChangeText={(v) => patch('builtupSqft', v)}
@@ -484,7 +493,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
             <Pressable style={styles.aiPriceBtn} onPress={getAiPriceSuggestion} disabled={priceLoading}>
               <Ionicons name="sparkles" size={16} color="#7c3aed" />
               <Text style={styles.aiPriceBtnText}>
-                {priceLoading ? 'Asking AI…' : 'Get AI price suggestion'}
+                {priceLoading ? t('postProperty.askingAi') : t('postProperty.getAiPrice')}
               </Text>
             </Pressable>
 
@@ -493,17 +502,21 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
             {priceSuggestion ? (
               <View style={styles.aiPriceCard}>
                 <Text style={styles.aiPriceFair}>
-                  Fair price: ₹{Math.round(priceSuggestion.fairMarketPrice).toLocaleString('en-IN')}
-                  {form.isForSale ? '' : ' / month'}
+                  {t('postProperty.fairPrice', {
+                    price: Math.round(priceSuggestion.fairMarketPrice).toLocaleString('en-IN'),
+                    suffix: form.isForSale ? '' : t('postProperty.perMonth'),
+                  })}
                 </Text>
                 <Text style={styles.aiPriceRange}>
-                  Range ₹{Math.round(priceSuggestion.priceRangeMin).toLocaleString('en-IN')} – ₹
-                  {Math.round(priceSuggestion.priceRangeMax).toLocaleString('en-IN')}
+                  {t('postProperty.priceRange', {
+                    min: Math.round(priceSuggestion.priceRangeMin).toLocaleString('en-IN'),
+                    max: Math.round(priceSuggestion.priceRangeMax).toLocaleString('en-IN'),
+                  })}
                 </Text>
                 <Text style={styles.aiPriceSummary}>{priceSuggestion.summary}</Text>
                 <Pressable style={styles.aiPriceApplyBtn} onPress={applyAiPrice}>
                   <Text style={styles.aiPriceApplyText}>
-                    Use this {form.isForSale ? 'sale price' : 'rent'}
+                    {form.isForSale ? t('postProperty.useThisSale') : t('postProperty.useThisRent')}
                   </Text>
                 </Pressable>
               </View>
@@ -511,7 +524,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
 
             {(form.isForRent || form.isForPg) && (
               <AuthTextField
-                label="Available from (optional)"
+                label={t('postProperty.availableFrom')}
                 icon="calendar-outline"
                 value={form.availableFrom}
                 onChangeText={(v) => patch('availableFrom', v)}
@@ -525,20 +538,20 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
       case 2:
         return (
           <SectionCard
-            title="Extended details"
-            subtitle="Optional — adds richer info to your listing, same as the website's full listing form."
+            title={t('postProperty.sectionExtendedTitle')}
+            subtitle={t('postProperty.sectionExtendedSub')}
             icon="list-outline"
             accent="#0d9488"
           >
             <AuthTextField
-              label="Society / building name"
+              label={t('postProperty.societyName')}
               icon="business-outline"
               value={form.societyName}
               onChangeText={(v) => patch('societyName', v)}
-              placeholder="Hiranandani Estate Residency"
+              placeholder={t('postProperty.societyPlaceholder')}
             />
             <AuthTextField
-              label="Carpet area (sq.ft.)"
+              label={t('postProperty.carpetArea')}
               icon="resize-outline"
               value={form.metaCarpetSqft}
               onChangeText={(v) => patch('metaCarpetSqft', v)}
@@ -546,150 +559,150 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
               keyboardType="numeric"
             />
             <AuthTextField
-              label="Configuration"
+              label={t('postProperty.configuration')}
               icon="grid-outline"
               value={form.metaConfiguration}
               onChangeText={(v) => patch('metaConfiguration', v)}
-              placeholder="2 Bed, 2 Bath, 1 Balcony"
+              placeholder={t('postProperty.configPlaceholder')}
             />
             <AuthTextField
-              label="Tenant preference"
+              label={t('postProperty.tenantPreference')}
               icon="people-outline"
               value={form.metaTenantPreference}
               onChangeText={(v) => patch('metaTenantPreference', v)}
-              placeholder="Family / Bachelor / PG / Any"
+              placeholder={t('postProperty.tenantPlaceholder')}
             />
             <AuthTextField
-              label="Possession status"
+              label={t('postProperty.possessionStatus')}
               icon="key-outline"
               value={form.metaPossessionStatus}
               onChangeText={(v) => patch('metaPossessionStatus', v)}
-              placeholder="Ready to move"
+              placeholder={t('postProperty.possessionPlaceholder')}
             />
             <AuthTextField
-              label="Transaction type"
+              label={t('postProperty.transactionType')}
               icon="swap-horizontal-outline"
               value={form.metaTransactionType}
               onChangeText={(v) => patch('metaTransactionType', v)}
-              placeholder="Resale / Rental / New booking"
+              placeholder={t('postProperty.transactionPlaceholder')}
             />
             <AuthTextField
-              label="Ownership"
+              label={t('postProperty.ownership')}
               icon="ribbon-outline"
               value={form.metaOwnership}
               onChangeText={(v) => patch('metaOwnership', v)}
-              placeholder="Freehold"
+              placeholder={t('postProperty.ownershipPlaceholder')}
             />
             <AuthTextField
-              label="Floor"
+              label={t('postProperty.floor')}
               icon="layers-outline"
               value={form.metaFloorInfo}
               onChangeText={(v) => patch('metaFloorInfo', v)}
-              placeholder="Mid floor"
+              placeholder={t('postProperty.floorPlaceholder')}
             />
             <AuthTextField
-              label="Facing"
+              label={t('postProperty.facing')}
               icon="compass-outline"
               value={form.metaFacing}
               onChangeText={(v) => patch('metaFacing', v)}
-              placeholder="East"
+              placeholder={t('postProperty.facingPlaceholder')}
             />
             <AuthTextField
-              label="Overlooking"
+              label={t('postProperty.overlooking')}
               icon="eye-outline"
               value={form.metaOverlooking}
               onChangeText={(v) => patch('metaOverlooking', v)}
-              placeholder="Garden / internal road"
+              placeholder={t('postProperty.overlookingPlaceholder')}
             />
             <AuthTextField
-              label="Property age"
+              label={t('postProperty.propertyAge')}
               icon="time-outline"
               value={form.metaPropertyAge}
               onChangeText={(v) => patch('metaPropertyAge', v)}
-              placeholder="3 to 5 years"
+              placeholder={t('postProperty.propertyAgePlaceholder')}
             />
             <AuthTextField
-              label="RERA status"
+              label={t('postProperty.reraStatus')}
               icon="shield-checkmark-outline"
               value={form.metaReraStatus}
               onChangeText={(v) => patch('metaReraStatus', v)}
-              placeholder="Verify on MahaRERA before finalising"
+              placeholder={t('postProperty.reraPlaceholder')}
             />
             <AuthTextField
-              label="Furnishing status"
+              label={t('postProperty.furnishingStatus')}
               icon="cube-outline"
               value={form.metaFurnishingStatus}
               onChangeText={(v) => patch('metaFurnishingStatus', v)}
-              placeholder="Semi-furnished"
+              placeholder={t('postProperty.furnishingPlaceholder')}
             />
             <AuthTextField
-              label="Furnishing included"
+              label={t('postProperty.furnishingIncluded')}
               icon="checkmark-circle-outline"
               value={form.metaFurnishingIncluded}
               onChangeText={(v) => patch('metaFurnishingIncluded', v)}
-              placeholder="AC, Geyser, Fans, Wardrobes"
+              placeholder={t('postProperty.furnishingIncludedPlaceholder')}
             />
             <AuthTextField
-              label="Furnishing excluded"
+              label={t('postProperty.furnishingExcluded')}
               icon="close-circle-outline"
               value={form.metaFurnishingExcluded}
               onChangeText={(v) => patch('metaFurnishingExcluded', v)}
-              placeholder="Sofa, TV, Fridge"
+              placeholder={t('postProperty.furnishingExcludedPlaceholder')}
             />
             <AuthTextField
-              label="Flooring"
+              label={t('postProperty.flooring')}
               icon="grid-outline"
               value={form.metaFlooring}
               onChangeText={(v) => patch('metaFlooring', v)}
-              placeholder="Vitrified tiles"
+              placeholder={t('postProperty.flooringPlaceholder')}
             />
             <AuthTextField
-              label="Parking"
+              label={t('postProperty.parking')}
               icon="car-outline"
               value={form.metaParking}
               onChangeText={(v) => patch('metaParking', v)}
-              placeholder="1 covered + visitor parking"
+              placeholder={t('postProperty.parkingPlaceholder')}
             />
             <AuthTextField
-              label="Power backup"
+              label={t('postProperty.powerBackup')}
               icon="flash-outline"
               value={form.metaPowerBackup}
               onChangeText={(v) => patch('metaPowerBackup', v)}
-              placeholder="Backup for lift & common areas"
+              placeholder={t('postProperty.powerBackupPlaceholder')}
             />
             <AuthTextField
-              label="Water source"
+              label={t('postProperty.waterSource')}
               icon="water-outline"
               value={form.metaWaterSource}
               onChangeText={(v) => patch('metaWaterSource', v)}
-              placeholder="Municipal corporation + society tank"
+              placeholder={t('postProperty.waterPlaceholder')}
             />
             <AuthTextField
-              label="Highlights (comma separated)"
+              label={t('postProperty.highlights')}
               icon="star-outline"
               value={form.metaHighlights}
               onChangeText={(v) => patch('metaHighlights', v)}
-              placeholder="Gated society, Natural light, Family neighbourhood"
+              placeholder={t('postProperty.highlightsPlaceholder')}
               multiline
               numberOfLines={2}
               style={styles.textArea}
             />
             <AuthTextField
-              label="Amenities / features (comma separated)"
+              label={t('postProperty.amenities')}
               icon="sparkles-outline"
               value={form.metaFeatures}
               onChangeText={(v) => patch('metaFeatures', v)}
-              placeholder="Lift, 24×7 Security, Power backup, CCTV"
+              placeholder={t('postProperty.amenitiesPlaceholder')}
               multiline
               numberOfLines={2}
               style={styles.textArea}
             />
             <AuthTextField
-              label="Places nearby (one per line, name|hint)"
+              label={t('postProperty.placesNearby')}
               icon="location-outline"
               value={form.placesNearbyLines}
               onChangeText={(v) => patch('placesNearbyLines', v)}
-              placeholder={'Thane Railway Station|train\nViviana Mall|road'}
+              placeholder={t('postProperty.placesPlaceholder')}
               multiline
               numberOfLines={3}
               style={styles.textArea}
@@ -701,8 +714,8 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
         return (
           <>
             <SectionCard
-              title="Find on Google Maps"
-              subtitle="Search your society or street — we fill address, area & pincode for you."
+              title={t('postProperty.sectionMapsTitle')}
+              subtitle={t('postProperty.sectionMapsSub')}
               icon="search-outline"
               accent="#2563eb"
             >
@@ -716,7 +729,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
                 <View style={styles.mapSuccess}>
                   <Ionicons name="checkmark-circle" size={22} color="#15803d" />
                   <View style={styles.mapSuccessText}>
-                    <Text style={styles.mapSuccessTitle}>Location pinned</Text>
+                    <Text style={styles.mapSuccessTitle}>{t('postProperty.locationPinned')}</Text>
                     <Text style={styles.mapSuccessSub} numberOfLines={2}>
                       {form.selectedPlace.label}
                     </Text>
@@ -726,19 +739,19 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
             </SectionCard>
 
             <SectionCard
-              title="Address details"
-              subtitle="Auto-filled from Maps — tap to edit if needed."
+              title={t('postProperty.sectionAddressTitle')}
+              subtitle={t('postProperty.sectionAddressSub')}
               icon="navigate-outline"
             >
               <AuthTextField
-                label="Full address"
+                label={t('postProperty.fullAddress')}
                 icon="navigate-outline"
                 value={form.address}
                 onChangeText={(v) => patch('address', v)}
                 placeholder={
                   mapsEnabled
-                    ? 'Pick a place above'
-                    : 'Tower, society, road, Thane West'
+                    ? t('postProperty.pickPlace')
+                    : t('postProperty.addressManualPlaceholder')
                 }
                 editable={!mapsEnabled || form.selectedPlace != null}
                 multiline
@@ -746,14 +759,14 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
                 style={styles.textArea}
               />
               <AuthTextField
-                label="Area / locality"
+                label={t('postProperty.areaLocality')}
                 icon="map-outline"
                 value={form.areaName}
                 onChangeText={(v) => patch('areaName', v)}
-                placeholder="Thane West, Kolshet"
+                placeholder={t('postProperty.areaPlaceholder')}
               />
               <AuthTextField
-                label="Pincode"
+                label={t('postProperty.pincode')}
                 icon="mail-outline"
                 value={form.pincode}
                 onChangeText={(v) =>
@@ -772,22 +785,21 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
         return (
           <>
             <SectionCard
-              title="Property photos"
-              subtitle="Optional — listings with photos get more inquiries."
+              title={t('postProperty.sectionPhotosTitle')}
+              subtitle={t('postProperty.sectionPhotosSub')}
               icon="camera-outline"
               accent="#ea580c"
             >
               {isAgentEdit && existingImageUrls.length > 0 ? (
                 <View style={styles.existingPhotos}>
                   <Text style={styles.existingPhotosLabel}>
-                    Current photos ({existingImageUrls.length}) — add new ones below
-                    or save to keep these.
+                    {t('postProperty.currentPhotos', { count: existingImageUrls.length })}
                   </Text>
                   <Pressable
                     onPress={() => setExistingImageUrls([])}
                     style={styles.clearPhotosBtn}
                   >
-                    <Text style={styles.clearPhotosText}>Remove all current photos</Text>
+                    <Text style={styles.clearPhotosText}>{t('postProperty.removeAllPhotos')}</Text>
                   </Pressable>
                 </View>
               ) : null}
@@ -809,7 +821,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
   if (loadingListing) {
     return (
       <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
-        <BrandLoading message="Loading listing…" />
+        <BrandLoading message={t('postProperty.loadingListing')} />
       </AuthenticatedScreenLayout>
     );
   }
@@ -824,18 +836,22 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
               <View style={styles.creditBadge}>
                 <Ionicons name="ticket-outline" size={13} color="#1d4ed8" />
                 <Text style={styles.creditBadgeText}>
-                  {publishCredits} credit{publishCredits === 1 ? '' : 's'}
+                  {publishCredits} {publishCredits === 1 ? t('postProperty.credit') : t('postProperty.credits')}
                 </Text>
               </View>
             ) : (
               <View style={styles.freeBadge}>
                 <Ionicons name="gift-outline" size={13} color="#0f766e" />
-                <Text style={styles.freeBadgeText}>Free</Text>
+                <Text style={styles.freeBadgeText}>{t('postProperty.free')}</Text>
               </View>
             )}
           </View>
           <Text style={styles.stepBarSub}>
-            Step {step + 1} of {POST_PROPERTY_STEPS.length} · {stepMeta.title}
+            {t('postProperty.stepOf', {
+              current: step + 1,
+              total: POST_PROPERTY_STEPS.length,
+              stepTitle,
+            })}
           </Text>
           {isAgent && !canAgentPost ? (
             <Pressable
@@ -844,7 +860,7 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
             >
               <Ionicons name="information-circle" size={18} color={colors.warning} />
               <Text style={styles.creditsBannerText}>
-                No publish credits — buy a plan to post listings
+                {t('postProperty.noPublishCredits')}
               </Text>
             </Pressable>
           ) : null}
@@ -878,18 +894,18 @@ export default function PostPropertyScreen({ navigation, route }: Props) {
           {step > 0 && (
             <Pressable style={styles.footerBack} onPress={goBack}>
               <Ionicons name="chevron-back" size={20} color={colors.navy} />
-              <Text style={styles.footerBackText}>Back</Text>
+              <Text style={styles.footerBackText}>{t('postProperty.back')}</Text>
             </Pressable>
           )}
           <GradientButton
             label={
               submitting
                 ? isAgentEdit
-                  ? 'Saving…'
-                  : 'Posting…'
+                  ? t('postProperty.saving')
+                  : t('postProperty.posting')
                 : isLastStep
                   ? submitLabel
-                  : 'Continue'
+                  : t('postProperty.continue')
             }
             loading={submitting}
             disabled={submitting || (isAgent && isLastStep && !canAgentPost)}

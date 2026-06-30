@@ -12,8 +12,8 @@ export type UpdateProfileBody = {
 
 export function createUsersApi(client: ReturnType<typeof createApiClient>) {
   return {
-    getMe() {
-      return client.get<UserProfile>('/api/users/me');
+    getMe(init?: import('./client').ApiRequestInit) {
+      return client.get<UserProfile>('/api/users/me', init);
     },
 
     updateMe(body: UpdateProfileBody) {

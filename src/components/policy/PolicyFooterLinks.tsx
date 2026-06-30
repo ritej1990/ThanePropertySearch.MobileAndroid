@@ -1,8 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NavigationProp } from '@react-navigation/native';
-import { POLICY_FOOTER_LINKS } from '../../content/policies';
+import { POLICY_FOOTER_LINKS, type PolicyKind } from '../../content/policies';
 import type { RootStackParamList } from '../../navigation/types';
+import { useTranslation } from '../../context/LocaleContext';
+import type { TranslateFn } from '../../i18n';
 import { colors, spacing } from '../../theme';
 
 type Props = {
@@ -10,7 +12,21 @@ type Props = {
   variant?: 'light' | 'dark';
 };
 
+function policyLabel(t: TranslateFn, kind: PolicyKind): string {
+  switch (kind) {
+    case 'legal':
+      return t('legal.legal');
+    case 'privacy':
+      return t('legal.privacy');
+    case 'terms':
+      return t('legal.terms');
+    case 'refund':
+      return t('legal.refund');
+  }
+}
+
 export function PolicyFooterLinks({ navigation, variant = 'dark' }: Props) {
+  const { t } = useTranslation();
   const linkColor = variant === 'dark' ? 'rgba(248, 250, 252, 0.88)' : colors.primaryDark;
   const mutedColor = variant === 'dark' ? 'rgba(248, 250, 252, 0.45)' : colors.slateLight;
 
@@ -24,9 +40,9 @@ export function PolicyFooterLinks({ navigation, variant = 'dark' }: Props) {
               onPress={() => navigation.navigate('Policy', { kind: link.kind })}
               hitSlop={6}
               accessibilityRole="link"
-              accessibilityLabel={link.label}
+              accessibilityLabel={policyLabel(t, link.kind)}
             >
-              <Text style={[styles.link, { color: linkColor }]}>{link.label}</Text>
+              <Text style={[styles.link, { color: linkColor }]}>{policyLabel(t, link.kind)}</Text>
             </Pressable>
           </React.Fragment>
         ))}

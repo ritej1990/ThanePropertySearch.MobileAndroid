@@ -16,10 +16,22 @@ import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { PageHero } from '../components/ui/PageHero';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
+import type { TranslateFn } from '../i18n';
+import { localeToCulture } from '../i18n/types';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VisitRequests'>;
+
+function translateStatus(t: TranslateFn, status: string): string {
+  const s = status.toLowerCase();
+  if (s === 'approved') return t('statusLabels.approved');
+  if (s === 'rejected') return t('statusLabels.rejected');
+  if (s === 'pending') return t('statusLabels.pending');
+  if (s === 'declined') return t('statusLabels.declined');
+  return status;
+}
 
 function maskPhone(phone: string | null): string {
   if (!phone?.trim()) return '—';
@@ -41,6 +53,7 @@ function statusStyle(status: string) {
 
 export default function VisitRequestsScreen({ navigation, route }: Props) {
   const { propertyId, title } = route.params;
+  const { t, locale } = useTranslation();
   const [rows, setRows] = useState<VisitRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -51,13 +64,13 @@ export default function VisitRequestsScreen({ navigation, route }: Props) {
       setRows(data);
     } catch (e) {
       Alert.alert(
-        'Could not load',
-        e instanceof ApiError ? e.message : 'Try again'
+        t('shared.couldNotLoad'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setLoading(false);
     }
-  }, [propertyId]);
+  }, [propertyId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -74,12 +87,12 @@ export default function VisitRequestsScreen({ navigation, route }: Props) {
         visitId,
         status
       );
-      Alert.alert('Updated', res.message);
+      Alert.alert(t('shared.updated'), res.message);
       await load();
     } catch (e) {
       Alert.alert(
-        'Failed',
-        e instanceof ApiError ? e.message : 'Could not update visit'
+        t('shared.failed'),
+        e instanceof ApiError ? e.message : t('visits.couldNotUpdate')
       );
     } finally {
       setBusyId(null);
@@ -93,17 +106,17 @@ export default function VisitRequestsScreen({ navigation, route }: Props) {
           <PageHero
             variant="owner"
             icon="calendar-outline"
-            title="Visit requests"
+            title={t('visits.title')}
             subtitle={
               title
-                ? `${title} — approve or decline proposed viewing times.`
-                : 'Approve or decline proposed viewing times.'
+                ? t('visits.subtitleFor', { title })
+                : t('visits.subtitle')
             }
           />
         </View>
 
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading visits…" />
+          <BrandLoading fullScreen={false} message={t('visits.loading')} />
         ) : (
           <FlatList
             data={rows}
@@ -112,7 +125,7 @@ export default function VisitRequestsScreen({ navigation, route }: Props) {
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Ionicons name="calendar-clear-outline" size={40} color={colors.slateLight} />
-                <Text style={styles.emptyText}>No visit requests yet for this listing.</Text>
+                <Text style={styles.emptyText}>{t('visits.empty')}</Text>
               </View>
             }
             renderItem={({ item }) => {
@@ -122,11 +135,17 @@ export default function VisitRequestsScreen({ navigation, route }: Props) {
                 <View style={styles.card}>
                   <View style={styles.cardHead}>
                     <Text style={styles.when}>
-                      {new Date(item.visitAtLocal).toLocaleString('en-IN')}
+                      {new Date(item.visitAtLocal).toLocaleString(localeToCulture(locale), {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </Text>
                     <View style={[styles.badge, { backgroundColor: st.bg }]}>
                       <Text style={[styles.badgeText, { color: st.text }]}>
-                        {item.status}
+                        {translateStatus(t, item.status)}
                       </Text>
                     </View>
                   </View>
@@ -142,14 +161,14 @@ export default function VisitRequestsScreen({ navigation, route }: Props) {
                         disabled={busyId != null}
                         onPress={() => setStatus(item.id, 'Approved')}
                       >
-                        <Text style={styles.approveText}>Approve</Text>
+                        <Text style={styles.approveText}>{t('shared.approve')}</Text>
                       </Pressable>
                       <Pressable
                         style={[styles.declineBtn, busyId === item.id && styles.busy]}
                         disabled={busyId != null}
                         onPress={() => setStatus(item.id, 'Declined')}
                       >
-                        <Text style={styles.declineText}>Decline</Text>
+                        <Text style={styles.declineText}>{t('shared.decline')}</Text>
                       </Pressable>
                     </View>
                   ) : null}

@@ -14,6 +14,7 @@ import {
   getProfileInitials,
   getRoleLabel,
 } from '../../utils/profileDisplay';
+import { useTranslation } from '../../context/LocaleContext';
 import { colors, gradients, radius, spacing } from '../../theme';
 
 type ProfileInfo = {
@@ -38,10 +39,11 @@ export function SignOutConfirmModal({
   onCancel,
   onConfirm,
 }: Props) {
+  const { t } = useTranslation();
   const displayName =
     profile?.fullName?.trim() || profile?.username?.trim() || 'Signed in';
   const initials = getProfileInitials(profile?.fullName);
-  const roleLabel = getRoleLabel(profile?.role);
+  const roleLabel = getRoleLabel(profile?.role, t);
 
   return (
     <Modal

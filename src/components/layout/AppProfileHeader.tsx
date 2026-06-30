@@ -338,7 +338,7 @@ export function AppProfileHeader({
                 <Text style={styles.welcomeHi}>Hi, {firstName}</Text>
                 <View style={styles.welcomeMeta}>
                   <View style={styles.roleChip}>
-                    <Text style={styles.roleChipText}>{getRoleLabel(profile?.role)}</Text>
+                    <Text style={styles.roleChipText}>{getRoleLabel(profile?.role, t)}</Text>
                   </View>
                   {emailConfirmed ? (
                     <View style={styles.verifiedChip}>
@@ -519,6 +519,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
     gap: 6,
     backgroundColor: 'rgba(15, 23, 42, 0.35)',
     borderRadius: radius.pill,

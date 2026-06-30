@@ -29,7 +29,7 @@
         "android.permission.READ_PHONE_STATE",
         "android.permission.READ_PHONE_NUMBERS"
       ],
-      "softwareKeyboardLayoutMode": "pan",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0c1829"
@@ -39,7 +39,9 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-font",
       "expo-secure-store",
+      "@react-native-community/datetimepicker",
       "./plugins/withPaymentAppQueries",
       [
         "expo-image-picker",

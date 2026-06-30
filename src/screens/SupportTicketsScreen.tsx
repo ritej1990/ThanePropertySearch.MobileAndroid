@@ -19,12 +19,15 @@ import { useAuth } from '../context/AuthContext';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { PolicyFooterLinks } from '../components/policy/PolicyFooterLinks';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
 import type { RootStackParamList } from '../navigation/types';
+import { formatShortDate } from '../utils/formatLocaleDate';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SupportTickets'>;
 
 export default function SupportTicketsScreen({ navigation }: Props) {
+  const { t, locale } = useTranslation();
   const { profile } = useAuth();
   const [tickets, setTickets] = useState<SupportTicketSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +58,7 @@ export default function SupportTicketsScreen({ navigation }: Props) {
 
   async function submitTicket() {
     if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
-      Alert.alert('Missing fields', 'Please fill name, email, subject, and details.');
+      Alert.alert(t('support.missingFieldsTitle'), t('support.missingFields'));
       return;
     }
     setSubmitting(true);
@@ -67,14 +70,14 @@ export default function SupportTicketsScreen({ navigation }: Props) {
         subject: subject.trim(),
         message: message.trim(),
       });
-      Alert.alert('Submitted', res.message);
+      Alert.alert(t('support.submitted'), res.message);
       setSubject('');
       setMessage('');
       await load();
     } catch (e) {
       Alert.alert(
-        'Could not submit',
-        e instanceof ApiError ? e.message : 'Try again later.'
+        t('support.couldNotSubmit'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setSubmitting(false);
@@ -89,26 +92,24 @@ export default function SupportTicketsScreen({ navigation }: Props) {
           style={styles.hero}
         >
           <Ionicons name="help-buoy" size={28} color="#7dd3fc" />
-          <Text style={styles.heroTitle}>Support</Text>
-          <Text style={styles.heroSub}>
-            Raise a ticket for issues, features, or questions. Our team will respond here.
-          </Text>
+          <Text style={styles.heroTitle}>{t('support.title')}</Text>
+          <Text style={styles.heroSub}>{t('support.heroSub')}</Text>
         </LinearGradient>
 
         <View style={styles.formCard}>
-          <Text style={styles.cardTitle}>Raise ticket</Text>
+          <Text style={styles.cardTitle}>{t('support.raiseTicket')}</Text>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="Name"
+            placeholder={t('shared.name')}
             placeholderTextColor={colors.slateLight}
           />
           <TextInput
             style={styles.input}
             value={email}
             onChangeText={setEmail}
-            placeholder="Email"
+            placeholder={t('shared.email')}
             placeholderTextColor={colors.slateLight}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -117,7 +118,7 @@ export default function SupportTicketsScreen({ navigation }: Props) {
             style={styles.input}
             value={phone}
             onChangeText={setPhone}
-            placeholder="Phone (optional)"
+            placeholder={t('support.phoneOptional')}
             placeholderTextColor={colors.slateLight}
             keyboardType="phone-pad"
           />
@@ -125,14 +126,14 @@ export default function SupportTicketsScreen({ navigation }: Props) {
             style={styles.input}
             value={subject}
             onChangeText={setSubject}
-            placeholder="Issue / feature / query"
+            placeholder={t('support.subjectPlaceholder')}
             placeholderTextColor={colors.slateLight}
           />
           <TextInput
             style={[styles.input, styles.textArea]}
             value={message}
             onChangeText={setMessage}
-            placeholder="Details"
+            placeholder={t('support.detailsPlaceholder')}
             placeholderTextColor={colors.slateLight}
             multiline
             numberOfLines={4}
@@ -145,39 +146,38 @@ export default function SupportTicketsScreen({ navigation }: Props) {
           >
             <Ionicons name="send" size={16} color={colors.heroText} />
             <Text style={styles.submitText}>
-              {submitting ? 'Submitting…' : 'Submit request'}
+              {submitting ? t('support.submitting') : t('support.submitRequest')}
             </Text>
           </Pressable>
         </View>
 
         <View style={styles.listHead}>
-          <Text style={styles.cardTitle}>My requests</Text>
-          <Text style={styles.badge}>Total: {tickets.length}</Text>
+          <Text style={styles.cardTitle}>{t('support.myRequests')}</Text>
+          <Text style={styles.badge}>{t('support.total', { count: tickets.length })}</Text>
         </View>
 
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading tickets…" />
+          <BrandLoading fullScreen={false} message={t('support.loading')} />
         ) : tickets.length === 0 ? (
-          <Text style={styles.empty}>No support tickets yet.</Text>
+          <Text style={styles.empty}>{t('support.empty')}</Text>
         ) : (
-          tickets.map((t) => (
+          tickets.map((ticket) => (
             <Pressable
-              key={t.id}
+              key={ticket.id}
               style={styles.ticketRow}
               onPress={() =>
                 navigation.navigate('SupportTicketDetails', {
-                  ticketId: t.id,
-                  subject: t.subject,
+                  ticketId: ticket.id,
+                  subject: ticket.subject,
                 })
               }
             >
               <View style={styles.ticketBody}>
                 <Text style={styles.ticketSubject} numberOfLines={1}>
-                  #{t.id} · {t.subject}
+                  #{ticket.id} · {ticket.subject}
                 </Text>
                 <Text style={styles.ticketMeta}>
-                  {t.status} ·{' '}
-                  {new Date(t.createdAtUtc).toLocaleDateString('en-IN')}
+                  {ticket.status} · {formatShortDate(ticket.createdAtUtc, locale)}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.slateLight} />

@@ -16,7 +16,7 @@ import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { PropertyChip } from '../components/property/PropertyChip';
-import { PropertyDetailStickyBar } from '../components/property/PropertyDetailStickyBar';
+import { PropertyDetailStickyBar, PROPERTY_DETAIL_STICKY_BAR_FLOAT_OFFSET } from '../components/property/PropertyDetailStickyBar';
 import { PropertyDetailTabs } from '../components/property/PropertyDetailTabs';
 import { PropertyGallery } from '../components/property/PropertyGallery';
 import { SimilarPropertyCard } from '../components/property/SimilarPropertyCard';
@@ -44,17 +44,23 @@ import { resolveListingRera, shouldShowListingRera, isNewListing } from '../util
 import { ReraBadge } from '../components/property/ReraBadge';
 import { NewListingRibbon } from '../components/property/NewListingRibbon';
 import { FavoriteButton } from '../components/property/FavoriteButton';
+import { getPropertyListingDisplayStatus } from '../utils/ownerDashboard';
 import { isAgentRole, isOwnerRole, isUserRole } from '../utils/roles';
 import { hasActiveEssentialPlan } from '../utils/planDisplay';
+import { useTranslation } from '../context/LocaleContext';
+import { formatShortDate } from '../utils/formatLocaleDate';
+import type { TranslateFn } from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PropertyDetails'>;
 
-const SAFETY_TIPS = [
-  'Do not send money in advance before site visit and ownership verification.',
-  'Avoid sharing OTP, bank PIN, UPI PIN, or card details with anyone.',
-  'Verify owner identity and property documents before token payment.',
-  'Report suspected fraud via in-app Support.',
-] as const;
+function safetyTips(t: TranslateFn): readonly string[] {
+  return [
+    t('property.safetyTip1'),
+    t('property.safetyTip2'),
+    t('property.safetyTip3'),
+    t('property.safetyTip4'),
+  ];
+}
 
 function StatTile({
   icon,
@@ -99,6 +105,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
   const { propertyId, listingSource = 'property' } = route.params;
   const isAgentListing = listingSource === 'agent';
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const showUserActions = isUserRole(profile?.role);
   const showOwnerActions = isOwnerRole(profile?.role);
   const [item, setItem] = useState<PropertyResponse | null>(null);
@@ -118,7 +125,7 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
       setItem(detail);
       setSimilar(list.filter((p) => p.id !== propertyId).slice(0, 8));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not load property');
+      setError(e instanceof ApiError ? e.message : t('property.couldNotLoad'));
     } finally {
       setLoading(false);
     }
@@ -140,13 +147,20 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     return urls;
   }, [item]);
 
+  const isOwnListing =
+    showOwnerActions &&
+    item?.ownerId != null &&
+    profile?.userId != null &&
+    item.ownerId === profile.userId;
+  const showDetailStickyBar = Boolean(item) && (showUserActions || isOwnListing) && !isAgentListing;
+
   if (loading) {
     return (
       <AuthenticatedScreenLayout
         showBack
         onBack={() => navigation.goBack()}
       >
-        <BrandLoading message="Loading property…" />
+        <BrandLoading message={t('property.loading')} />
       </AuthenticatedScreenLayout>
     );
   }
@@ -158,10 +172,10 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
         onBack={() => navigation.goBack()}
       >
         <View style={styles.centered}>
-          <Text style={styles.errorTitle}>Property unavailable</Text>
-          <Text style={styles.error}>{error ?? 'Property not found'}</Text>
+          <Text style={styles.errorTitle}>{t('property.unavailable')}</Text>
+          <Text style={styles.error}>{error ?? t('property.notFound')}</Text>
           <Pressable style={styles.retry} onPress={() => load()}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>{t('shared.retry')}</Text>
           </Pressable>
         </View>
       </AuthenticatedScreenLayout>
@@ -172,6 +186,10 @@ export default function PropertyDetailsScreen({ route, navigation }: Props) {
     <AuthenticatedScreenLayout
       showBack
       onBack={() => navigation.goBack()}
+      floatingBottomOffset={
+        showDetailStickyBar ? PROPERTY_DETAIL_STICKY_BAR_FLOAT_OFFSET : 0
+      }
+      showLegalFooter={!showDetailStickyBar}
     >
       <PropertyDetailsContent
         navigation={navigation}
@@ -223,11 +241,13 @@ function PropertyDetailsContent({
   setCreditsRefreshKey,
   onReload,
 }: PropertyDetailsContentProps) {
+  const { t, locale } = useTranslation();
   const { goToTopVisible, onScroll, resetCompactHeader } = useAuthenticatedScroll();
   const scrollRef = useRef<ScrollView>(null);
   const scrollContentRef = useRef<View>(null);
   const nextStepsRef = useRef<View>(null);
   const ratingsRef = useRef<View>(null);
+  const aiCopilotRef = useRef<View>(null);
 
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -291,13 +311,13 @@ function PropertyDetailsContent({
     const rows: KeySpecItem[] = [
       {
         key: 'builtup',
-        label: 'Built-up',
+        label: t('property.builtUp'),
         value: `${item.builtupSqft} sq.ft`,
         icon: 'resize-outline',
       },
       {
         key: 'config',
-        label: 'Configuration',
+        label: t('property.configuration'),
         value: item.bhkConfiguration?.trim() || '—',
         icon: 'bed-outline',
       },
@@ -306,8 +326,8 @@ function PropertyDetailsContent({
     if (item.isForRent) {
       rows.push({
         key: 'rent',
-        label: 'Rent',
-        value: `${formatInr(item.rentAmount)} / month`,
+        label: t('property.rent'),
+        value: `${formatInr(item.rentAmount)}${t('property.perMonth')}`,
         icon: 'key-outline',
         tone: 'blue',
       });
@@ -316,7 +336,7 @@ function PropertyDetailsContent({
     if (item.isForSale) {
       rows.push({
         key: 'sale',
-        label: 'Sale price',
+        label: t('property.salePrice'),
         value: item.sellPrice != null ? formatInr(item.sellPrice) : '—',
         icon: 'pricetag-outline',
         tone: 'violet',
@@ -326,13 +346,13 @@ function PropertyDetailsContent({
     rows.push(
       {
         key: 'deposit',
-        label: 'Deposit',
+        label: t('property.deposit'),
         value: formatInr(item.depositAmount),
         icon: 'wallet-outline',
       },
       {
         key: 'area',
-        label: 'Area',
+        label: t('property.area'),
         value: item.areaName,
         icon: 'location-outline',
       }
@@ -351,20 +371,20 @@ function PropertyDetailsContent({
     rows.push(
       {
         key: 'status',
-        label: 'Status',
-        value: item.reviewStatus,
+        label: t('property.status'),
+        value: getPropertyListingDisplayStatus(item),
         icon: 'checkmark-circle-outline',
       },
       {
         key: 'listed',
-        label: 'Listed',
-        value: formatListingDate(item.createdAtUtc),
+        label: t('property.listed'),
+        value: formatShortDate(item.createdAtUtc ?? '', locale),
         icon: 'calendar-outline',
       }
     );
 
     return rows;
-  }, [item, rera, showRera]);
+  }, [item, rera, showRera, t, locale]);
 
   const overviewPanel = (
     <View>
@@ -374,7 +394,7 @@ function PropertyDetailsContent({
           colors={['#eff6ff', '#f8fafc']}
           style={styles.highlights}
         >
-          <Text style={styles.panelHeading}>Highlights</Text>
+          <Text style={styles.panelHeading}>{t('property.highlights')}</Text>
           {meta.highlights.map((h) => (
             <Text key={h} style={styles.checkItem}>
               ✓ {h}
@@ -389,9 +409,9 @@ function PropertyDetailsContent({
     <View>
       {meta.societyName || meta.societyBlock ? (
         <View style={styles.specCard}>
-          {meta.societyName && <SpecRow label="Society" value={meta.societyName} />}
+          {meta.societyName && <SpecRow label={t('property.society')} value={meta.societyName} />}
           {meta.societyBlock && (
-            <SpecRow label="Block / wing" value={meta.societyBlock} last />
+            <SpecRow label={t('property.blockWing')} value={meta.societyBlock} last />
           )}
         </View>
       ) : (
@@ -406,14 +426,14 @@ function PropertyDetailsContent({
   const aboutPanel = (
     <View>
       <View style={styles.aboutCard}>
-        <Text style={styles.panelHeading}>About this property</Text>
+        <Text style={styles.panelHeading}>{t('property.about')}</Text>
         <Text style={styles.aboutText}>
-          {item.description?.trim() || 'No description provided.'}
+          {item.description?.trim() || t('property.noDescription')}
         </Text>
       </View>
       {meta.amenities && meta.amenities.length > 0 && (
         <View style={[styles.specCard, styles.amenityCard]}>
-          <Text style={styles.panelHeading}>Amenities</Text>
+          <Text style={styles.panelHeading}>{t('property.amenities')}</Text>
           <View style={styles.amenityWrap}>
             {meta.amenities.map((a) => (
               <View key={a} style={styles.amenityPill}>
@@ -435,6 +455,9 @@ function PropertyDetailsContent({
         showsVerticalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
       >
         <View ref={scrollContentRef} collapsable={false}>
         <View style={styles.mediaBlock}>
@@ -475,13 +498,13 @@ function PropertyDetailsContent({
                 <PropertyChip key={c.label} label={c.label} tone={c.tone} />
               ))}
               {isAgentListing || item.isPostedByAgent ? (
-                <PropertyChip label="Agent listing" tone="featured" />
+                <PropertyChip label={t('property.agentListing')} tone="featured" />
               ) : null}
               {item.bhkConfiguration ? (
                 <PropertyChip label={item.bhkConfiguration} tone="bhk" />
               ) : null}
               {item.isFeaturedInSearch ? (
-                <PropertyChip label="Featured" tone="featured" />
+                <PropertyChip label={t('property.featured')} tone="featured" />
               ) : null}
             </View>
 
@@ -516,31 +539,31 @@ function PropertyDetailsContent({
                 value={
                   item.ratingCount > 0
                     ? item.averageRating.toFixed(1)
-                    : 'New'
+                    : t('property.new')
                 }
                 label={
                   item.ratingCount > 0
                     ? `${item.ratingCount} review${item.ratingCount === 1 ? '' : 's'}`
-                    : 'No reviews yet'
+                    : t('property.noReviews')
                 }
                 onPress={() => scrollToSection(ratingsRef)}
               />
               <StatTile
                 icon="resize-outline"
                 value={`${item.builtupSqft}`}
-                label="Sq.ft"
+                label={t('property.sqft')}
               />
               <StatTile
                 icon="calendar-outline"
-                value={formatListingDate(item.createdAtUtc)}
-                label="Listed"
+                value={formatShortDate(item.createdAtUtc ?? '', locale)}
+                label={t('property.listed')}
               />
             </View>
 
             <View style={styles.ownerCard}>
               <Ionicons name="person-circle" size={28} color={colors.primary} />
               <View style={styles.ownerTextCol}>
-                <Text style={styles.ownerLabel}>Listed by</Text>
+                <Text style={styles.ownerLabel}>{t('property.listedBy')}</Text>
                 <Text style={styles.ownerName}>{item.ownerName}</Text>
               </View>
             </View>
@@ -554,11 +577,14 @@ function PropertyDetailsContent({
         />
 
         {!isAgentListing ? (
-          <AiPropertyDetailsHub
-            listingId={propertyId}
-            propertyTitle={item.title}
-            showCopilot={showCopilot}
-          />
+          <View ref={aiCopilotRef} collapsable={false}>
+            <AiPropertyDetailsHub
+              listingId={propertyId}
+              propertyTitle={item.title}
+              showCopilot={showCopilot}
+              onCopilotComposerFocus={() => scrollToSection(aiCopilotRef)}
+            />
+          </View>
         ) : null}
 
         {isOwnListing ? <AiFraudAssessment listingId={propertyId} /> : null}
@@ -592,8 +618,8 @@ function PropertyDetailsContent({
 
         {similar.length > 0 && (
           <View style={styles.similarSection}>
-            <Text style={styles.sectionHeading}>Similar properties</Text>
-            <Text style={styles.similarSub}>You may also like these in Thane</Text>
+            <Text style={styles.sectionHeading}>{t('property.similar')}</Text>
+            <Text style={styles.similarSub}>{t('property.similarSub')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {similar.map((p) => (
                 <SimilarPropertyCard
@@ -615,8 +641,8 @@ function PropertyDetailsContent({
         <View style={styles.safetyCard}>
           <Ionicons name="shield-checkmark-outline" size={22} color="#92400e" />
           <View style={styles.safetyTextCol}>
-            <Text style={styles.safetyTitle}>Safety before you finalize</Text>
-            {SAFETY_TIPS.map((tip) => (
+            <Text style={styles.safetyTitle}>{t('property.safetyTitle')}</Text>
+            {safetyTips(t).map((tip) => (
               <Text key={tip} style={styles.safetyItem}>
                 • {tip}
               </Text>
@@ -628,12 +654,12 @@ function PropertyDetailsContent({
 
       {(showUserActions || isOwnListing) && !isAgentListing ? (
         <PropertyDetailStickyBar
-          primaryLabel={isOwnListing ? 'View inquiries' : 'Contact owner'}
+          primaryLabel={isOwnListing ? t('property.viewInquiries') : t('property.contactOwner')}
           primaryIcon={
             isOwnListing ? 'mail-unread-outline' : 'chatbubble-ellipses-outline'
           }
           secondaryIcon={isOwnListing ? 'calendar-outline' : undefined}
-          secondaryAccessibilityLabel="Visit requests"
+          secondaryAccessibilityLabel={t('property.visitRequestsA11y')}
           onSecondaryPress={
             isOwnListing
               ? () =>

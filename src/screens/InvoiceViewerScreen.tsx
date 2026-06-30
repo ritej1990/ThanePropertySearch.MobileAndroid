@@ -7,12 +7,14 @@ import { invoicesApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InvoiceViewer'>;
 
 export default function InvoiceViewerScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { paymentTransactionId, invoiceNumber } = route.params;
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export default function InvoiceViewerScreen({ navigation, route }: Props) {
       const content = await invoicesApi.getMyInvoiceHtml(paymentTransactionId);
       setHtml(content);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not load invoice');
+      setError(e instanceof ApiError ? e.message : t('invoice.couldNotLoad'));
     }
   }, [paymentTransactionId]);
 
@@ -41,7 +43,7 @@ export default function InvoiceViewerScreen({ navigation, route }: Props) {
     >
       <View style={styles.wrap}>
         {!html && !error ? (
-          <BrandLoading message="Loading invoice…" />
+          <BrandLoading message={t('invoice.loading')} />
         ) : error ? (
           <BrandLoading fullScreen={false} message={error} />
         ) : html ? (

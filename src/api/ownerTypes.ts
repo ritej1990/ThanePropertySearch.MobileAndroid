@@ -12,6 +12,12 @@ export type OwnerDashboardItem = {
   isForSale?: boolean;
   isForPg?: boolean;
   isHiddenFromSearch?: boolean;
+  availabilityVerificationStatus?: string;
+  lastVerifiedAtUtc?: string | null;
+  verificationEmailSentAtUtc?: string | null;
+  verificationCount?: number;
+  autoHidden?: boolean;
+  hiddenReason?: string | null;
   ownerAvailabilityOutcome?: string | null;
   daysRemaining: number | null;
   totalRequests: number;

@@ -1,3 +1,4 @@
+import type { TranslateFn } from '../i18n';
 import type { PaymentProduct } from '../services/paymentActivation';
 
 export function routeForPaymentProduct(product?: PaymentProduct) {
@@ -26,15 +27,18 @@ export function isPaymentIncompleteMessage(message: string): boolean {
   );
 }
 
-export function paymentIncompleteAlert(message: string): { title: string; body: string } {
+export function paymentIncompleteAlert(
+  t: TranslateFn,
+  message: string
+): { title: string; body: string } {
   if (isPaymentIncompleteMessage(message)) {
     return {
-      title: 'Payment not completed',
-      body: 'You left checkout before payment finished. No charge was made — you can try again anytime.',
+      title: t('checkout.notCompleted'),
+      body: t('checkout.leftEarly'),
     };
   }
   return {
-    title: 'Could not confirm payment',
+    title: t('checkout.couldNotConfirm'),
     body: message,
   };
 }

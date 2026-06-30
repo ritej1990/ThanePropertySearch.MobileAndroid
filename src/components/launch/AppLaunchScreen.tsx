@@ -17,51 +17,21 @@ import { AiEngineBadge } from './AiEngineBadge';
 import { LaunchValueTicker } from './LaunchValueTicker';
 import { colors, radius, spacing, typography } from '../../theme';
 import { USE_NATIVE_DRIVER } from '../../utils/animation';
+import { useTranslation } from '../../context/LocaleContext';
 
 const MIN_VISIBLE_MS = 2800;
 const EXIT_MS = 420;
 const LAUNCH_SAFETY_MS = MIN_VISIBLE_MS + EXIT_MS + 800;
 
-const STATUS_LINES = [
-  'Booting the AI matching engine…',
-  'Scanning verified listings across Thane…',
-  'Calculating lowest service charges for you…',
-  'Loading tools for owners & agents…',
-  'Almost ready — your AI home search starts here…',
+const FEATURE_KEYS = [
+  { icon: 'sparkles' as const, titleKey: 'launch.featureAiTitle', descKey: 'launch.featureAiDesc', tint: '#7c3aed', border: 'rgba(167, 139, 250, 0.4)' },
+  { icon: 'pricetag' as const, titleKey: 'launch.featureFeesTitle', descKey: 'launch.featureFeesDesc', tint: '#c9a227', border: 'rgba(252, 211, 77, 0.4)' },
+  { icon: 'home' as const, titleKey: 'launch.featureOwnersTitle', descKey: 'launch.featureOwnersDesc', tint: '#0d9488', border: 'rgba(45, 212, 191, 0.4)' },
+  { icon: 'briefcase' as const, titleKey: 'launch.featureAgentsTitle', descKey: 'launch.featureAgentsDesc', tint: '#2563eb', border: 'rgba(37, 99, 235, 0.45)' },
 ] as const;
 
-const FEATURE_HIGHLIGHTS = [
-  {
-    icon: 'sparkles' as const,
-    title: 'AI matching',
-    desc: 'Smarter results, not just filters',
-    tint: '#7c3aed',
-    border: 'rgba(167, 139, 250, 0.4)',
-  },
-  {
-    icon: 'pricetag' as const,
-    title: 'Lowest fees',
-    desc: 'Minimal service charges',
-    tint: '#c9a227',
-    border: 'rgba(252, 211, 77, 0.4)',
-  },
-  {
-    icon: 'home' as const,
-    title: 'For owners',
-    desc: 'Post & manage with ease',
-    tint: '#0d9488',
-    border: 'rgba(45, 212, 191, 0.4)',
-  },
-  {
-    icon: 'briefcase' as const,
-    title: 'For agents',
-    desc: 'Verified leads, less hassle',
-    tint: '#2563eb',
-    border: 'rgba(37, 99, 235, 0.45)',
-  },
-] as const;
-
-const LOADING_STEPS = ['Profile', 'Listings', 'Maps'] as const;
+const STATUS_KEYS = ['launch.status1', 'launch.status2', 'launch.status3', 'launch.status4', 'launch.status5'] as const;
+const STEP_KEYS = ['launch.stepProfile', 'launch.stepListings', 'launch.stepMaps'] as const;
 
 type Props = {
   authReady: boolean;
@@ -70,6 +40,7 @@ type Props = {
 
 export function AppLaunchScreen({ authReady, onComplete }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [statusIndex, setStatusIndex] = useState(0);
   const [minElapsed, setMinElapsed] = useState(false);
   const finishedRef = useRef(false);
@@ -150,7 +121,7 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
           useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start();
-      setStatusIndex((i) => (i + 1) % STATUS_LINES.length);
+      setStatusIndex((i) => (i + 1) % STATUS_KEYS.length);
     }, 1400);
     return () => clearInterval(interval);
   }, [statusOpacity]);
@@ -210,7 +181,7 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
     outputRange: [1, 1.05],
   });
   const activeStep = Math.min(
-    LOADING_STEPS.length - 1,
+    STEP_KEYS.length - 1,
     Math.floor(statusIndex)
   );
 
@@ -253,11 +224,11 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
 
           <View style={styles.locationChip}>
             <Ionicons name="location" size={12} color={colors.goldAccent} />
-            <Text style={styles.locationText}>Thane · Maharashtra</Text>
+            <Text style={styles.locationText}>{t('launch.location')}</Text>
           </View>
-          <Text style={styles.tagline}>India's AI-powered property platform</Text>
+          <Text style={styles.tagline}>{t('launch.tagline')}</Text>
           <Text style={styles.lead} numberOfLines={2}>
-            Buy, rent, sell & list — at the lowest service charges
+            {t('launch.lead')}
           </Text>
 
           <LaunchValueTicker />
@@ -265,11 +236,11 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
           <View style={styles.badgeRow}>
             <View style={styles.aiBadge}>
               <Ionicons name="sparkles" size={12} color={colors.navyDeep} />
-              <Text style={styles.aiBadgeText}>AI-powered</Text>
+              <Text style={styles.aiBadgeText}>{t('launch.aiPowered')}</Text>
             </View>
             <View style={styles.feeBadge}>
               <Ionicons name="pricetag" size={12} color={colors.heroText} />
-              <Text style={styles.feeBadgeText}>Lowest fees</Text>
+              <Text style={styles.feeBadgeText}>{t('launch.lowestFeesBadge')}</Text>
             </View>
           </View>
         </Animated.View>
@@ -285,17 +256,17 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
             },
           ]}
         >
-          {FEATURE_HIGHLIGHTS.map((item) => (
+          {FEATURE_KEYS.map((item) => (
             <View
-              key={item.title}
+              key={item.titleKey}
               style={[styles.featureCard, { borderColor: item.border }]}
             >
               <View style={[styles.featureIcon, { backgroundColor: item.tint }]}>
                 <Ionicons name={item.icon} size={16} color={colors.heroText} />
               </View>
-              <Text style={styles.featureTitle}>{item.title}</Text>
+              <Text style={styles.featureTitle}>{t(item.titleKey)}</Text>
               <Text style={styles.featureDesc} numberOfLines={1}>
-                {item.desc}
+                {t(item.descKey)}
               </Text>
             </View>
           ))}
@@ -303,8 +274,8 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
 
         <View style={styles.footer}>
           <View style={styles.stepRow}>
-            {LOADING_STEPS.map((step, i) => (
-              <View key={step} style={styles.stepItem}>
+            {STEP_KEYS.map((stepKey, i) => (
+              <View key={stepKey} style={styles.stepItem}>
                 <View
                   style={[
                     styles.stepDot,
@@ -317,7 +288,7 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
                     i <= activeStep && styles.stepLabelActive,
                   ]}
                 >
-                  {step}
+                  {t(stepKey)}
                 </Text>
               </View>
             ))}
@@ -333,7 +304,7 @@ export function AppLaunchScreen({ authReady, onComplete }: Props) {
             </Animated.View>
           </View>
           <Animated.Text style={[styles.status, { opacity: statusOpacity }]}>
-            {STATUS_LINES[statusIndex]}
+            {t(STATUS_KEYS[statusIndex])}
           </Animated.Text>
         </View>
       </View>

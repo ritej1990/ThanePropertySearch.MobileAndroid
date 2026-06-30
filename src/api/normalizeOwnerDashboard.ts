@@ -53,6 +53,20 @@ export function normalizeOwnerDashboardItem(raw: unknown): OwnerDashboardItem {
     isForSale: readBool(r, 'isForSale', 'IsForSale'),
     isForPg: readBool(r, 'isForPg', 'IsForPg'),
     isHiddenFromSearch: readBool(r, 'isHiddenFromSearch', 'IsHiddenFromSearch'),
+    availabilityVerificationStatus: readString(
+      r,
+      'availabilityVerificationStatus',
+      'AvailabilityVerificationStatus'
+    ) || 'VERIFIED',
+    lastVerifiedAtUtc: readNullableString(r, 'lastVerifiedAtUtc', 'LastVerifiedAtUtc'),
+    verificationEmailSentAtUtc: readNullableString(
+      r,
+      'verificationEmailSentAtUtc',
+      'VerificationEmailSentAtUtc'
+    ),
+    verificationCount: readNumber(r, 'verificationCount', 'VerificationCount'),
+    autoHidden: readBool(r, 'autoHidden', 'AutoHidden'),
+    hiddenReason: readNullableString(r, 'hiddenReason', 'HiddenReason'),
     ownerAvailabilityOutcome: readNullableString(
       r,
       'ownerAvailabilityOutcome',

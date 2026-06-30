@@ -19,11 +19,12 @@ import { BuilderProjectMediaSections } from '../components/builder/BuilderProjec
 import { BuilderUnitCard } from '../components/builder/BuilderUnitCard';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
+import { localeToCulture } from '../i18n/types';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, gradients, radius, spacing } from '../theme';
 import {
   formatBuilderPrice,
-  formatPossessionDate,
   parseAmenities,
   RERA_VERIFY_URL,
   shouldShowBuilderRera,
@@ -68,6 +69,7 @@ function StatTile({
 
 export default function BuilderProjectDetailsScreen({ route, navigation }: Props) {
   const { projectId, manage } = route.params;
+  const { t, locale } = useTranslation();
   const [item, setItem] = useState<BuilderProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
       const detail = await builderProjectsApi.getById(projectId);
       setItem(detail);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not load project');
+      setError(e instanceof ApiError ? e.message : t('builder.couldNotLoadProject'));
     } finally {
       setLoading(false);
     }
@@ -129,7 +131,7 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
   if (loading) {
     return (
       <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
-        <BrandLoading message="Loading project…" />
+        <BrandLoading message={t('builder.loadingProject')} />
       </AuthenticatedScreenLayout>
     );
   }
@@ -138,10 +140,10 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
     return (
       <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
         <View style={styles.centered}>
-          <Text style={styles.errTitle}>Could not load project</Text>
-          <Text style={styles.err}>{error ?? 'Not found'}</Text>
+          <Text style={styles.errTitle}>{t('builder.couldNotLoadProject')}</Text>
+          <Text style={styles.err}>{error ?? t('builder.notFound')}</Text>
           <Pressable style={styles.retryBtn} onPress={load}>
-            <Text style={styles.retryText}>Try again</Text>
+            <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
           </Pressable>
         </View>
       </AuthenticatedScreenLayout>
@@ -182,7 +184,7 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
               >
                 <Ionicons name="shield-checkmark" size={12} color={colors.goldSoft} />
                 <Text style={styles.reraPillText} numberOfLines={1}>
-                  RERA {item.reraNumber}
+                  {t('builder.reraLabel', { number: item.reraNumber })}
                 </Text>
               </Pressable>
             ) : null}
@@ -205,7 +207,7 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
               }
             >
               <Ionicons name="pencil-outline" size={18} color={colors.builder} />
-              <Text style={styles.manageEditText}>Edit project</Text>
+              <Text style={styles.manageEditText}>{t('builder.editProject')}</Text>
             </Pressable>
           ) : null}
           <LinearGradient
@@ -215,12 +217,12 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
             style={styles.priceHighlight}
           >
             <View>
-              <Text style={styles.priceHighlightLabel}>Starting from</Text>
+              <Text style={styles.priceHighlightLabel}>{t('builder.startingFrom')}</Text>
               <Text style={styles.priceHighlightValue}>{priceLabel}</Text>
             </View>
             <View style={styles.priceHighlightMeta}>
               <Text style={styles.priceHighlightMetaNum}>{item.availableUnits ?? 0}</Text>
-              <Text style={styles.priceHighlightMetaLabel}>units available</Text>
+              <Text style={styles.priceHighlightMetaLabel}>{t('builder.unitsAvailable')}</Text>
             </View>
           </LinearGradient>
 
@@ -236,15 +238,15 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
           ) : null}
 
           <View style={styles.statsRow}>
-            <StatTile icon="business-outline" value={String(item.towerCount)} label="Towers" accent="violet" />
-            <StatTile icon="grid-outline" value={String(item.totalUnits)} label="Total units" accent="teal" />
+            <StatTile icon="business-outline" value={String(item.towerCount)} label={t('builder.towers')} accent="violet" />
+            <StatTile icon="grid-outline" value={String(item.totalUnits)} label={t('builder.totalUnits')} accent="teal" />
             <StatTile
               icon="home-outline"
               value={String(item.availableUnits ?? 0)}
-              label="Available"
+              label={t('builder.available')}
               accent="teal"
             />
-            <StatTile icon="cash-outline" value={priceLabel} label="From" accent="gold" />
+            <StatTile icon="cash-outline" value={priceLabel} label={t('builder.from')} accent="gold" />
           </View>
 
           {(projectMedia.gallery.length > 0 ||
@@ -258,12 +260,19 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
           )}
 
           <View style={styles.infoCard}>
-            <Text style={styles.infoCardTitle}>Project snapshot</Text>
-            <InfoLine icon="map-outline" label="Area" value={item.areaName} />
+            <Text style={styles.infoCardTitle}>{t('builder.projectSnapshot')}</Text>
+            <InfoLine icon="map-outline" label={t('builder.area')} value={item.areaName} />
             <InfoLine
               icon="calendar-outline"
-              label="Possession"
-              value={formatPossessionDate(item.possessionDate)}
+              label={t('builder.possession')}
+              value={
+                item.possessionDate
+                  ? new Date(item.possessionDate).toLocaleDateString(localeToCulture(locale), {
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : '—'
+              }
             />
             {item.description ? (
               <Text style={styles.description}>{item.description}</Text>
@@ -272,7 +281,7 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
 
           {amenities.length > 0 ? (
             <View style={styles.section}>
-              <SectionHeader icon="sparkles-outline" title="Amenities" />
+              <SectionHeader icon="sparkles-outline" title={t('builder.amenities')} />
               <View style={styles.amenityRow}>
                 {amenities.map((a) => (
                   <View key={a} style={styles.amenityChip}>
@@ -290,12 +299,18 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
               onPress={() => setInventoryExpanded((v) => !v)}
               accessibilityRole="button"
               accessibilityState={{ expanded: inventoryExpanded }}
-              accessibilityLabel={`Available inventory, ${availableUnits.length} of ${item.units.length} units open`}
+              accessibilityLabel={t('builder.inventoryA11y', {
+                open: availableUnits.length,
+                total: item.units.length,
+              })}
             >
               <SectionHeader
                 icon="layers-outline"
-                title="Available inventory"
-                sub={`${availableUnits.length} of ${item.units.length} units open`}
+                title={t('builder.availableInventory')}
+                sub={t('builder.inventorySub', {
+                  open: availableUnits.length,
+                  total: item.units.length,
+                })}
               />
               <Ionicons
                 name={inventoryExpanded ? 'chevron-up' : 'chevron-down'}
@@ -320,8 +335,8 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
                   >
                     <Text style={styles.showMoreText}>
                       {showAllUnits
-                        ? 'Show fewer units'
-                        : `Show all ${item.units.length} units`}
+                        ? t('builder.showFewerUnits')
+                        : t('builder.showAllUnits', { count: item.units.length })}
                     </Text>
                     <Ionicons
                       name={showAllUnits ? 'chevron-up' : 'chevron-down'}
@@ -347,8 +362,8 @@ export default function BuilderProjectDetailsScreen({ route, navigation }: Props
           >
             <Ionicons name="chatbubbles" size={22} color={colors.heroText} />
             <View style={styles.stickyTextCol}>
-              <Text style={styles.stickyText}>Contact builder</Text>
-              <Text style={styles.stickySub}>Free enquiry · quick response</Text>
+              <Text style={styles.stickyText}>{t('builder.contactBuilder')}</Text>
+              <Text style={styles.stickySub}>{t('builder.contactBuilderSub')}</Text>
             </View>
             <Ionicons name="arrow-forward" size={20} color={colors.heroText} />
           </LinearGradient>

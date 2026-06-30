@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { builderProjectsApi, paymentsApi, propertiesApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LocaleContext';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { PropertyLocationSearch } from '../components/property/PropertyLocationSearch';
 import { AuthTextField } from '../components/ui/AuthTextField';
@@ -45,6 +46,7 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
   const isEdit = projectId != null;
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const [form, setForm] = useState<BuilderProjectFormState>(() =>
     initialBuilderProjectForm(profile?.fullName ?? '')
   );
@@ -65,14 +67,14 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
       }
     } catch (e) {
       Alert.alert(
-        'Could not load project',
-        e instanceof ApiError ? e.message : 'Try again.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        t('builder.couldNotLoadProjectForm'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain'),
+        [{ text: t('common.ok'), onPress: () => navigation.goBack() }]
       );
     } finally {
       setLoading(false);
     }
-  }, [navigation, projectId]);
+  }, [navigation, projectId, t]);
 
   const loadCredits = useCallback(async () => {
     try {
@@ -120,7 +122,7 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
   async function pickCover() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Photos access needed', 'Allow photo library access to add a cover image.');
+      Alert.alert(t('postProperty.photosAccessTitle'), t('builder.coverPhotoAccess'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -142,11 +144,11 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
 
     if (!isEdit && form.isPublished && uploadCredits <= 0) {
       Alert.alert(
-        'Upload credit required',
-        'Buy a project upload credit before publishing a new project.',
+        t('builder.uploadCreditTitle'),
+        t('builder.uploadCreditBody'),
         [
-          { text: 'View plans', onPress: () => navigation.navigate('BuilderPayments') },
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('shared.viewPlans'), onPress: () => navigation.navigate('BuilderPayments') },
+          { text: t('common.cancel'), style: 'cancel' },
         ]
       );
       return;
@@ -169,24 +171,24 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
       if (isEdit && projectId) {
         await builderProjectsApi.update(projectId, body);
         Alert.alert(
-          'Project updated',
-          'Your project was updated and sent back for admin review.',
+          t('builder.projectUpdated'),
+          t('builder.projectUpdatedBody'),
           [
             {
-              text: 'Dashboard',
+              text: t('builder.dashboardBtn'),
               onPress: () => navigation.navigate('BuilderDashboard'),
             },
-            { text: 'OK' },
+            { text: t('common.ok') },
           ]
         );
       } else {
         const created = await builderProjectsApi.create(body);
         Alert.alert(
-          'Project submitted',
-          'Your project is pending admin review. It will appear publicly once approved.',
+          t('builder.projectSubmitted'),
+          t('builder.projectSubmittedBody'),
           [
             {
-              text: 'View project',
+              text: t('builder.viewProject'),
               onPress: () =>
                 navigation.replace('BuilderProjectDetails', {
                   projectId: created.id,
@@ -194,7 +196,7 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
                 }),
             },
             {
-              text: 'Dashboard',
+              text: t('builder.dashboardBtn'),
               onPress: () => navigation.navigate('BuilderDashboard'),
             },
           ]
@@ -205,21 +207,21 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
         e instanceof ApiError
           ? e.message
           : isEdit
-            ? 'Could not update project'
-            : 'Could not create project'
+            ? t('builder.couldNotUpdateProject')
+            : t('builder.couldNotCreateProject')
       );
     } finally {
       setSubmitting(false);
     }
   }
 
-  const title = isEdit ? 'Edit project' : 'Post new project';
-  const submitLabel = isEdit ? 'Save changes' : 'Submit project';
+  const title = isEdit ? t('builder.editProject') : t('builder.postNewProject');
+  const submitLabel = isEdit ? t('builder.saveChanges') : t('builder.submitProject');
 
   return (
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
       {loading ? (
-        <BrandLoading message="Loading project…" />
+        <BrandLoading message={t('builder.loadingProject')} />
       ) : (
         <KeyboardAvoidingView
           style={styles.flex}
@@ -234,10 +236,7 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
             keyboardShouldPersistTaps="handled"
           >
             <Text style={styles.pageTitle}>{title}</Text>
-            <Text style={styles.pageSub}>
-              Same fields as the web builder dashboard — project details, location, RERA, and
-              publish settings.
-            </Text>
+            <Text style={styles.pageSub}>{t('builder.pageSub')}</Text>
 
             {!isEdit && form.isPublished && uploadCredits <= 0 ? (
               <Pressable
@@ -245,9 +244,7 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
                 onPress={() => navigation.navigate('BuilderPayments')}
               >
                 <Ionicons name="wallet-outline" size={20} color={colors.builder} />
-                <Text style={styles.creditBannerText}>
-                  You need an upload credit to publish. Tap to buy credits.
-                </Text>
+                <Text style={styles.creditBannerText}>{t('builder.creditBannerText')}</Text>
               </Pressable>
             ) : null}
 
@@ -258,22 +255,22 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
               </View>
             ) : null}
 
-            <SectionCard title="Project basics" icon="business-outline" accent={colors.builder}>
+            <SectionCard title={t('builder.sectionBasics')} icon="business-outline" accent={colors.builder}>
               <AuthTextField
-                label="Project name"
+                label={t('builder.projectName')}
                 icon="home-outline"
                 value={form.projectName}
                 onChangeText={(v) => patch('projectName', v)}
-                placeholder="Green Valley Residency"
+                placeholder={t('builder.projectNamePlaceholder')}
               />
               <AuthTextField
-                label="Builder / developer name"
+                label={t('builder.builderName')}
                 icon="ribbon-outline"
                 value={form.builderName}
                 onChangeText={(v) => patch('builderName', v)}
               />
               <AuthTextField
-                label="Description"
+                label={t('builder.description')}
                 icon="document-text-outline"
                 value={form.description}
                 onChangeText={(v) => patch('description', v)}
@@ -283,7 +280,7 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
               />
             </SectionCard>
 
-            <SectionCard title="Location" icon="location-outline">
+            <SectionCard title={t('builder.sectionLocation')} icon="location-outline">
               {hasGoogleMapsKey() ? (
                 <PropertyLocationSearch
                   value={form.locationQuery}
@@ -293,35 +290,35 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
                 />
               ) : null}
               <AuthTextField
-                label="Address"
+                label={t('builder.address')}
                 icon="map-outline"
                 value={form.address}
                 onChangeText={(v) => patch('address', v)}
               />
               <AuthTextField
-                label="Area"
+                label={t('builder.area')}
                 icon="navigate-outline"
                 value={form.areaName}
                 onChangeText={(v) => patch('areaName', v)}
               />
             </SectionCard>
 
-            <SectionCard title="Specifications" icon="grid-outline">
+            <SectionCard title={t('builder.sectionSpecs')} icon="grid-outline">
               <AuthTextField
-                label="Towers"
+                label={t('builder.towers')}
                 icon="layers-outline"
                 value={form.towerCount}
                 onChangeText={(v) => patch('towerCount', v)}
                 keyboardType="number-pad"
               />
               <AuthTextField
-                label="Total units"
+                label={t('builder.totalUnits')}
                 icon="apps-outline"
                 value={form.totalUnits}
                 onChangeText={(v) => patch('totalUnits', v)}
                 keyboardType="number-pad"
               />
-              <Text style={styles.fieldLabel}>Project status</Text>
+              <Text style={styles.fieldLabel}>{t('builder.projectStatus')}</Text>
               <View style={styles.chipRow}>
                 {BUILDER_PROJECT_STATUSES.map((status) => (
                   <Pressable
@@ -344,7 +341,7 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
                 ))}
               </View>
               <AuthTextField
-                label="Possession date (optional)"
+                label={t('builder.possessionDate')}
                 icon="calendar-outline"
                 value={form.possessionDate}
                 onChangeText={(v) => patch('possessionDate', v)}
@@ -352,39 +349,39 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
               />
             </SectionCard>
 
-            <SectionCard title="RERA & finance" icon="shield-checkmark-outline">
+            <SectionCard title={t('builder.sectionRera')} icon="shield-checkmark-outline">
               <AuthTextField
-                label="RERA number"
+                label={t('builder.reraNumber')}
                 icon="shield-outline"
                 value={form.reraNumber}
                 onChangeText={(v) => patch('reraNumber', v)}
               />
               <ToggleRow
-                label="Loan finance available"
+                label={t('builder.loanFinance')}
                 value={form.loanFinanceAvailable}
                 onValueChange={(v) => patch('loanFinanceAvailable', v)}
               />
               <ToggleRow
-                label="APF number available"
+                label={t('builder.apfAvailable')}
                 value={form.apfNumberAvailable}
                 onValueChange={(v) => patch('apfNumberAvailable', v)}
               />
               {form.apfNumberAvailable ? (
                 <AuthTextField
-                  label="APF number"
+                  label={t('builder.apfNumber')}
                   icon="document-outline"
                   value={form.apfNumber}
                   onChangeText={(v) => patch('apfNumber', v)}
                 />
               ) : null}
               <AuthTextField
-                label="Preferred bank (optional)"
+                label={t('builder.preferredBank')}
                 icon="business-outline"
                 value={form.preferredBank}
                 onChangeText={(v) => patch('preferredBank', v)}
               />
               <AuthTextField
-                label="Amenities (optional)"
+                label={t('builder.amenitiesOptional')}
                 icon="leaf-outline"
                 value={form.amenities}
                 onChangeText={(v) => patch('amenities', v)}
@@ -393,38 +390,36 @@ export default function BuilderProjectFormScreen({ navigation, route }: Props) {
               />
             </SectionCard>
 
-            <SectionCard title="Cover image" icon="image-outline">
+            <SectionCard title={t('builder.sectionCover')} icon="image-outline">
               <Pressable style={styles.coverBtn} onPress={pickCover}>
                 <Ionicons name="camera-outline" size={20} color={colors.builder} />
                 <Text style={styles.coverBtnText}>
-                  {coverUri || form.coverImageUrl ? 'Change cover photo' : 'Add cover photo'}
+                  {coverUri || form.coverImageUrl ? t('builder.changeCover') : t('builder.addCover')}
                 </Text>
               </Pressable>
               <AuthTextField
-                label="Or cover image URL"
+                label={t('builder.coverUrl')}
                 icon="link-outline"
                 value={form.coverImageUrl}
                 onChangeText={(v) => patch('coverImageUrl', v)}
-                placeholder="https://…"
+                placeholder={t('builder.urlPlaceholder')}
                 autoCapitalize="none"
               />
             </SectionCard>
 
-            <SectionCard title="Publish" icon="globe-outline">
+            <SectionCard title={t('builder.sectionPublish')} icon="globe-outline">
               <ToggleRow
-                label="Publish publicly (uses upload credit when first published)"
+                label={t('builder.publishPublicly')}
                 value={form.isPublished}
                 onValueChange={(v) => patch('isPublished', v)}
               />
               <Text style={styles.hint}>
-                {isEdit
-                  ? 'Saving sends the project back for admin review.'
-                  : 'Draft projects stay off the public directory until published and approved.'}
+                {isEdit ? t('builder.editReviewHint') : t('builder.draftHint')}
               </Text>
             </SectionCard>
 
             <GradientButton
-              label={submitting ? 'Saving…' : submitLabel}
+              label={submitting ? t('builder.saving') : submitLabel}
               loading={submitting}
               onPress={handleSubmit}
               disabled={submitting}

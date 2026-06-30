@@ -36,6 +36,8 @@ import { isValidOptionalGst, normalizeGst } from '../utils/gstNumber';
 import { BUILDER_PORTAL_ENABLED } from '../config/env';
 import type { RootStackParamList } from '../navigation/types';
 import { LegalFooter } from '../components/layout/LegalFooter';
+import { useTranslation } from '../context/LocaleContext';
+import type { TranslateFn } from '../i18n';
 import { colors, radius, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
@@ -46,32 +48,24 @@ const intents = ['Buy', 'Rent', 'Sell', 'Invest', 'BuilderProjects'] as const;
 const ROLE_OPTIONS = [
   {
     value: 'User' as const,
-    label: 'Rent / buy user',
-    description: 'Search Thane homes, chat & schedule visits',
     icon: 'search' as const,
     accent: '#2563eb',
     accentSoft: '#dbeafe',
   },
   {
     value: 'Owner' as const,
-    label: 'Property owner',
-    description: 'Post listings, manage inquiries & plans',
     icon: 'home' as const,
     accent: '#0f766e',
     accentSoft: '#ccfbf1',
   },
   {
     value: 'Builder' as const,
-    label: 'Builder / developer',
-    description: 'List projects, units & receive buyer leads',
     icon: 'business' as const,
     accent: '#7c3aed',
     accentSoft: '#ede9fe',
   },
   {
     value: 'Agent' as const,
-    label: 'Agent / broker',
-    description: 'RERA-verified listings & lead packages',
     icon: 'briefcase' as const,
     accent: '#2563eb',
     accentSoft: '#dbeafe',
@@ -79,18 +73,62 @@ const ROLE_OPTIONS = [
 ] as const;
 
 const INTENT_OPTIONS = [
-  { value: 'Buy' as const, label: 'Buy', icon: 'home-outline' as const },
-  { value: 'Rent' as const, label: 'Rent', icon: 'key-outline' as const },
-  { value: 'Sell' as const, label: 'Sell', icon: 'pricetag-outline' as const },
-  { value: 'Invest' as const, label: 'Invest', icon: 'trending-up-outline' as const },
-  {
-    value: 'BuilderProjects' as const,
-    label: 'Builder projects',
-    icon: 'business-outline' as const,
-  },
+  { value: 'Buy' as const, icon: 'home-outline' as const },
+  { value: 'Rent' as const, icon: 'key-outline' as const },
+  { value: 'Sell' as const, icon: 'pricetag-outline' as const },
+  { value: 'Invest' as const, icon: 'trending-up-outline' as const },
+  { value: 'BuilderProjects' as const, icon: 'business-outline' as const },
 ] as const;
 
+function roleLabel(t: TranslateFn, value: (typeof roles)[number]): string {
+  switch (value) {
+    case 'User':
+      return t('register.roleUser');
+    case 'Owner':
+      return t('register.roleOwner');
+    case 'Builder':
+      return t('register.roleBuilder');
+    case 'Agent':
+      return t('register.roleAgent');
+    default:
+      return value;
+  }
+}
+
+function roleDescription(t: TranslateFn, value: (typeof roles)[number]): string {
+  switch (value) {
+    case 'User':
+      return t('register.roleUserDesc');
+    case 'Owner':
+      return t('register.roleOwnerDesc');
+    case 'Builder':
+      return t('register.roleBuilderDesc');
+    case 'Agent':
+      return t('register.roleAgentDesc');
+    default:
+      return '';
+  }
+}
+
+function intentLabel(t: TranslateFn, value: (typeof intents)[number]): string {
+  switch (value) {
+    case 'Buy':
+      return t('register.intentBuy');
+    case 'Rent':
+      return t('register.intentRent');
+    case 'Sell':
+      return t('register.intentSell');
+    case 'Invest':
+      return t('register.intentInvest');
+    case 'BuilderProjects':
+      return t('register.intentBuilder');
+    default:
+      return value;
+  }
+}
+
 export default function RegisterScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usernameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -206,9 +244,9 @@ export default function RegisterScreen({ navigation }: Props) {
   }, [devicePhone, phoneNumber.length]);
 
   const phoneHint = phoneLoading
-    ? 'Detecting mobile number…'
+    ? t('register.phoneDetecting')
     : phoneAutoFilled && phoneSource === 'device'
-      ? 'Filled from this device — edit if needed'
+      ? t('register.phoneAutoFilled')
       : undefined;
 
   const disabled = useMemo(
@@ -257,22 +295,28 @@ export default function RegisterScreen({ navigation }: Props) {
     if (!usernameAvailable) {
       await checkUsernameNow(username);
       Alert.alert(
-        'Username unavailable',
-        'Pick an available username or tap a suggestion below.'
+        t('register.usernameUnavailable'),
+        t('register.usernameUnavailableBody')
       );
       return;
     }
     if (emailTaken) {
       await checkEmailNow(email);
-      Alert.alert('Email unavailable', 'This email is already registered. Try signing in instead.');
+      Alert.alert(
+        t('register.emailUnavailable'),
+        t('register.emailUnavailableBody')
+      );
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Passwords do not match', 'Please re-enter the same password in both fields.');
+      Alert.alert(
+        t('register.passwordsMismatch'),
+        t('register.passwordsMismatchBody')
+      );
       return;
     }
     if (disabled) {
-      Alert.alert('Missing details', 'Please fill all required fields.');
+      Alert.alert(t('shared.missingDetails'), t('register.allRequired'));
       return;
     }
 
@@ -323,7 +367,7 @@ export default function RegisterScreen({ navigation }: Props) {
           /* keep message */
         }
       }
-      Alert.alert('Registration failed', message);
+      Alert.alert(t('register.registrationFailed'), message);
     } finally {
       setSubmitting(false);
     }
@@ -358,10 +402,10 @@ export default function RegisterScreen({ navigation }: Props) {
             navigation.goBack();
           }}
           hitSlop={8}
-          accessibilityLabel="Back to sign in"
+          accessibilityLabel={t('register.backA11y')}
         >
           <Ionicons name="chevron-back" size={22} color={colors.heroText} />
-          <Text style={styles.backText}>Sign in</Text>
+          <Text style={styles.backText}>{t('register.signInLink')}</Text>
         </Pressable>
 
         <RegisterHeader />
@@ -370,8 +414,8 @@ export default function RegisterScreen({ navigation }: Props) {
           <View style={styles.cardAccent} pointerEvents="none" />
 
           <View style={styles.sectionHead}>
-            <Text style={styles.eyebrow}>Step 1</Text>
-            <Text style={styles.sectionTitle}>How will you use Thane Flats?</Text>
+            <Text style={styles.eyebrow}>{t('register.step1Eyebrow')}</Text>
+            <Text style={styles.sectionTitle}>{t('register.step1Title')}</Text>
           </View>
 
           <View style={styles.roleList}>
@@ -380,8 +424,8 @@ export default function RegisterScreen({ navigation }: Props) {
             ).map((opt) => (
               <RegisterSelectCard
                 key={opt.value}
-                label={opt.label}
-                description={opt.description}
+                label={roleLabel(t, opt.value)}
+                description={roleDescription(t, opt.value)}
                 icon={opt.icon}
                 accent={opt.accent}
                 accentSoft={opt.accentSoft}
@@ -391,12 +435,12 @@ export default function RegisterScreen({ navigation }: Props) {
             ))}
           </View>
 
-          <Text style={styles.fieldLabel}>Primary interest</Text>
+          <Text style={styles.fieldLabel}>{t('register.primaryInterest')}</Text>
           <View style={styles.intentRow}>
             {visibleIntents.map((opt) => (
               <RegisterIntentChip
                 key={opt.value}
-                label={opt.label}
+                label={intentLabel(t, opt.value)}
                 icon={opt.icon}
                 selected={marketIntent === opt.value}
                 onPress={() => setMarketIntent(opt.value)}
@@ -405,17 +449,17 @@ export default function RegisterScreen({ navigation }: Props) {
           </View>
 
           <View style={[styles.sectionHead, styles.sectionHeadSpaced]}>
-            <Text style={styles.eyebrow}>Step 2</Text>
-            <Text style={styles.sectionTitle}>Your details</Text>
+            <Text style={styles.eyebrow}>{t('register.step2Eyebrow')}</Text>
+            <Text style={styles.sectionTitle}>{t('register.step2Title')}</Text>
             <Text style={styles.requiredHint}>
-              <Text style={styles.requiredStar}>*</Text> All fields required
+              <Text style={styles.requiredStar}>*</Text> {t('register.allRequired')}
             </Text>
           </View>
 
           <AuthTextField
-            label="Full name"
+            label={t('register.fullName')}
             icon="person-outline"
-            placeholder="Full name"
+            placeholder={t('register.fullName')}
             autoCapitalize="words"
             value={fullName}
             onChangeText={setFullName}
@@ -447,7 +491,7 @@ export default function RegisterScreen({ navigation }: Props) {
           />
           <AuthTextField
             ref={emailRef}
-            label="Email"
+            label={t('shared.email')}
             icon="mail-outline"
             placeholder="you@example.com"
             keyboardType="email-address"
@@ -474,9 +518,9 @@ export default function RegisterScreen({ navigation }: Props) {
           ) : null}
           <AuthTextField
             ref={passwordRef}
-            label="Password"
+            label={t('register.password')}
             icon="lock-closed-outline"
-            placeholder="Create a password"
+            placeholder={t('register.createPassword')}
             secureTextEntry
             value={password}
             onChangeText={setPassword}
@@ -486,9 +530,9 @@ export default function RegisterScreen({ navigation }: Props) {
           />
           <AuthTextField
             ref={confirmPasswordRef}
-            label="Confirm password"
+            label={t('register.confirmPassword')}
             icon="lock-closed-outline"
-            placeholder="Re-enter your password"
+            placeholder={t('register.reenterPassword')}
             secureTextEntry
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -498,7 +542,7 @@ export default function RegisterScreen({ navigation }: Props) {
           />
           {confirmPassword.length > 0 && confirmPassword !== password ? (
             <Text style={[styles.fieldStatus, styles.fieldStatusErr]}>
-              Passwords do not match
+              {t('register.passwordsDoNotMatch')}
             </Text>
           ) : null}
           <PhoneNumberField
@@ -519,39 +563,39 @@ export default function RegisterScreen({ navigation }: Props) {
           {showAgentFields ? (
             <>
               <AuthTextField
-                label="Company / agency"
+                label={t('register.companyAgency')}
                 icon="business-outline"
-                placeholder="Agency name"
+                placeholder={t('register.agencyNamePlaceholder')}
                 value={companyName}
                 onChangeText={setCompanyName}
               />
               <AuthTextField
-                label="RERA number"
+                label={t('register.reraNumber')}
                 icon="shield-checkmark-outline"
-                placeholder="MahaRERA ID"
+                placeholder={t('register.reraIdPlaceholder')}
                 autoCapitalize="characters"
                 value={reraNumber}
                 onChangeText={setReraNumber}
               />
               <AuthTextField
-                label="WhatsApp (optional)"
+                label={t('register.whatsappOptional')}
                 icon="logo-whatsapp"
-                placeholder="Same as mobile if blank"
+                placeholder={t('register.whatsappHint')}
                 keyboardType="number-pad"
                 value={whatsAppNumber}
                 onChangeText={setWhatsAppNumber}
               />
               <AuthTextField
-                label="Operating areas (optional)"
+                label={t('register.operatingAreasOptional')}
                 icon="map-outline"
-                placeholder="e.g. Thane West, Ghodbunder Road"
+                placeholder={t('register.operatingAreasPlaceholder')}
                 value={operatingLocalities}
                 onChangeText={setOperatingLocalities}
               />
               <AuthTextField
-                label="Photo URL (optional)"
+                label={t('register.photoUrlOptional')}
                 icon="image-outline"
-                placeholder="https://…"
+                placeholder={t('builder.urlPlaceholder')}
                 autoCapitalize="none"
                 autoCorrect={false}
                 value={profilePhotoUrl}
@@ -562,9 +606,9 @@ export default function RegisterScreen({ navigation }: Props) {
 
           {showGst ? (
             <AuthTextField
-              label="GSTIN (optional)"
+              label={t('register.gstOptional')}
               icon="receipt-outline"
-              placeholder="15-character GSTIN"
+              placeholder={t('register.gstPlaceholder')}
               autoCapitalize="characters"
               value={gstNumber}
               onChangeText={(v) => setGstNumber(v.slice(0, 15))}
@@ -573,7 +617,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
           <GradientButton
             testID="register-submit"
-            label="Create account"
+            label={t('register.createAccountBtn')}
             loading={submitting}
             disabled={disabled}
             onPress={handleRegister}
@@ -582,9 +626,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
           <View style={styles.trustRow}>
             <Ionicons name="shield-checkmark" size={16} color="#0f766e" />
-            <Text style={styles.trustText}>
-              Verify your email after signup to unlock the full experience
-            </Text>
+            <Text style={styles.trustText}>{t('register.verifyAfterSignup')}</Text>
           </View>
         </View>
 

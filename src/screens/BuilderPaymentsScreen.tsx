@@ -7,6 +7,7 @@ import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { PageHero } from '../components/ui/PageHero';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
 import { formatInr } from '../utils/propertyFormat';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
@@ -14,6 +15,7 @@ import { colors, radius, spacing } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'BuilderPayments'>;
 
 export default function BuilderPaymentsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -23,11 +25,14 @@ export default function BuilderPaymentsScreen({ navigation }: Props) {
       const data = await paymentsApi.getBuilderSummary();
       setSummary(data);
     } catch (e) {
-      Alert.alert('Error', e instanceof ApiError ? e.message : 'Could not load plans');
+      Alert.alert(
+        t('shared.failed'),
+        e instanceof ApiError ? e.message : t('builder.couldNotLoadPlans')
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,7 +57,10 @@ export default function BuilderPaymentsScreen({ navigation }: Props) {
         amountInr: uploadPrice || 1999,
       });
     } catch (e) {
-      Alert.alert('Checkout', e instanceof ApiError ? e.message : 'Could not start payment');
+      Alert.alert(
+        t('checkout.checkoutError'),
+        e instanceof ApiError ? e.message : t('checkout.couldNotStartPayment')
+      );
     } finally {
       setBusy(false);
     }
@@ -64,34 +72,34 @@ export default function BuilderPaymentsScreen({ navigation }: Props) {
         <PageHero
           variant="builder"
           icon="cloud-upload-outline"
-          title="Builder plans"
-          subtitle="Project upload credits and lead packages — aligned with the web builder dashboard."
+          title={t('builder.plansTitle')}
+          subtitle={t('builder.plansSub')}
         />
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading…" />
+          <BrandLoading fullScreen={false} message={t('builder.loadingPlans')} />
         ) : (
           <>
             <View style={styles.statRow}>
               <View style={styles.stat}>
                 <Text style={styles.statVal}>{credits}</Text>
-                <Text style={styles.statLabel}>Upload credits</Text>
+                <Text style={styles.statLabel}>{t('builder.uploadCredits')}</Text>
               </View>
             </View>
             <View style={styles.card}>
-              <Text style={styles.planTitle}>Project upload credit</Text>
+              <Text style={styles.planTitle}>{t('builder.projectUploadCredit')}</Text>
               <Text style={styles.planPrice}>{formatInr(uploadPrice || 1999)}</Text>
-              <Text style={styles.planHint}>
-                Required to publish a new builder project to the directory.
-              </Text>
+              <Text style={styles.planHint}>{t('builder.uploadCreditHint')}</Text>
               <Pressable style={styles.buyBtn} onPress={buyUpload} disabled={busy}>
-                <Text style={styles.buyBtnText}>{busy ? 'Starting…' : 'Buy upload credit'}</Text>
+                <Text style={styles.buyBtnText}>
+                  {busy ? t('builder.starting') : t('builder.buyUploadCredit')}
+                </Text>
               </Pressable>
             </View>
             <Pressable
               style={styles.linkBtn}
               onPress={() => navigation.navigate('MyPayments')}
             >
-              <Text style={styles.linkBtnText}>View all payments & invoices</Text>
+              <Text style={styles.linkBtnText}>{t('builder.viewAllPaymentsInvoices')}</Text>
             </Pressable>
           </>
         )}

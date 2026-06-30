@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { builderProjectsApi } from '../../api/singleton';
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { AuthTextField } from '../ui/AuthTextField';
 import { GradientButton } from '../ui/GradientButton';
 import { colors, radius, spacing } from '../../theme';
@@ -36,6 +37,7 @@ export function BuilderLeadForm({
   onSuccess,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const [name, setName] = useState(profile?.fullName ?? '');
   const [email, setEmail] = useState(profile?.email ?? '');
@@ -49,7 +51,7 @@ export function BuilderLeadForm({
 
   async function handleSubmit() {
     if (!name.trim() || !email.trim() || !phone.trim() || !message.trim()) {
-      Alert.alert('Missing details', 'Please fill in all fields.');
+      Alert.alert(t('shared.missingDetails'), t('builder.missingDetails'));
       return;
     }
 
@@ -62,12 +64,15 @@ export function BuilderLeadForm({
         message: message.trim(),
         unitId: unitId ?? null,
       });
-      Alert.alert('Enquiry sent', res.message || 'The builder will contact you soon.');
+      Alert.alert(
+        t('builder.enquirySent'),
+        res.message || t('builder.enquirySentBody')
+      );
       onSuccess?.();
       onClose();
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : 'Could not send enquiry';
-      Alert.alert('Enquiry failed', msg);
+      const msg = e instanceof ApiError ? e.message : t('builder.enquiryFailed');
+      Alert.alert(t('builder.enquiryFailed'), msg);
     } finally {
       setSubmitting(false);
     }
@@ -78,18 +83,18 @@ export function BuilderLeadForm({
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
         <View style={styles.handle} />
-        <Text style={styles.title}>Contact builder</Text>
+        <Text style={styles.title}>{t('builder.contactBuilder')}</Text>
         <Text style={styles.sub}>{projectName}</Text>
 
         <AuthTextField
-          label="Your name"
+          label={t('builder.yourName')}
           icon="person-outline"
           value={name}
           onChangeText={setName}
           autoCapitalize="words"
         />
         <AuthTextField
-          label="Email"
+          label={t('shared.email')}
           icon="mail-outline"
           value={email}
           onChangeText={setEmail}
@@ -97,14 +102,14 @@ export function BuilderLeadForm({
           keyboardType="email-address"
         />
         <AuthTextField
-          label="Phone"
+          label={t('shared.phone')}
           icon="call-outline"
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
         />
         <AuthTextField
-          label="Message"
+          label={t('shared.message')}
           icon="chatbubble-outline"
           value={message}
           onChangeText={setMessage}
@@ -112,12 +117,12 @@ export function BuilderLeadForm({
         />
 
         <GradientButton
-          label="Send enquiry"
+          label={t('builder.sendEnquiry')}
           loading={submitting}
           onPress={handleSubmit}
         />
         <Pressable style={styles.cancel} onPress={onClose} hitSlop={8}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('common.cancel')}</Text>
         </Pressable>
       </View>
     </Modal>

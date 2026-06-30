@@ -320,6 +320,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(13, 148, 136, 0.12)',
     zIndex: 20,
+    overflow: 'visible',
     shadowColor: colors.navy,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
@@ -336,6 +337,8 @@ const styles = StyleSheet.create({
   searchShadow: {
     flex: 1,
     minWidth: 0,
+    zIndex: 40,
+    overflow: 'visible',
     shadowColor: '#0d9488',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
@@ -434,6 +437,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginTop: spacing.sm,
+    zIndex: 1,
+    elevation: 0,
   },
   viewToggleWrap: {
     width: 116,

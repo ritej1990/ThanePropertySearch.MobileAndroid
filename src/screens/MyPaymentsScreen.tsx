@@ -16,6 +16,7 @@ import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScr
 import { PaymentHistoryRow } from '../components/payments/PaymentHistoryRow';
 import { PageHero } from '../components/ui/PageHero';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 import { filterEssentialPayments, showInvoiceDownload } from '../utils/paymentDisplay';
@@ -25,6 +26,7 @@ import { colors, radius, spacing } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'MyPayments'>;
 
 export default function MyPaymentsScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const essentialOnly = route.params?.essentialOnly ?? false;
   const [rows, setRows] = useState<PaymentTransaction[]>([]);
@@ -38,11 +40,11 @@ export default function MyPaymentsScreen({ navigation, route }: Props) {
       const data = await paymentsApi.getMyTransactions();
       setRows(data);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not load payments');
+      setError(e instanceof ApiError ? e.message : t('payments.couldNotLoad'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -65,18 +67,20 @@ export default function MyPaymentsScreen({ navigation, route }: Props) {
           <PageHero
             variant="owner"
             icon="receipt-outline"
-            title="My payments"
+            title={t('payments.title')}
             subtitle={
               filterEssential
-                ? 'Essential plan payments only.'
-                : 'All recorded transactions and plan purchases.'
+                ? t('payments.subtitleEssential')
+                : t('payments.subtitleAll')
             }
           />
 
           <View style={styles.toolbar}>
             <Text style={styles.count}>
               {displayed.length}{' '}
-              {displayed.length === 1 ? 'transaction' : 'transactions'}
+              {displayed.length === 1
+                ? t('payments.transaction')
+                : t('payments.transactions')}
             </Text>
             <View style={styles.toolbarActions}>
               {showEssentialFilter ? (
@@ -93,7 +97,7 @@ export default function MyPaymentsScreen({ navigation, route }: Props) {
                       filterEssential && styles.filterTextOn,
                     ]}
                   >
-                    Essential
+                    {t('payments.essentialFilter')}
                   </Text>
                 </Pressable>
               ) : null}
@@ -102,12 +106,12 @@ export default function MyPaymentsScreen({ navigation, route }: Props) {
         </View>
 
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading payments…" />
+          <BrandLoading fullScreen={false} message={t('payments.loading')} />
         ) : error ? (
           <View style={styles.centered}>
             <Text style={styles.err}>{error}</Text>
             <Pressable style={styles.retry} onPress={load}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('shared.retry')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -118,10 +122,8 @@ export default function MyPaymentsScreen({ navigation, route }: Props) {
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Ionicons name="wallet-outline" size={48} color={colors.slateLight} />
-                <Text style={styles.emptyTitle}>No payments yet</Text>
-                <Text style={styles.emptySub}>
-                  Purchases and listing fees will appear here after checkout.
-                </Text>
+                <Text style={styles.emptyTitle}>{t('payments.empty')}</Text>
+                <Text style={styles.emptySub}>{t('payments.emptySub')}</Text>
               </View>
             }
             renderItem={({ item }) => (

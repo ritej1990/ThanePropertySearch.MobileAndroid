@@ -19,6 +19,8 @@ import { GradientButton } from '../components/ui/GradientButton';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import type { AreaExplorerResponse } from '../api/aiTypes';
 import type { RootStackParamList } from '../navigation/types';
+import { useTranslation } from '../context/LocaleContext';
+import { localeToCulture } from '../i18n/types';
 import { colors, radius, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AreaExplorer'>;
@@ -38,6 +40,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 
 export default function AreaExplorerScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t, locale } = useTranslation();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +50,7 @@ export default function AreaExplorerScreen({ navigation }: Props) {
     Keyboard.dismiss();
     const trimmed = query.trim();
     if (!trimmed) {
-      setError('Enter an area, e.g. "Ghodbunder Road" or "Kolshet".');
+      setError(t('areaExplorer.enterArea'));
       return;
     }
     setLoading(true);
@@ -58,7 +61,7 @@ export default function AreaExplorerScreen({ navigation }: Props) {
       setData(res);
     } catch (e) {
       setError(
-        e instanceof ApiError ? e.message : 'Could not explore that area right now.'
+        e instanceof ApiError ? e.message : t('areaExplorer.couldNotExplore')
       );
     } finally {
       setLoading(false);
@@ -77,18 +80,16 @@ export default function AreaExplorerScreen({ navigation }: Props) {
             <Ionicons name="map-outline" size={20} color="#7c3aed" />
           </View>
           <View style={styles.flex}>
-            <Text style={styles.title}>AI Area Explorer</Text>
-            <Text style={styles.subtitle}>
-              Get connectivity, growth & affordability insights for any Thane locality.
-            </Text>
+            <Text style={styles.title}>{t('areaExplorer.title')}</Text>
+            <Text style={styles.subtitle}>{t('areaExplorer.subtitle')}</Text>
           </View>
         </View>
 
         <View style={styles.card}>
           <AuthTextField
-            label="Area / locality"
+            label={t('areaExplorer.areaLabel')}
             icon="search-outline"
-            placeholder="Ghodbunder Road"
+            placeholder={t('areaExplorer.areaPlaceholder')}
             autoCapitalize="words"
             value={query}
             onChangeText={setQuery}
@@ -96,13 +97,13 @@ export default function AreaExplorerScreen({ navigation }: Props) {
             onSubmitEditing={explore}
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <GradientButton label="Explore area" loading={loading} onPress={explore} />
+          <GradientButton label={t('areaExplorer.exploreBtn')} loading={loading} onPress={explore} />
         </View>
 
         {loading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loadingText}>Analysing the locality…</Text>
+            <Text style={styles.loadingText}>{t('areaExplorer.analysing')}</Text>
           </View>
         ) : null}
 
@@ -118,36 +119,40 @@ export default function AreaExplorerScreen({ navigation }: Props) {
               <Text style={styles.overview}>{data.overview}</Text>
 
               <View style={styles.scoresBlock}>
-                <ScoreBar label="Connectivity" value={data.scores.connectivity} />
-                <ScoreBar label="Growth" value={data.scores.growth} />
-                <ScoreBar label="Affordability" value={data.scores.affordability} />
-                <ScoreBar label="Liveability" value={data.scores.liveability} />
+                <ScoreBar label={t('areaExplorer.connectivity')} value={data.scores.connectivity} />
+                <ScoreBar label={t('areaExplorer.growth')} value={data.scores.growth} />
+                <ScoreBar label={t('areaExplorer.affordability')} value={data.scores.affordability} />
+                <ScoreBar label={t('areaExplorer.liveability')} value={data.scores.liveability} />
               </View>
             </LinearGradient>
 
             {data.market.priceBandLabel ? (
               <View style={styles.sectionCard}>
-                <Text style={styles.sectionLabel}>Market snapshot</Text>
+                <Text style={styles.sectionLabel}>{t('areaExplorer.marketSnapshot')}</Text>
                 <Text style={styles.marketBand}>{data.market.priceBandLabel}</Text>
                 <View style={styles.marketGrid}>
                   {data.market.avgSalePerSqft != null ? (
                     <Text style={styles.marketItem}>
-                      Sale ₹{Math.round(data.market.avgSalePerSqft).toLocaleString('en-IN')}/sqft
+                      {t('areaExplorer.salePerSqft', {
+                        price: Math.round(data.market.avgSalePerSqft).toLocaleString(localeToCulture(locale)),
+                      })}
                     </Text>
                   ) : null}
                   {data.market.avgRentPerSqft != null ? (
                     <Text style={styles.marketItem}>
-                      Rent ₹{Math.round(data.market.avgRentPerSqft).toLocaleString('en-IN')}/sqft
+                      {t('areaExplorer.rentPerSqft', {
+                        price: Math.round(data.market.avgRentPerSqft).toLocaleString(localeToCulture(locale)),
+                      })}
                     </Text>
                   ) : null}
                   {data.market.rentalYieldPct != null ? (
                     <Text style={styles.marketItem}>
-                      Yield {data.market.rentalYieldPct}%
+                      {t('areaExplorer.yield', { pct: data.market.rentalYieldPct })}
                     </Text>
                   ) : null}
                   {data.market.appreciationYoYPct != null ? (
                     <Text style={styles.marketItem}>
-                      Appreciation {data.market.appreciationYoYPct}% YoY
+                      {t('areaExplorer.appreciation', { pct: data.market.appreciationYoYPct })}
                     </Text>
                   ) : null}
                 </View>
@@ -156,7 +161,7 @@ export default function AreaExplorerScreen({ navigation }: Props) {
 
             {data.connectivity.length > 0 ? (
               <View style={styles.sectionCard}>
-                <Text style={styles.sectionLabel}>Connectivity</Text>
+                <Text style={styles.sectionLabel}>{t('areaExplorer.connectivity')}</Text>
                 {data.connectivity.map((c, i) => (
                   <View key={`${c.name}-${i}`} style={styles.connRow}>
                     <Ionicons name="navigate-outline" size={15} color={colors.tealDark} />
@@ -171,7 +176,7 @@ export default function AreaExplorerScreen({ navigation }: Props) {
 
             {data.buyerTips.length > 0 ? (
               <View style={styles.sectionCard}>
-                <Text style={styles.sectionLabel}>Buyer tips</Text>
+                <Text style={styles.sectionLabel}>{t('areaExplorer.buyerTips')}</Text>
                 {data.buyerTips.map((t) => (
                   <Text key={t} style={styles.bulletItem}>
                     • {t}
@@ -183,7 +188,7 @@ export default function AreaExplorerScreen({ navigation }: Props) {
             {data.listings.length > 0 ? (
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionLabel}>
-                  Listings here ({data.totalListingsFound})
+                  {t('areaExplorer.listingsHere', { count: data.totalListingsFound })}
                 </Text>
                 {data.listings.map((l) => (
                   <Pressable
@@ -204,9 +209,9 @@ export default function AreaExplorerScreen({ navigation }: Props) {
                       <Text style={styles.listingMeta}>
                         {l.bhk} · {l.areaName}
                         {l.salePrice != null
-                          ? ` · ₹${l.salePrice.toLocaleString('en-IN')}`
+                          ? ` · ₹${l.salePrice.toLocaleString(localeToCulture(locale))}`
                           : l.rentAmount != null
-                            ? ` · ₹${l.rentAmount.toLocaleString('en-IN')}/mo`
+                            ? ` · ₹${l.rentAmount.toLocaleString(localeToCulture(locale))}${t('areaExplorer.perMonth')}`
                             : ''}
                       </Text>
                     </View>

@@ -17,6 +17,8 @@ import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { PageHero } from '../components/ui/PageHero';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
+import { localeToCulture } from '../i18n/types';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 
@@ -24,6 +26,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'BuilderLeads'>;
 
 export default function BuilderLeadsScreen({ navigation, route }: Props) {
   const { projectId, projectName } = route.params;
+  const { t, locale } = useTranslation();
   const [rows, setRows] = useState<BuilderLead[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,13 +36,13 @@ export default function BuilderLeadsScreen({ navigation, route }: Props) {
       setRows(data);
     } catch (e) {
       Alert.alert(
-        'Could not load leads',
-        e instanceof ApiError ? e.message : 'Try again'
+        t('builder.couldNotLoadLeads'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -48,6 +51,10 @@ export default function BuilderLeadsScreen({ navigation, route }: Props) {
     }, [load])
   );
 
+  const subtitle = projectName
+    ? t('builder.projectLeadsSubNamedEnquiries', { name: projectName })
+    : t('builder.projectLeadsSub');
+
   return (
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
       <View style={styles.wrap}>
@@ -55,17 +62,13 @@ export default function BuilderLeadsScreen({ navigation, route }: Props) {
           <PageHero
             variant="builder"
             icon="people-outline"
-            title="Project leads"
-            subtitle={
-              projectName
-                ? `${projectName} — enquiries from buyers.`
-                : 'Buyer enquiries for this project.'
-            }
+            title={t('builder.projectLeads')}
+            subtitle={subtitle}
           />
         </View>
 
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading leads…" />
+          <BrandLoading fullScreen={false} message={t('builder.loadingLeads')} />
         ) : (
           <FlatList
             data={rows}
@@ -74,17 +77,15 @@ export default function BuilderLeadsScreen({ navigation, route }: Props) {
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Ionicons name="mail-open-outline" size={40} color={colors.slateLight} />
-                <Text style={styles.emptyTitle}>No leads yet</Text>
-                <Text style={styles.emptySub}>
-                  Enquiries from the project page will appear here.
-                </Text>
+                <Text style={styles.emptyTitle}>{t('builder.noLeads')}</Text>
+                <Text style={styles.emptySub}>{t('builder.noLeadsSub')}</Text>
               </View>
             }
             renderItem={({ item }) => (
               <View style={styles.card}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.meta}>
-                  {new Date(item.createdAtUtc).toLocaleString('en-IN')}
+                  {new Date(item.createdAtUtc).toLocaleString(localeToCulture(locale))}
                 </Text>
                 {item.email ? (
                   <Pressable onPress={() => Linking.openURL(`mailto:${item.email}`)}>

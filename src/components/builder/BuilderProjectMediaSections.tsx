@@ -15,6 +15,7 @@ import { PropertyImage } from '../property/PropertyImage';
 import { colors, radius, spacing } from '../../theme';
 import { isLikelyImageUrl } from '../../utils/builderMedia';
 import { getYouTubeThumbnailUrl, getYouTubeWatchUrl, isYouTubeUrl } from '../../utils/youtubeEmbed';
+import { useTranslation } from '../../context/LocaleContext';
 
 type Props = {
   gallery: BuilderProjectMedia[];
@@ -46,8 +47,14 @@ function SectionShell({
   );
 }
 
-function FloorPlanTile({ plan }: { plan: BuilderProjectMedia }) {
-  const label = plan.caption?.trim() || 'Floor plan';
+function FloorPlanTile({
+  plan,
+  t,
+}: {
+  plan: BuilderProjectMedia;
+  t: ReturnType<typeof useTranslation>['t'];
+}) {
+  const label = plan.caption?.trim() || t('builder.floorPlanDefault');
   const showPreview = isLikelyImageUrl(plan.url);
 
   return (
@@ -70,10 +77,16 @@ function FloorPlanTile({ plan }: { plan: BuilderProjectMedia }) {
   );
 }
 
-function BuilderVideoCard({ video }: { video: BuilderProjectMedia }) {
+function BuilderVideoCard({
+  video,
+  t,
+}: {
+  video: BuilderProjectMedia;
+  t: ReturnType<typeof useTranslation>['t'];
+}) {
   const watchUrl = getYouTubeWatchUrl(video.url) ?? video.url?.trim();
   const thumbnailUrl = getYouTubeThumbnailUrl(video.url);
-  const label = video.caption?.trim() || 'Project video';
+  const label = video.caption?.trim() || t('builder.projectVideoDefault');
   const isYoutube = isYouTubeUrl(video.url);
   const pending =
     video.reviewStatus?.trim().toLowerCase() === 'pending';
@@ -91,7 +104,7 @@ function BuilderVideoCard({ video }: { video: BuilderProjectMedia }) {
       style={styles.videoCard}
       onPress={openVideo}
       accessibilityRole="button"
-      accessibilityLabel={`Play ${label}`}
+      accessibilityLabel={t('builder.playA11y', { label })}
     >
       <View style={styles.videoPreview}>
         {thumbnailUrl ? (
@@ -106,25 +119,26 @@ function BuilderVideoCard({ video }: { video: BuilderProjectMedia }) {
             <Ionicons name="play" size={30} color={colors.heroText} />
           </View>
           <Text style={styles.playLabel}>
-            {isYoutube ? 'Play on YouTube' : 'Watch video'}
+            {isYoutube ? t('builder.playOnYoutube') : t('builder.watchVideo')}
           </Text>
         </View>
         {pending ? (
           <View style={styles.pendingBadge} pointerEvents="none">
-            <Text style={styles.pendingText}>Pending review</Text>
+            <Text style={styles.pendingText}>{t('builder.pendingReview')}</Text>
           </View>
         ) : null}
       </View>
       <Text style={styles.videoTitle}>{label}</Text>
       <View style={styles.videoActionRow}>
         <Ionicons name="logo-youtube" size={16} color="#dc2626" />
-        <Text style={styles.videoActionText}>Tap to open video</Text>
+        <Text style={styles.videoActionText}>{t('builder.tapToOpenVideo')}</Text>
       </View>
     </Pressable>
   );
 }
 
 export function BuilderProjectMediaSections({ gallery, floorPlans, videos }: Props) {
+  const { t } = useTranslation();
   const galleryUrls = gallery.map((m) => m.url).filter(Boolean);
   const hasGallery = galleryUrls.length > 0;
   const hasFloorPlans = floorPlans.length > 0;
@@ -137,7 +151,7 @@ export function BuilderProjectMediaSections({ gallery, floorPlans, videos }: Pro
   return (
     <>
       {hasGallery ? (
-        <SectionShell icon="images-outline" title="Gallery">
+        <SectionShell icon="images-outline" title={t('builder.gallery')}>
           <PropertyGallery
             urls={galleryUrls}
             autoRotate={galleryUrls.length > 1}
@@ -164,17 +178,17 @@ export function BuilderProjectMediaSections({ gallery, floorPlans, videos }: Pro
       ) : null}
 
       {hasVideos ? (
-        <SectionShell icon="videocam-outline" title="Videos">
+        <SectionShell icon="videocam-outline" title={t('builder.videos')}>
           {videos.map((video) => (
-            <BuilderVideoCard key={video.id || video.url} video={video} />
+            <BuilderVideoCard key={video.id || video.url} video={video} t={t} />
           ))}
         </SectionShell>
       ) : null}
 
       {hasFloorPlans ? (
-        <SectionShell icon="map-outline" title="Floor plans">
+        <SectionShell icon="map-outline" title={t('builder.floorPlans')}>
           {floorPlans.map((plan) => (
-            <FloorPlanTile key={plan.id || plan.url} plan={plan} />
+            <FloorPlanTile key={plan.id || plan.url} plan={plan} t={t} />
           ))}
         </SectionShell>
       ) : null}

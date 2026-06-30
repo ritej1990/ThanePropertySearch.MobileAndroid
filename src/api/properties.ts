@@ -108,7 +108,10 @@ export function createPropertiesApi(client: ReturnType<typeof createApiClient>) 
     scheduleVisit(propertyId: number, visitAtLocal: string, message: string) {
       return client.post<{ message: string }>(
         `/api/properties/${propertyId}/visit-request`,
-        { visitAtLocal, message }
+        {
+          visitAtLocal,
+          message: message.trim(),
+        }
       );
     },
 
@@ -226,6 +229,14 @@ export function createPropertiesApi(client: ReturnType<typeof createApiClient>) 
       return client.post<{ message: string; reviewStatus: string }>(
         `/api/properties/${propertyId}/resubmit-for-review`
       );
+    },
+
+    verifyPropertyAvailability(propertyId: number, status: 'AVAILABLE' | 'SOLD' | 'RENTED') {
+      return client.post<{ message: string }>('/api/property/verify', {
+        propertyId,
+        status,
+        token: '',
+      });
     },
   };
 }

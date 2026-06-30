@@ -16,6 +16,7 @@ import {
 import { getPrimaryPrice } from '../../utils/propertyDisplay';
 import { listingTypeChips } from '../../utils/propertyFormat';
 import { PropertyMapPreviewCard } from './PropertyMapPreviewCard';
+import { useTranslation } from '../../context/LocaleContext';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
@@ -40,6 +41,7 @@ export function PropertySearchMap({
   mapCenter,
   onPropertyPress,
 }: Props) {
+  const { t } = useTranslation();
   const mapRef = useRef<MapView>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [tracksChanges, setTracksChanges] = useState(Platform.OS === 'android');
@@ -95,11 +97,8 @@ export function PropertySearchMap({
     return (
       <View style={styles.placeholder}>
         <Ionicons name="map-outline" size={48} color={colors.slateLight} />
-        <Text style={styles.placeholderTitle}>Google Maps not configured</Text>
-        <Text style={styles.placeholderSub}>
-          Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to `.env` and enable Maps SDK for Android /
-          iOS. Restart Expo after updating.
-        </Text>
+        <Text style={styles.placeholderTitle}>{t('search.mapsNotConfigured')}</Text>
+        <Text style={styles.placeholderSub}>{t('search.mapsNotConfiguredSub')}</Text>
       </View>
     );
   }
@@ -108,11 +107,8 @@ export function PropertySearchMap({
     return (
       <View style={styles.placeholder}>
         <Ionicons name="home-outline" size={48} color={colors.slateLight} />
-        <Text style={styles.placeholderTitle}>No mappable listings</Text>
-        <Text style={styles.placeholderSub}>
-          No listings with coordinates inside Thane. Try different filters or search
-          another area in Thane.
-        </Text>
+        <Text style={styles.placeholderTitle}>{t('search.noMappableListings')}</Text>
+        <Text style={styles.placeholderSub}>{t('search.noMappableListingsSub')}</Text>
       </View>
     );
   }
@@ -139,7 +135,7 @@ export function PropertySearchMap({
               longitude: selectedPlace.longitude,
             }}
             pinColor="#2563eb"
-            title="Search area"
+            title={t('search.searchArea')}
             description={selectedPlace.label}
           />
         )}
@@ -177,7 +173,7 @@ export function PropertySearchMap({
                     {price.suffix}
                   </Text>
                   {hasValidPropertyCoordinates(item) && (
-                    <Text style={styles.calloutHint}>Tap for full details →</Text>
+                    <Text style={styles.calloutHint}>{t('search.tapForDetails')}</Text>
                   )}
                 </View>
               </Callout>
@@ -189,8 +185,11 @@ export function PropertySearchMap({
       <View style={styles.legend} pointerEvents="none">
         <Ionicons name="home" size={14} color="#0f766e" />
         <Text style={styles.legendText}>
-          Thane only · {mappable.length}{' '}
-          {mappable.length === 1 ? 'listing' : 'listings'}
+          {t('search.thaneOnlyLegend', {
+            count: mappable.length,
+            listingLabel:
+              mappable.length === 1 ? t('owner.listing') : t('owner.listings'),
+          })}
         </Text>
       </View>
 

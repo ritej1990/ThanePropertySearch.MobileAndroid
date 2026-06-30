@@ -12,6 +12,7 @@ import { PageHero } from '../components/ui/PageHero';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
 import type { RootStackParamList } from '../navigation/types';
 import {
   agentApprovalStatusLabel,
@@ -25,6 +26,7 @@ import { colors, radius, spacing } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'AgentPendingApproval'>;
 
 export default function AgentPendingApprovalScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<AgentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -65,10 +67,7 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
   async function pickCertificate() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
-        'Photos access needed',
-        'Allow photo library access to upload your RERA certificate, or paste a link instead.'
-      );
+      Alert.alert(t('postProperty.photosAccessTitle'), t('agent.photosAccessRera'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -90,11 +89,11 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
         mimeType: asset.mimeType ?? 'image/jpeg',
       });
       setReraCertificateUrl(res.documentUrl);
-      Alert.alert('Certificate uploaded', 'Your RERA certificate is attached.');
+      Alert.alert(t('agent.certificateUploaded'), t('agent.certificateUploadedBody'));
     } catch (e) {
       Alert.alert(
-        'Upload failed',
-        e instanceof ApiError ? e.message : 'Try again, or paste a certificate link instead.'
+        t('agent.uploadFailed'),
+        e instanceof ApiError ? e.message : t('agent.uploadFailedBody')
       );
     } finally {
       setUploading(false);
@@ -103,10 +102,7 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
 
   async function handleResubmit() {
     if (!reraNumber.trim() || !reraCertificateUrl.trim()) {
-      Alert.alert(
-        'Missing details',
-        'RERA number and a RERA certificate link are required to resubmit.'
-      );
+      Alert.alert(t('shared.missingDetails'), t('agent.missingRera'));
       return;
     }
     setSubmitting(true);
@@ -119,14 +115,11 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
         operatingLocalities: operatingLocalities.trim() || null,
       });
       setProfile(updated);
-      Alert.alert(
-        'Resubmitted',
-        'Your agency profile was sent back for admin review.'
-      );
+      Alert.alert(t('agent.resubmitted'), t('agent.resubmittedBody'));
     } catch (e) {
       Alert.alert(
-        'Could not resubmit',
-        e instanceof ApiError ? e.message : 'Try again'
+        t('agent.couldNotResubmit'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setSubmitting(false);
@@ -139,15 +132,15 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
   const canResubmit = canResubmitAgentProfile(status);
 
   const heroTitle = needsClarification
-    ? 'Updates needed'
+    ? t('agent.updatesNeeded')
     : rejected
-      ? 'Profile not approved'
-      : 'Profile under review';
+      ? t('agent.profileNotApproved')
+      : t('agent.profileUnderReview');
   const heroSubtitle = needsClarification
-    ? 'Update the details below and resubmit so we can continue your RERA verification.'
+    ? t('agent.updateResubmit')
     : rejected
-      ? 'Fix the issue noted below and resubmit for another admin review.'
-      : 'Our team is verifying your RERA and agency details.';
+      ? t('agent.fixAndResubmit')
+      : t('agent.verifyingRera');
 
   return (
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
@@ -159,7 +152,7 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
           subtitle={heroSubtitle}
         />
         {loading ? (
-          <BrandLoading fullScreen={false} message="Checking status…" />
+          <BrandLoading fullScreen={false} message={t('agent.checkingStatus')} />
         ) : (
           <View style={styles.card}>
             <Ionicons
@@ -168,9 +161,11 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
               color={colors.primary}
             />
             <Text style={styles.company}>
-              {profile?.companyName || 'Agent profile'}
+              {profile?.companyName || t('agent.agentProfile')}
             </Text>
-            <Text style={styles.meta}>RERA: {profile?.reraNumber ?? '—'}</Text>
+            <Text style={styles.meta}>
+              {t('agent.reraMeta', { number: profile?.reraNumber ?? '—' })}
+            </Text>
             <View
               style={[
                 styles.statusBadge,
@@ -192,33 +187,33 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
               <View style={styles.form}>
                 <Text style={styles.hint}>
                   {needsClarification
-                    ? 'Address the notes above, complete any missing fields, and send your profile back for review.'
-                    : 'Fix the issue noted above, re-upload your MahaRERA certificate, and send your profile back for another admin review.'}
+                    ? t('agent.addressNotesResubmit')
+                    : t('agent.fixCertificateResubmit')}
                 </Text>
                 <AuthTextField
-                  label="Company / agency name (optional)"
+                  label={t('agent.companyName')}
                   icon="business-outline"
                   value={companyName}
                   onChangeText={setCompanyName}
                 />
                 <AuthTextField
-                  label="WhatsApp number (optional)"
+                  label={t('agent.whatsapp')}
                   icon="logo-whatsapp"
                   value={whatsAppNumber}
                   onChangeText={setWhatsAppNumber}
                   keyboardType="phone-pad"
                 />
                 <AuthTextField
-                  label="Operating localities (optional)"
+                  label={t('agent.localities')}
                   icon="map-outline"
-                  placeholder="Areas you cover, comma separated"
+                  placeholder={t('agent.localitiesPlaceholder')}
                   value={operatingLocalities}
                   onChangeText={setOperatingLocalities}
                   multiline
                   numberOfLines={3}
                 />
                 <AuthTextField
-                  label="MahaRERA registration number"
+                  label={t('agent.reraNumber')}
                   icon="ribbon-outline"
                   value={reraNumber}
                   onChangeText={setReraNumber}
@@ -235,36 +230,33 @@ export default function AgentPendingApprovalScreen({ navigation }: Props) {
                   />
                   <Text style={styles.uploadBtnText}>
                     {uploading
-                      ? 'Uploading…'
+                      ? t('agent.uploading')
                       : reraCertificateUrl
-                        ? 'Certificate attached — replace'
-                        : 'Upload RERA certificate (jpg/png)'}
+                        ? t('agent.certificateAttached')
+                        : t('agent.uploadRera')}
                   </Text>
                 </Pressable>
                 <AuthTextField
-                  label="…or paste a certificate link (PDF/URL)"
+                  label={t('agent.certificateLinkLabel')}
                   icon="document-attach-outline"
-                  placeholder="https://… (document URL)"
+                  placeholder={t('agent.certificateLinkPlaceholder')}
                   autoCapitalize="none"
                   value={reraCertificateUrl}
                   onChangeText={setReraCertificateUrl}
                 />
                 <GradientButton
-                  label="Resubmit for approval"
+                  label={t('agent.resubmitApproval')}
                   loading={submitting}
                   disabled={uploading}
                   onPress={handleResubmit}
                 />
               </View>
             ) : (
-              <Text style={styles.hint}>
-                You can sign in and browse listings. Posting and payments unlock
-                after approval.
-              </Text>
+              <Text style={styles.hint}>{t('agent.pendingBrowseHint')}</Text>
             )}
 
             <Pressable style={styles.refreshBtn} onPress={load}>
-              <Text style={styles.refreshText}>Refresh status</Text>
+              <Text style={styles.refreshText}>{t('agent.refreshStatus')}</Text>
             </Pressable>
           </View>
         )}

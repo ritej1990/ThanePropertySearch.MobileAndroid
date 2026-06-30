@@ -7,6 +7,8 @@ import React, {
   useState,
 } from 'react';
 import { authApi, usersApi } from '../api/singleton';
+import { ApiError } from '../api/client';
+import { resetSessionExpiryGuard, notifySessionExpired } from '../auth/sessionManager';
 import { resetEmailVerificationToastSession } from '../utils/emailVerificationSession';
 import type { AuthResponse } from '../api/types';
 import { normalizeAuthResponse } from '../utils/normalizeAuthResponse';
@@ -52,10 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        const [t, p] = await Promise.all([
-          expoTokenStorage.getAccessToken(),
-          loadAuthProfile(),
-        ]);
+        let t = await expoTokenStorage.getAccessToken();
+        let p = await loadAuthProfile();
+        if (t) {
+          try {
+            await usersApi.getMe({ skipSessionExpiry: true });
+          } catch (e) {
+            if (e instanceof ApiError && e.status === 401) {
+              await clearAuthSession();
+              t = null;
+              p = null;
+            }
+          }
+        }
         if (cancelled) return;
         setToken(t);
         setProfile(p);
@@ -77,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const snap = toProfile({ ...normalized, token: accessToken });
     await expoTokenStorage.setAccessToken(accessToken);
     await saveAuthProfile(snap);
+    resetSessionExpiryGuard();
     setToken(accessToken);
     setProfile(snap);
     return { ...normalized, token: accessToken };
@@ -104,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await clearAuthSession();
     resetEmailVerificationToastSession();
+    resetSessionExpiryGuard();
     setToken(null);
     setProfile(null);
   }, []);
@@ -122,8 +135,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       await saveAuthProfile(snap);
       setProfile(snap);
-    } catch {
-      /* keep cached profile */
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        notifySessionExpired();
+      }
     }
   }, [token, profile?.userId]);
 

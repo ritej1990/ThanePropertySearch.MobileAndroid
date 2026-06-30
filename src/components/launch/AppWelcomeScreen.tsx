@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { LoginBackdrop } from '../auth/LoginBackdrop';
 import { ThaneFlatsLogo } from '../ui/ThaneFlatsLogo';
+import { useTranslation } from '../../context/LocaleContext';
 import type { AuthProfileSnapshot } from '../../storage/tokenStorage';
 import {
   getProfileFirstName,
@@ -30,15 +31,18 @@ type Props = {
   onComplete: () => void;
 };
 
-function getTimeGreeting(): string {
+import type { TranslateFn } from '../../i18n';
+
+function getTimeGreeting(t: TranslateFn): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return t('launch.goodMorning');
+  if (hour < 17) return t('launch.goodAfternoon');
+  return t('launch.goodEvening');
 }
 
 export function AppWelcomeScreen({ profile, onComplete }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const finishedRef = useRef(false);
 
   const screenOpacity = useRef(new Animated.Value(0)).current;
@@ -49,10 +53,10 @@ export function AppWelcomeScreen({ profile, onComplete }: Props) {
 
   const firstName = getProfileFirstName(profile?.fullName);
   const displayName =
-    profile?.fullName?.trim() || profile?.username?.trim() || 'there';
+    profile?.fullName?.trim() || profile?.username?.trim() || t('launch.there');
   const initials = getProfileInitials(profile?.fullName);
-  const roleLabel = getRoleLabel(profile?.role);
-  const greeting = getTimeGreeting();
+  const roleLabel = getRoleLabel(profile?.role, t);
+  const greeting = getTimeGreeting(t);
 
   useEffect(() => {
     Animated.parallel([
@@ -188,10 +192,10 @@ export function AppWelcomeScreen({ profile, onComplete }: Props) {
 
           <Text style={styles.greeting}>{greeting},</Text>
           <Text style={styles.name}>{firstName}</Text>
-          <Text style={styles.welcomeLine}>Welcome back to Thane Flats</Text>
+          <Text style={styles.welcomeLine}>{t('launch.welcomeBack')}</Text>
           <View style={styles.aiChip}>
             <Ionicons name="sparkles" size={12} color={colors.navyDeep} />
-            <Text style={styles.aiChipText}>AI-powered property assistant</Text>
+            <Text style={styles.aiChipText}>{t('launch.aiAssistant')}</Text>
           </View>
 
           <View style={styles.metaRow}>
@@ -208,7 +212,7 @@ export function AppWelcomeScreen({ profile, onComplete }: Props) {
           <View style={styles.progressTrack}>
             <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
           </View>
-          <Text style={styles.hint}>Getting things ready for you…</Text>
+          <Text style={styles.hint}>{t('launch.gettingReady')}</Text>
         </View>
       </View>
     </Animated.View>

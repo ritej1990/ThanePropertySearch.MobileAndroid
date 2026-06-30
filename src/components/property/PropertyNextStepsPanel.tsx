@@ -1,14 +1,19 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Linking,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,7 +32,16 @@ import {
   hasActivePlanCredits,
   isEssentialPlanExpired,
 } from '../../utils/planUsage';
+import { apiErrorMessage } from '../../utils/apiErrorMessage';
+import {
+  defaultVisitDateTime,
+  formatVisitAtLocalForApi,
+  formatVisitDateTimeLabel,
+} from '../../utils/visitSchedule';
 import { colors, radius, spacing } from '../../theme';
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from '@react-native-community/datetimepicker';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -112,7 +126,8 @@ export function PropertyNextStepsPanel({
   const [visitModal, setVisitModal] = useState(false);
   const [requestModal, setRequestModal] = useState(false);
   const [visitMessage, setVisitMessage] = useState('');
-  const [visitDate, setVisitDate] = useState('');
+  const [visitAt, setVisitAt] = useState(defaultVisitDateTime);
+  const [showIosVisitPicker, setShowIosVisitPicker] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -139,6 +154,23 @@ export function PropertyNextStepsPanel({
     return false;
   }
 
+  async function getOrCreateInquiry(message: string, appendIfExists = true): Promise<number> {
+    const list = await propertiesApi.getPropertyInquiries(propertyId);
+    const existing = list
+      .filter((row) => row.status.toLowerCase() !== 'rejected')
+      .sort((a, b) => b.id - a.id)[0];
+    if (existing) {
+      const trimmed = message.trim();
+      if (appendIfExists && trimmed) {
+        await propertiesApi.sendInquiryMessage(existing.id, trimmed);
+      }
+      return existing.id;
+    }
+
+    const created = await propertiesApi.createInquiry(propertyId, message.trim());
+    return created.inquiryId;
+  }
+
   async function revealContact() {
     // Reveal can also be paid for with contact-pack credits, not just the plan.
     if (!canRevealOwnerContact(essential)) {
@@ -149,16 +181,16 @@ export function PropertyNextStepsPanel({
     try {
       const contact: OwnerContact = await propertiesApi.getOwnerContact(propertyId);
       Alert.alert(
-        'Owner contact',
+        t('nextSteps.ownerContact'),
         `${contact.ownerName}\n\n📧 ${contact.email || '—'}\n📞 ${contact.phoneNumber || '—'}`,
         [
           contact.phoneNumber
             ? {
-                text: 'Call',
+                text: t('shared.call'),
                 onPress: () => Linking.openURL(`tel:${contact.phoneNumber}`),
               }
             : undefined,
-          { text: 'OK' },
+          { text: t('common.ok') },
         ].filter(Boolean) as { text: string; onPress?: () => void }[]
       );
       load();
@@ -166,8 +198,8 @@ export function PropertyNextStepsPanel({
     } catch (e) {
       if (!handlePlanUsageError(e, navigation, propertyId)) {
         Alert.alert(
-          'Could not reveal',
-          e instanceof ApiError ? e.message : 'Try again'
+          t('nextSteps.couldNotReveal'),
+          e instanceof ApiError ? e.message : t('shared.tryAgain')
         );
       }
     } finally {
@@ -175,29 +207,57 @@ export function PropertyNextStepsPanel({
     }
   }
 
+  function openVisitModal() {
+    if (!ensurePlanCredits()) return;
+    setVisitAt(defaultVisitDateTime());
+    setVisitMessage('');
+    setShowIosVisitPicker(Platform.OS === 'ios');
+    setVisitModal(true);
+  }
+
+  function pickVisitDateTimeAndroid() {
+    DateTimePickerAndroid.open({
+      value: visitAt,
+      mode: 'date',
+      minimumDate: new Date(),
+      onChange: (event, date) => {
+        if (event.type !== 'set' || !date) return;
+        DateTimePickerAndroid.open({
+          value: date,
+          mode: 'time',
+          is24Hour: false,
+          onChange: (timeEvent, time) => {
+            if (timeEvent.type !== 'set' || !time) return;
+            const merged = new Date(date);
+            merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
+            setVisitAt(merged);
+          },
+        });
+      },
+    });
+  }
+
   async function submitVisit() {
     if (!ensurePlanCredits()) return;
-    if (!visitDate.trim()) {
-      Alert.alert('Date required', 'Enter visit date/time (ISO format or YYYY-MM-DDTHH:mm).');
+    if (visitAt.getTime() < Date.now()) {
+      Alert.alert(t('visits.invalidTime'), t('visits.invalidTimeBody'));
       return;
     }
     setBusy(true);
     try {
       const res = await propertiesApi.scheduleVisit(
         propertyId,
-        visitDate.trim(),
-        visitMessage.trim() || 'I would like to schedule a visit.'
+        formatVisitAtLocalForApi(visitAt),
+        visitMessage.trim() || t('nextSteps.defaultVisitMessage')
       );
       setVisitModal(false);
-      Alert.alert('Visit requested', res.message);
+      setShowIosVisitPicker(false);
+      Alert.alert(t('visits.visitRequested'), res.message);
       load();
       onUsageChanged?.();
     } catch (e) {
       if (!handlePlanUsageError(e, navigation, propertyId)) {
-        Alert.alert(
-          'Failed',
-          e instanceof ApiError ? e.message : 'Could not schedule visit'
-        );
+        Alert.alert(t('shared.failed'), apiErrorMessage(e, t('visits.couldNotSchedule')));
       }
     } finally {
       setBusy(false);
@@ -207,25 +267,19 @@ export function PropertyNextStepsPanel({
   async function submitRequest() {
     if (!ensurePlanCredits()) return;
     if (!requestMessage.trim()) {
-      Alert.alert('Message required', 'Describe your interest in this property.');
+      Alert.alert(t('nextSteps.messageRequired'), t('nextSteps.messageRequiredBody'));
       return;
     }
     setBusy(true);
     try {
-      const res = await propertiesApi.createInquiry(
-        propertyId,
-        requestMessage.trim()
-      );
+      await getOrCreateInquiry(requestMessage.trim());
       setRequestModal(false);
-      Alert.alert('Request sent', res.message);
+      Alert.alert(t('inquiries.requestSent'), t('inquiries.requestSentBody'));
       load();
       onUsageChanged?.();
     } catch (e) {
       if (!handlePlanUsageError(e, navigation, propertyId)) {
-        Alert.alert(
-          'Failed',
-          e instanceof ApiError ? e.message : 'Could not send request'
-        );
+        Alert.alert(t('shared.failed'), apiErrorMessage(e, t('nextSteps.couldNotSendRequest')));
       }
     } finally {
       setBusy(false);
@@ -236,37 +290,27 @@ export function PropertyNextStepsPanel({
     if (!ensurePlanCredits()) return;
     setBusy(true);
     try {
-      const list = await propertiesApi.getPropertyInquiries(propertyId);
-      let inquiryId = list[0]?.id;
-      if (!inquiryId) {
-        const created = await propertiesApi.createInquiry(
-          propertyId,
-          "Hello, I'm interested in this property and would like more details."
-        );
-        inquiryId = created.inquiryId;
-      }
+      const inquiryId = await getOrCreateInquiry(
+        t('nextSteps.defaultChatMessage'),
+        false
+      );
       navigation.navigate('PropertyChat', {
         propertyId,
         inquiryId,
-        title: 'Chat with owner',
+        title: t('propertyChat.chatWithOwner'),
       });
       load();
       onUsageChanged?.();
     } catch (e) {
       if (!handlePlanUsageError(e, navigation, propertyId)) {
         Alert.alert(
-          'Chat unavailable',
-          e instanceof ApiError ? e.message : 'Try again'
+          t('nextSteps.chatUnavailable'),
+          e instanceof ApiError ? e.message : t('shared.tryAgain')
         );
       }
     } finally {
       setBusy(false);
     }
-  }
-
-  function openVisitModal() {
-    if (!ensurePlanCredits()) return;
-    setVisitModal(true);
   }
 
   return (
@@ -277,9 +321,9 @@ export function PropertyNextStepsPanel({
       >
         <View style={styles.headTitleRow}>
           <Ionicons name="flash" size={16} color={colors.goldAccent} />
-          <Text style={styles.headTitle}>Next steps</Text>
+          <Text style={styles.headTitle}>{t('nextSteps.title')}</Text>
         </View>
-        <Text style={styles.headSub}>Contact the owner or manage conversations</Text>
+        <Text style={styles.headSub}>{t('nextSteps.subtitle')}</Text>
       </LinearGradient>
 
       <View style={styles.body}>
@@ -287,8 +331,7 @@ export function PropertyNextStepsPanel({
           <View style={styles.hintBox}>
             <Ionicons name="information-circle" size={18} color="#2563eb" />
             <Text style={styles.hintText}>
-              Essential plan required. Each action uses 1 credit (contact, visit,
-              request, chat).{' '}
+              {t('nextSteps.planHint')}{' '}
               <Text
                 style={styles.hintLink}
                 onPress={() =>
@@ -297,7 +340,7 @@ export function PropertyNextStepsPanel({
                   })
                 }
               >
-                View plans
+                {t('shared.viewPlans')}
               </Text>
             </Text>
           </View>
@@ -305,36 +348,35 @@ export function PropertyNextStepsPanel({
 
         <View style={styles.grid}>
           <ActionButton
-            label="Reveal owner contact"
+            label={t('nextSteps.revealContact')}
             icon="call-outline"
             variant="success"
             onPress={revealContact}
           />
           <ActionButton
-            label="Schedule visit"
+            label={t('nextSteps.scheduleVisit')}
             icon="calendar-outline"
             variant="primary"
             onPress={openVisitModal}
           />
           <ActionButton
-            label="Request property"
+            label={t('nextSteps.requestProperty')}
             icon="send-outline"
             variant="warning"
             onPress={() => (hasPlan ? setRequestModal(true) : ensurePlanCredits())}
           />
           <ActionButton
-            label="Requests & threads"
+            label={t('nextSteps.myRequests')}
             icon="chatbubbles-outline"
             variant="outline"
             onPress={() =>
               navigation.navigate('PropertyInquiries', {
                 propertyId,
-                title: 'Requests',
               })
             }
           />
           <ActionButton
-            label="Chat with owner"
+            label={t('nextSteps.chatOwner')}
             icon="chatbubble-ellipses-outline"
             variant="dark"
             onPress={startChat}
@@ -348,40 +390,64 @@ export function PropertyNextStepsPanel({
 
       <FormModal
         visible={visitModal}
-        title="Schedule visit"
-        onClose={() => setVisitModal(false)}
+        title={t('nextSteps.scheduleVisit')}
+        onClose={() => {
+          setShowIosVisitPicker(false);
+          setVisitModal(false);
+        }}
         onSubmit={submitVisit}
       >
         <Text style={styles.inputLabel}>Visit date & time</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="2026-06-15T10:00"
-          value={visitDate}
-          onChangeText={setVisitDate}
-        />
+        <Pressable
+          style={styles.datePickerBtn}
+          onPress={() => {
+            if (Platform.OS === 'android') {
+              pickVisitDateTimeAndroid();
+            } else {
+              setShowIosVisitPicker(true);
+            }
+          }}
+        >
+          <Ionicons name="calendar-outline" size={18} color={colors.tealDark} />
+          <Text style={styles.datePickerText}>{formatVisitDateTimeLabel(visitAt)}</Text>
+          <Ionicons name="chevron-down" size={16} color={colors.slateLight} />
+        </Pressable>
+        {showIosVisitPicker && Platform.OS === 'ios' ? (
+          <DateTimePicker
+            value={visitAt}
+            mode="datetime"
+            minimumDate={new Date()}
+            display="spinner"
+            onChange={(_, date) => {
+              if (date) setVisitAt(date);
+            }}
+          />
+        ) : null}
         <Text style={styles.inputLabel}>Message</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Preferred time window, who is visiting…"
+          placeholder={t('nextSteps.visitMessagePlaceholder')}
           value={visitMessage}
           onChangeText={setVisitMessage}
           multiline
+          textAlignVertical="top"
         />
       </FormModal>
 
       <FormModal
         visible={requestModal}
-        title="Request property"
+        title={t('nextSteps.requestProperty')}
         onClose={() => setRequestModal(false)}
         onSubmit={submitRequest}
       >
-        <Text style={styles.inputLabel}>Your message to the owner</Text>
+        <Text style={styles.inputLabel}>{t('nextSteps.messageToOwner')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="I'm interested because…"
+          placeholder={t('nextSteps.requestMessagePlaceholder')}
           value={requestMessage}
           onChangeText={setRequestMessage}
           multiline
+          textAlignVertical="top"
         />
       </FormModal>
     </View>
@@ -401,21 +467,92 @@ function FormModal({
   onSubmit: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+
+  const handleClose = useCallback(() => {
+    Keyboard.dismiss();
+    onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!visible) {
+      setKeyboardInset(0);
+      return;
+    }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardInset(event.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardInset(0);
+    });
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, [visible]);
+
+  const scrollFormToEnd = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (visible && keyboardInset > 0) {
+      scrollFormToEnd();
+    }
+  }, [visible, keyboardInset, scrollFormToEnd]);
+
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={handleClose}
+    >
       <View style={modalStyles.backdrop}>
-        <View style={modalStyles.sheet}>
-          <Text style={modalStyles.title}>{title}</Text>
-          {children}
-          <View style={modalStyles.actions}>
-            <Pressable style={modalStyles.cancel} onPress={onClose}>
-              <Text style={modalStyles.cancelText}>Cancel</Text>
-            </Pressable>
-            <Pressable style={modalStyles.submit} onPress={onSubmit}>
-              <Text style={modalStyles.submitText}>Submit</Text>
-            </Pressable>
+        <Pressable style={modalStyles.dismissArea} onPress={handleClose} accessibilityLabel={t('shared.close')} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={[
+            modalStyles.sheetAvoid,
+            { marginBottom: Platform.OS === 'android' ? keyboardInset : 0 },
+          ]}
+        >
+          <View
+            style={[
+              modalStyles.sheet,
+              { paddingBottom: Math.max(insets.bottom, spacing.lg) },
+            ]}
+          >
+            <ScrollView
+              ref={scrollRef}
+              style={modalStyles.scroll}
+              contentContainerStyle={modalStyles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              <Text style={modalStyles.title}>{title}</Text>
+              {children}
+            </ScrollView>
+            <View style={modalStyles.actions}>
+              <Pressable style={modalStyles.cancel} onPress={handleClose}>
+                <Text style={modalStyles.cancelText}>{t('common.cancel')}</Text>
+              </Pressable>
+              <Pressable style={modalStyles.submit} onPress={onSubmit}>
+                <Text style={modalStyles.submitText}>{t('shared.submit')}</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -476,6 +613,22 @@ const styles = StyleSheet.create({
     color: colors.navy,
     backgroundColor: colors.surfaceMuted,
   },
+  datePickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceMuted,
+  },
+  datePickerText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.navy,
+  },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
 });
 
@@ -485,15 +638,28 @@ const modalStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
+  dismissArea: {
+    flex: 1,
+  },
+  sheetAvoid: {
+    maxHeight: '92%',
+  },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    maxHeight: '88%',
+  },
+  scroll: {
+    flexGrow: 0,
+  },
+  scrollContent: {
+    paddingBottom: spacing.sm,
   },
   title: { fontSize: 18, fontWeight: '800', color: colors.navy, marginBottom: spacing.md },
-  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, paddingTop: spacing.sm },
   cancel: {
     flex: 1,
     padding: spacing.md,

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ApiError } from '../../api/client';
 import type { FavoriteResourceType } from '../../api/favoriteTypes';
 import { toggleFavorite, useFavoriteStatus } from '../../state/favoritesStore';
+import { useTranslation } from '../../context/LocaleContext';
 import { colors } from '../../theme';
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 
 /** Heart toggle mirroring the web's _ListingFavoriteButton — optimistic, synced across screens. */
 export function FavoriteButton({ resourceType, resourceId, variant = 'card' }: Props) {
+  const { t } = useTranslation();
   const status = useFavoriteStatus(resourceType, resourceId);
   const [busy, setBusy] = useState(false);
   const isFavorite = status?.isFavorite ?? false;
@@ -31,8 +33,8 @@ export function FavoriteButton({ resourceType, resourceId, variant = 'card' }: P
           ? `${e.status}: ${e.message}`
           : e instanceof Error
             ? e.message
-            : 'Please try again.';
-      Alert.alert('Could not update favorites', detail);
+            : t('shared.pleaseTryAgain');
+      Alert.alert(t('shared.couldNotUpdateFavorites'), detail);
     } finally {
       setBusy(false);
     }
@@ -44,7 +46,9 @@ export function FavoriteButton({ resourceType, resourceId, variant = 'card' }: P
       disabled={busy}
       hitSlop={10}
       accessibilityRole="button"
-      accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Save to favorites'}
+      accessibilityLabel={
+        isFavorite ? t('shared.removeFromFavorites') : t('shared.saveToFavorites')
+      }
       style={({ pressed }) => [
         variant === 'card' ? styles.card : styles.toolbar,
         pressed && styles.pressed,

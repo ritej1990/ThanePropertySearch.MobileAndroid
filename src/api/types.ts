@@ -89,6 +89,14 @@ export type PropertyResponse = {
   ownerId: string | null;
   isNegotiable?: boolean;
   isPostedByAgent?: boolean;
+  /** Hidden from public search while still approved — show as Inactive in owner UI. */
+  isHiddenFromSearch?: boolean;
+  availabilityVerificationStatus?: string;
+  lastVerifiedAtUtc?: string | null;
+  verificationEmailSentAtUtc?: string | null;
+  verificationCount?: number;
+  autoHidden?: boolean;
+  hiddenReason?: string | null;
   /** MahaRERA registration (agent listings, builder projects). */
   reraNumber?: string | null;
 };

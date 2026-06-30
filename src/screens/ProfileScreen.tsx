@@ -20,22 +20,45 @@ import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
 import { BrandLoading } from '../components/ui/BrandLoading';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LocaleContext';
 import { useResendEmailVerification } from '../hooks/useResendEmailVerification';
 import type { RootStackParamList } from '../navigation/types';
 import { getRoleLabel } from '../utils/profileDisplay';
 import { isAgentRole, isOwnerRole } from '../utils/roles';
 import { isValidOptionalGst, normalizeGst } from '../utils/gstNumber';
 import {
-  agentApprovalStatusLabel,
   isAgentProfileApproved,
   isAgentProfileRejected,
 } from '../utils/agentApproval';
+import type { TranslateFn } from '../i18n';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
+function agentApprovalStatusT(status: string | null | undefined, t: TranslateFn): string {
+  switch (status) {
+    case 'InProgress':
+      return t('agent.approvalInProgress');
+    case 'AwaitingRequester':
+      return t('agent.approvalPendingWithYou');
+    case 'SystemApproved':
+      return t('agent.approvalUnderAdminReview');
+    case 'Approved':
+      return t('agent.approvalApproved');
+    case 'AutoApproved':
+      return t('agent.approvalAutoApproved');
+    case 'Rejected':
+      return t('agent.approvalRejected');
+    case 'Expired':
+      return t('agent.approvalExpired');
+    default:
+      return t('agent.approvalPendingReview');
+  }
+}
+
 export default function ProfileScreen({ navigation }: Props) {
   const { profile, refreshProfile } = useAuth();
+  const { t } = useTranslation();
   const { resend, sending, emailConfirmed } = useResendEmailVerification();
   const isAgent = isAgentRole(profile?.role);
   const showGst = !isOwnerRole(profile?.role) && !isAgent;
@@ -87,8 +110,8 @@ export default function ProfileScreen({ navigation }: Props) {
       await refreshProfile();
     } catch (e) {
       Alert.alert(
-        'Could not load profile',
-        e instanceof ApiError ? e.message : 'Try again'
+        t('profile.couldNotLoad'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setLoading(false);
@@ -104,11 +127,11 @@ export default function ProfileScreen({ navigation }: Props) {
 
   async function handleSave() {
     if (!fullName.trim() || !email.trim() || !phone.trim()) {
-      Alert.alert('Missing details', 'Full name, email and phone are required.');
+      Alert.alert(t('shared.missingDetails'), t('profile.missingRequired'));
       return;
     }
     if (showGst && gstNumber.trim() && !isValidOptionalGst(gstNumber)) {
-      Alert.alert('Invalid GSTIN', 'Enter a valid 15-character GSTIN or leave blank.');
+      Alert.alert(t('profile.invalidGstTitle'), t('profile.invalidGstBody'));
       return;
     }
     setSaving(true);
@@ -122,11 +145,11 @@ export default function ProfileScreen({ navigation }: Props) {
       });
       setEmail(updated.email ?? email.trim());
       await refreshProfile();
-      Alert.alert('Saved', 'Your profile has been updated.');
+      Alert.alert(t('shared.saved'), t('profile.saved'));
     } catch (e) {
       Alert.alert(
-        'Could not save',
-        e instanceof ApiError ? e.message : 'Try again'
+        t('profile.couldNotSave'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setSaving(false);
@@ -135,10 +158,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
   async function handleSaveAgent() {
     if (!companyName.trim() || !whatsAppNumber.trim() || !reraNumber.trim()) {
-      Alert.alert(
-        'Missing details',
-        'Company name, WhatsApp number and RERA number are required.'
-      );
+      Alert.alert(t('shared.missingDetails'), t('agent.missingAgencyDetails'));
       return;
     }
     setSavingAgent(true);
@@ -152,15 +172,17 @@ export default function ProfileScreen({ navigation }: Props) {
       });
       setAgentProfile(updated);
       Alert.alert(
-        isAgentProfileApproved(updated.approvalStatus) ? 'Saved' : 'Sent for review',
         isAgentProfileApproved(updated.approvalStatus)
-          ? 'Your agency profile has been updated.'
-          : 'Your agency profile was updated and sent back for admin review.'
+          ? t('shared.saved')
+          : t('agent.sentForReview'),
+        isAgentProfileApproved(updated.approvalStatus)
+          ? t('agent.profileUpdated')
+          : t('agent.profileUpdatedSentForReview')
       );
     } catch (e) {
       Alert.alert(
-        'Could not save',
-        e instanceof ApiError ? e.message : 'Try again'
+        t('profile.couldNotSave'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setSavingAgent(false);
@@ -170,10 +192,7 @@ export default function ProfileScreen({ navigation }: Props) {
   async function pickCertificate() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
-        'Photos access needed',
-        'Allow photo library access to upload your RERA certificate, or paste a link instead.'
-      );
+      Alert.alert(t('postProperty.photosAccessTitle'), t('agent.photosAccessRera'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -195,11 +214,11 @@ export default function ProfileScreen({ navigation }: Props) {
         mimeType: asset.mimeType ?? 'image/jpeg',
       });
       setReraCertificateUrl(res.documentUrl);
-      Alert.alert('Certificate uploaded', 'Your RERA certificate is attached.');
+      Alert.alert(t('agent.certificateUploaded'), t('agent.certificateUploadedBody'));
     } catch (e) {
       Alert.alert(
-        'Upload failed',
-        e instanceof ApiError ? e.message : 'Try again, or paste a certificate link instead.'
+        t('agent.uploadFailed'),
+        e instanceof ApiError ? e.message : t('agent.uploadFailedBody')
       );
     } finally {
       setUploadingCert(false);
@@ -208,10 +227,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
   async function handleResubmit() {
     if (!reraNumber.trim() || !reraCertificateUrl.trim()) {
-      Alert.alert(
-        'Missing details',
-        'RERA number and a RERA certificate link are required to resubmit.'
-      );
+      Alert.alert(t('shared.missingDetails'), t('agent.missingRera'));
       return;
     }
     setSavingAgent(true);
@@ -224,11 +240,11 @@ export default function ProfileScreen({ navigation }: Props) {
         operatingLocalities: operatingLocalities.trim() || null,
       });
       setAgentProfile(updated);
-      Alert.alert('Resubmitted', 'Your agency profile was sent back for admin review.');
+      Alert.alert(t('agent.resubmitted'), t('agent.resubmittedBody'));
     } catch (e) {
       Alert.alert(
-        'Could not resubmit',
-        e instanceof ApiError ? e.message : 'Try again'
+        t('agent.couldNotResubmit'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setSavingAgent(false);
@@ -240,7 +256,7 @@ export default function ProfileScreen({ navigation }: Props) {
   return (
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
       {loading ? (
-        <BrandLoading message="Loading profile…" />
+        <BrandLoading message={t('profile.loading')} />
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -249,18 +265,16 @@ export default function ProfileScreen({ navigation }: Props) {
           <PageHero
             variant="user"
             icon="person-circle-outline"
-            title="Edit profile"
-            subtitle="Account details synced with your Thane Flats login."
+            title={t('profile.editTitle')}
+            subtitle={t('profile.editSub')}
           />
 
           {!emailConfirmed ? (
             <View style={styles.verifyBanner}>
-              <Text style={styles.verifyTitle}>Email not verified</Text>
-              <Text style={styles.verifySub}>
-                Verify your email to unlock the full experience.
-              </Text>
+              <Text style={styles.verifyTitle}>{t('profile.emailNotVerified')}</Text>
+              <Text style={styles.verifySub}>{t('profile.verifyToUnlock')}</Text>
               <GradientButton
-                label={sending ? 'Sending…' : 'Resend verification'}
+                label={sending ? t('profile.sending') : t('profile.resendVerification')}
                 loading={sending}
                 onPress={resend}
                 style={styles.verifyBtn}
@@ -269,22 +283,22 @@ export default function ProfileScreen({ navigation }: Props) {
           ) : null}
 
           <View style={styles.card}>
-            <Text style={styles.readLabel}>Username</Text>
+            <Text style={styles.readLabel}>{t('profile.username')}</Text>
             <Text style={styles.readValue}>{profile?.username ?? '—'}</Text>
-            <Text style={styles.readLabel}>Role</Text>
-            <Text style={styles.readValue}>{getRoleLabel(profile?.role)}</Text>
+            <Text style={styles.readLabel}>{t('profile.role')}</Text>
+            <Text style={styles.readValue}>{getRoleLabel(profile?.role, t)}</Text>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Account details</Text>
+            <Text style={styles.cardTitle}>{t('profile.accountDetails')}</Text>
             <AuthTextField
-              label="Full name"
+              label={t('profile.fullName')}
               icon="person-outline"
               value={fullName}
               onChangeText={setFullName}
             />
             <AuthTextField
-              label="Email"
+              label={t('shared.email')}
               icon="mail-outline"
               value={email}
               onChangeText={setEmail}
@@ -294,45 +308,39 @@ export default function ProfileScreen({ navigation }: Props) {
               style={emailLocked ? styles.lockedInput : undefined}
             />
             {emailLocked ? (
-              <Text style={styles.fieldHint}>
-                Email is managed by your Google sign-in and can't be changed here.
-              </Text>
+              <Text style={styles.fieldHint}>{t('profile.emailGoogleLocked')}</Text>
             ) : (
-              <Text style={styles.fieldHint}>
-                Changing your email marks it unverified again.
-              </Text>
+              <Text style={styles.fieldHint}>{t('profile.emailChangeUnverified')}</Text>
             )}
             <AuthTextField
-              label="Phone (10-digit Indian mobile)"
+              label={t('profile.phone')}
               icon="call-outline"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
-            <Text style={styles.fieldHint}>
-              Changing your phone number marks it unverified again.
-            </Text>
+            <Text style={styles.fieldHint}>{t('profile.phoneChangeUnverified')}</Text>
             {showMarketIntent ? (
               <AuthTextField
-                label="Market intent (optional)"
+                label={t('profile.marketIntentOptional')}
                 icon="compass-outline"
-                placeholder="e.g. Rent in Thane West"
+                placeholder={t('profile.marketIntentPlaceholder')}
                 value={marketIntent}
                 onChangeText={setMarketIntent}
               />
             ) : null}
             {showGst ? (
               <AuthTextField
-                label="GSTIN (optional)"
+                label={t('profile.gstOptional')}
                 icon="receipt-outline"
-                placeholder="15-character GSTIN for invoices"
+                placeholder={t('profile.gstPlaceholder')}
                 autoCapitalize="characters"
                 value={gstNumber}
                 onChangeText={setGstNumber}
               />
             ) : null}
             <GradientButton
-              label="Save changes"
+              label={t('profile.saveChanges')}
               loading={saving}
               onPress={handleSave}
             />
@@ -341,7 +349,7 @@ export default function ProfileScreen({ navigation }: Props) {
           {isAgent ? (
             <View style={styles.card}>
               <View style={styles.agentHead}>
-                <Text style={styles.cardTitle}>Agency profile</Text>
+                <Text style={styles.cardTitle}>{t('agent.agentProfile')}</Text>
                 <View
                   style={[
                     styles.statusBadge,
@@ -353,7 +361,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   ]}
                 >
                   <Text style={styles.statusBadgeText}>
-                    {agentApprovalStatusLabel(agentProfile?.approvalStatus)}
+                    {agentApprovalStatusT(agentProfile?.approvalStatus, t)}
                   </Text>
                 </View>
               </View>
@@ -366,77 +374,69 @@ export default function ProfileScreen({ navigation }: Props) {
 
               {approved ? (
                 <>
-                  <Text style={styles.fieldHint}>
-                    Editing these details sends your profile back for admin review.
-                  </Text>
+                  <Text style={styles.fieldHint}>{t('agent.editSendsForReview')}</Text>
                   <AuthTextField
-                    label="Company / agency name"
+                    label={t('agent.companyNameRequired')}
                     icon="business-outline"
                     value={companyName}
                     onChangeText={setCompanyName}
                   />
                   <AuthTextField
-                    label="WhatsApp number"
+                    label={t('agent.whatsappRequired')}
                     icon="logo-whatsapp"
                     value={whatsAppNumber}
                     onChangeText={setWhatsAppNumber}
                     keyboardType="phone-pad"
                   />
                   <AuthTextField
-                    label="RERA number (locked)"
+                    label={t('agent.reraLocked')}
                     icon="ribbon-outline"
                     value={reraNumber}
                     editable={false}
                     style={styles.lockedInput}
                   />
-                  <Text style={styles.fieldHint}>
-                    Your MahaRERA number is locked after approval. Contact support if
-                    it needs correcting.
-                  </Text>
+                  <Text style={styles.fieldHint}>{t('agent.reraLockedHint')}</Text>
                   <AuthTextField
-                    label="Operating localities (optional)"
+                    label={t('agent.localities')}
                     icon="map-outline"
-                    placeholder="Areas you cover, comma separated"
+                    placeholder={t('agent.localitiesPlaceholder')}
                     value={operatingLocalities}
                     onChangeText={setOperatingLocalities}
                     multiline
                     numberOfLines={3}
                   />
                   <AuthTextField
-                    label="Profile photo URL (optional)"
+                    label={t('agent.profilePhotoOptional')}
                     icon="image-outline"
-                    placeholder="https://…"
+                    placeholder={t('builder.urlPlaceholder')}
                     autoCapitalize="none"
                     value={profilePhotoUrl}
                     onChangeText={setProfilePhotoUrl}
                   />
                   <GradientButton
-                    label="Save agency profile"
+                    label={t('agent.saveAgencyProfile')}
                     loading={savingAgent}
                     onPress={handleSaveAgent}
                   />
                 </>
               ) : (
                 <>
-                  <Text style={styles.fieldHint}>
-                    Your profile is read-only until it's approved. Update your RERA
-                    details and resubmit for review.
-                  </Text>
+                  <Text style={styles.fieldHint}>{t('agent.readOnlyResubmit')}</Text>
                   <AuthTextField
-                    label="Company / agency name (optional)"
+                    label={t('agent.companyName')}
                     icon="business-outline"
                     value={companyName}
                     onChangeText={setCompanyName}
                   />
                   <AuthTextField
-                    label="WhatsApp number (optional)"
+                    label={t('agent.whatsapp')}
                     icon="logo-whatsapp"
                     value={whatsAppNumber}
                     onChangeText={setWhatsAppNumber}
                     keyboardType="phone-pad"
                   />
                   <AuthTextField
-                    label="RERA number"
+                    label={t('agent.reraNumber')}
                     icon="ribbon-outline"
                     value={reraNumber}
                     onChangeText={setReraNumber}
@@ -453,31 +453,31 @@ export default function ProfileScreen({ navigation }: Props) {
                     />
                     <Text style={styles.uploadBtnText}>
                       {uploadingCert
-                        ? 'Uploading…'
+                        ? t('agent.uploading')
                         : reraCertificateUrl
-                          ? 'Certificate attached — replace'
-                          : 'Upload RERA certificate (jpg/png)'}
+                          ? t('agent.certificateAttached')
+                          : t('agent.uploadRera')}
                     </Text>
                   </Pressable>
                   <AuthTextField
-                    label="…or paste a certificate link (PDF/URL)"
+                    label={t('agent.certificateLinkLabel')}
                     icon="document-attach-outline"
-                    placeholder="https://… (document URL)"
+                    placeholder={t('agent.certificateLinkPlaceholder')}
                     autoCapitalize="none"
                     value={reraCertificateUrl}
                     onChangeText={setReraCertificateUrl}
                   />
                   <AuthTextField
-                    label="Operating localities (optional)"
+                    label={t('agent.localities')}
                     icon="map-outline"
-                    placeholder="Areas you cover, comma separated"
+                    placeholder={t('agent.localitiesPlaceholder')}
                     value={operatingLocalities}
                     onChangeText={setOperatingLocalities}
                     multiline
                     numberOfLines={3}
                   />
                   <GradientButton
-                    label="Resubmit for review"
+                    label={t('agent.resubmitApproval')}
                     loading={savingAgent}
                     disabled={uploadingCert}
                     onPress={handleResubmit}

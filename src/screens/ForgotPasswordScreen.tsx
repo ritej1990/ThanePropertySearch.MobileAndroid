@@ -14,8 +14,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LoginBackdrop } from '../components/auth/LoginBackdrop';
 import { AuthTextField } from '../components/ui/AuthTextField';
 import { GradientButton } from '../components/ui/GradientButton';
+import { LanguageToggle } from '../components/ui/LanguageToggle';
 import { authApi } from '../api/singleton';
 import { ApiError } from '../api/client';
+import { useTranslation } from '../context/LocaleContext';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing, typography } from '../theme';
 
@@ -23,6 +25,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 
 export default function ForgotPasswordScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -31,7 +34,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     Keyboard.dismiss();
     const trimmed = email.trim();
     if (!trimmed) {
-      Alert.alert('Email required', 'Enter the email address linked to your account.');
+      Alert.alert(t('auth.forgotPasswordEmailRequired'), t('auth.forgotPasswordEnterEmail'));
       return;
     }
 
@@ -40,14 +43,13 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       const res = await authApi.forgotPassword(trimmed);
       setSent(true);
       Alert.alert(
-        'Check your email',
-        res.message ||
-          'If this email exists, a password reset link has been sent.'
+        t('auth.forgotPasswordCheckEmail'),
+        res.message || t('auth.forgotPasswordCheckEmailBody')
       );
     } catch (e) {
       Alert.alert(
-        'Could not send reset link',
-        e instanceof ApiError ? e.message : 'Try again in a moment.'
+        t('auth.forgotPasswordSendFailed'),
+        e instanceof ApiError ? e.message : t('auth.forgotPasswordTryAgain')
       );
     } finally {
       setLoading(false);
@@ -68,29 +70,29 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           },
         ]}
       >
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={8}
-          accessibilityLabel="Back to sign in"
-        >
-          <Ionicons name="chevron-back" size={22} color={colors.heroText} />
-          <Text style={styles.backText}>Sign in</Text>
-        </Pressable>
+        <View style={styles.topRow}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            hitSlop={8}
+            accessibilityLabel={t('auth.forgotPasswordBackA11y')}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.heroText} />
+            <Text style={styles.backText}>{t('auth.signIn')}</Text>
+          </Pressable>
+          <LanguageToggle variant="auth" />
+        </View>
 
         <View style={styles.card}>
           <View style={styles.cardAccent} pointerEvents="none" />
-          <Text style={styles.eyebrow}>Account recovery</Text>
-          <Text style={styles.cardTitle}>Forgot password</Text>
-          <Text style={styles.cardSub}>
-            Enter your registered email. We will send a secure reset link you can
-            open from your inbox.
-          </Text>
+          <Text style={styles.eyebrow}>{t('auth.forgotPasswordEyebrow')}</Text>
+          <Text style={styles.cardTitle}>{t('auth.forgotPasswordTitle')}</Text>
+          <Text style={styles.cardSub}>{t('auth.forgotPasswordSub')}</Text>
 
           <AuthTextField
-            label="Email"
+            label={t('auth.email')}
             icon="mail-outline"
-            placeholder="name@example.com"
+            placeholder={t('auth.emailPlaceholder')}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
@@ -102,7 +104,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           />
 
           <GradientButton
-            label={sent ? 'Link sent' : 'Send reset link'}
+            label={sent ? t('auth.forgotPasswordLinkSent') : t('auth.forgotPasswordSendLink')}
             loading={loading}
             onPress={handleSubmit}
             disabled={sent}
@@ -112,7 +114,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
             style={styles.secondaryBtn}
             onPress={() => navigation.navigate('Login')}
           >
-            <Text style={styles.secondaryBtnText}>Back to sign in</Text>
+            <Text style={styles.secondaryBtnText}>{t('auth.forgotPasswordBackToSignIn')}</Text>
           </Pressable>
         </View>
       </View>
@@ -130,11 +132,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     justifyContent: 'center',
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: spacing.lg,
     alignSelf: 'flex-start',
   },
   backText: {

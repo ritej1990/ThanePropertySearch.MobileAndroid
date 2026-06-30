@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { aiApi } from '../../api/singleton';
 import type { PropertyIntelligenceReportResponse } from '../../api/aiTypes';
 import { AiHubSection } from './AiHubSection';
+import { useTranslation } from '../../context/LocaleContext';
+import type { TranslationKey } from '../../i18n';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
@@ -11,17 +13,17 @@ type Props = {
 
 const SCORE_ROWS: Array<{
   key: keyof PropertyIntelligenceReportResponse;
-  label: string;
+  labelKey: TranslationKey;
 }> = [
-  { key: 'investmentScore', label: 'Investment' },
-  { key: 'rentalYieldScore', label: 'Rental yield' },
-  { key: 'futureGrowthScore', label: 'Future growth' },
-  { key: 'connectivityScore', label: 'Connectivity' },
-  { key: 'familyFriendlyScore', label: 'Family friendly' },
-  { key: 'locationGrowthScore', label: 'Location growth' },
-  { key: 'rentalDemandScore', label: 'Rental demand' },
-  { key: 'amenitiesScore', label: 'Amenities' },
-  { key: 'futureAppreciationScore', label: 'Appreciation' },
+  { key: 'investmentScore', labelKey: 'aiReport.scoreInvestment' },
+  { key: 'rentalYieldScore', labelKey: 'aiReport.scoreRentalYield' },
+  { key: 'futureGrowthScore', labelKey: 'aiReport.scoreFutureGrowth' },
+  { key: 'connectivityScore', labelKey: 'aiReport.scoreConnectivity' },
+  { key: 'familyFriendlyScore', labelKey: 'aiReport.scoreFamilyFriendly' },
+  { key: 'locationGrowthScore', labelKey: 'aiReport.scoreLocationGrowth' },
+  { key: 'rentalDemandScore', labelKey: 'aiReport.scoreRentalDemand' },
+  { key: 'amenitiesScore', labelKey: 'aiReport.scoreAmenities' },
+  { key: 'futureAppreciationScore', labelKey: 'aiReport.scoreAppreciation' },
 ];
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
@@ -41,6 +43,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 
 /** GET /api/ai/property/{id}/intelligence — mirrors web Property Intelligence Report. */
 export function AiPropertyIntelligenceReport({ listingId }: Props) {
+  const { t } = useTranslation();
   const [data, setData] = useState<PropertyIntelligenceReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -68,14 +71,14 @@ export function AiPropertyIntelligenceReport({ listingId }: Props) {
   if (loading) {
     return (
       <AiHubSection
-        eyebrow="ThaneFlats AI"
-        title="Property Intelligence Report"
-        subtitle="Investment, growth & livability scores"
+        eyebrow={t('aiReport.eyebrow')}
+        title={t('aiReport.title')}
+        subtitle={t('aiReport.subtitle')}
         collapsible={false}
       >
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color="#7c3aed" />
-          <Text style={styles.loadingText}>Building intelligence report…</Text>
+          <Text style={styles.loadingText}>{t('aiReport.loading')}</Text>
         </View>
       </AiHubSection>
     );
@@ -85,13 +88,16 @@ export function AiPropertyIntelligenceReport({ listingId }: Props) {
 
   return (
     <AiHubSection
-      eyebrow={data.generatedLabel || 'ThaneFlats AI'}
-      title="Property Intelligence Report"
-      subtitle={`${data.areaLabel} · Overall ${data.investmentScore.toFixed(1)}/10`}
+      eyebrow={data.generatedLabel || t('aiReport.eyebrow')}
+      title={t('aiReport.title')}
+      subtitle={t('aiReport.subtitleWithArea', {
+        area: data.areaLabel,
+        score: data.investmentScore.toFixed(1),
+      })}
     >
       <View style={styles.heroScore}>
         <Text style={styles.heroScoreValue}>{data.investmentScore.toFixed(1)}</Text>
-        <Text style={styles.heroScoreLabel}>Overall score</Text>
+        <Text style={styles.heroScoreLabel}>{t('aiReport.overallScore')}</Text>
       </View>
 
       <Text style={styles.summary}>{data.summary}</Text>
@@ -100,7 +106,7 @@ export function AiPropertyIntelligenceReport({ listingId }: Props) {
         {SCORE_ROWS.map((row) => {
           const raw = data[row.key];
           const value = typeof raw === 'number' ? raw : 0;
-          return <ScoreBar key={row.key} label={row.label} value={value} />;
+          return <ScoreBar key={row.key} label={t(row.labelKey)} value={value} />;
         })}
       </View>
 

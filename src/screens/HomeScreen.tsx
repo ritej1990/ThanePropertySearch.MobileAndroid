@@ -54,6 +54,7 @@ import {
 import { isOwnerRole, isUserRole } from '../utils/roles';
 import { useAuthenticatedScroll, useRegisterScrollToTop } from '../context/AuthenticatedScrollContext';
 import { useResponsiveLayout } from '../utils/responsive';
+import { useTranslation } from '../context/LocaleContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -67,6 +68,7 @@ export default function HomeScreen(props: Props) {
 
 function HomeScreenContent({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const listRef = useRef<FlatListType<PropertyResponse>>(null);
   const [items, setItems] = useState<PropertyResponse[]>([]);
@@ -135,7 +137,7 @@ function HomeScreenContent({ navigation }: Props) {
             /* guests / not signed in — no favorites to pin */
           });
       } catch (e) {
-        const msg = e instanceof ApiError ? e.message : 'Could not load listings';
+        const msg = e instanceof ApiError ? e.message : t('home.errorTitle');
         setError(msg);
       } finally {
         setLoading(false);
@@ -249,7 +251,7 @@ function HomeScreenContent({ navigation }: Props) {
   const handleAiSearch = useCallback(async () => {
     const query = searchText.trim();
     if (!query) {
-      Alert.alert('Type a search first', 'e.g. "2bhk under 20k near Ghodbunder Road"');
+      Alert.alert(t('home.typeSearchFirst'), t('home.typeSearchExample'));
       return;
     }
     setAiSearching(true);
@@ -281,12 +283,12 @@ function HomeScreenContent({ navigation }: Props) {
       setSearchText(res.location ?? '');
 
       if (res.displayLines.length > 0) {
-        Alert.alert('AI search applied', res.displayLines.join('\n'));
+        Alert.alert(t('home.aiSearchApplied'), res.displayLines.join('\n'));
       }
     } catch (e) {
       Alert.alert(
-        'AI search unavailable',
-        e instanceof ApiError ? e.message : 'Could not parse that search right now.'
+        t('home.aiSearchUnavailable'),
+        e instanceof ApiError ? e.message : t('home.aiSearchFailed')
       );
     } finally {
       setAiSearching(false);
@@ -341,7 +343,7 @@ function HomeScreenContent({ navigation }: Props) {
           <Pressable
             onPress={clearPlaceSearch}
             hitSlop={8}
-            accessibilityLabel="Clear area search"
+            accessibilityLabel={t('home.clearAreaA11y')}
             style={styles.placeBannerClose}
           >
             <Ionicons name="close" size={16} color={colors.tealDark} />
@@ -351,8 +353,9 @@ function HomeScreenContent({ navigation }: Props) {
     );
 
     return (
-      <View>
+      <View style={styles.listHeaderRoot}>
         <View
+          style={styles.searchAutocompleteLayer}
           onLayout={(e) => {
             const h = e.nativeEvent.layout.height;
             if (h > 0 && Math.abs(h - toolbarHeight) > 2) {
@@ -384,7 +387,9 @@ function HomeScreenContent({ navigation }: Props) {
           />
         </View>
         {placeBanner}
-        <QuickFilterChips filters={filters} onFiltersChange={setFilters} />
+        <View style={styles.filterChipsLayer}>
+          <QuickFilterChips filters={filters} onFiltersChange={setFilters} />
+        </View>
       </View>
     );
   }, [
@@ -441,13 +446,13 @@ function HomeScreenContent({ navigation }: Props) {
         {viewMode === 'map' ? (
           <View style={styles.mapWrap}>
             {loading && items.length === 0 ? (
-              <BrandLoading message="Loading homes…" />
+              <BrandLoading message={t('home.loading')} />
             ) : error ? (
               <View style={styles.centered}>
-                <Text style={styles.errTitle}>Could not load listings</Text>
+                <Text style={styles.errTitle}>{t('home.errorTitle')}</Text>
                 <Text style={styles.err}>{error}</Text>
                 <Pressable style={styles.retryBtn} onPress={() => load()}>
-                  <Text style={styles.retryText}>Try again</Text>
+                  <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -464,11 +469,11 @@ function HomeScreenContent({ navigation }: Props) {
               style={[styles.mapBackBtn, { top: insets.top + spacing.sm }]}
               onPress={() => handleViewModeChange('list')}
               accessibilityRole="button"
-              accessibilityLabel="Back to list view"
+              accessibilityLabel={t('home.mapBackA11y')}
               hitSlop={10}
             >
               <Ionicons name="chevron-back" size={20} color={colors.navy} />
-              <Text style={styles.mapBackText}>List</Text>
+              <Text style={styles.mapBackText}>{t('common.list')}</Text>
             </Pressable>
           </View>
         ) : loading && items.length === 0 ? (
@@ -482,10 +487,10 @@ function HomeScreenContent({ navigation }: Props) {
           </View>
         ) : error ? (
           <View style={styles.centered}>
-            <Text style={styles.errTitle}>Could not load listings</Text>
+            <Text style={styles.errTitle}>{t('home.errorTitle')}</Text>
             <Text style={styles.err}>{error}</Text>
             <Pressable style={styles.retryBtn} onPress={() => load()}>
-              <Text style={styles.retryText}>Try again</Text>
+              <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -555,6 +560,18 @@ const styles = StyleSheet.create({
   wrap: {
     flex: 1,
     position: 'relative',
+  },
+  listHeaderRoot: {
+    overflow: 'visible',
+  },
+  searchAutocompleteLayer: {
+    zIndex: 50,
+    elevation: 50,
+    overflow: 'visible',
+  },
+  filterChipsLayer: {
+    zIndex: 1,
+    elevation: 0,
   },
   mapWrap: {
     flex: 1,

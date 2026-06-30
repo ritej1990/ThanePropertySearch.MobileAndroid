@@ -24,6 +24,8 @@ export type MyChatThread = {
   propertyTitle: string;
   createdAtUtc: string;
   isOwner: boolean;
+  lastActivityAtUtc?: string;
+  unreadCount?: number;
 };
 
 export type InquiryMessage = {

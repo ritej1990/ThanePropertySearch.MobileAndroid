@@ -18,6 +18,7 @@ import { GradientButton } from '../components/ui/GradientButton';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import type { HomeLoanAdvisorResponse } from '../api/aiTypes';
 import type { RootStackParamList } from '../navigation/types';
+import { useTranslation } from '../context/LocaleContext';
 import { colors, radius, spacing, typography } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HomeLoanAdvisor'>;
@@ -29,6 +30,7 @@ function numeric(value: string): number {
 
 export default function HomeLoanAdvisorScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [income, setIncome] = useState('');
   const [existingEmi, setExistingEmi] = useState('');
   const [downPayment, setDownPayment] = useState('');
@@ -40,7 +42,7 @@ export default function HomeLoanAdvisorScreen({ navigation }: Props) {
     Keyboard.dismiss();
     const monthlyIncome = numeric(income);
     if (monthlyIncome <= 0) {
-      setError('Enter your monthly income to estimate eligibility.');
+      setError(t('homeLoan.enterIncome'));
       return;
     }
     setLoading(true);
@@ -54,7 +56,7 @@ export default function HomeLoanAdvisorScreen({ navigation }: Props) {
       });
       setResult(res);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not calculate right now.');
+      setError(e instanceof ApiError ? e.message : t('homeLoan.couldNotCalculate'));
     } finally {
       setLoading(false);
     }
@@ -72,16 +74,14 @@ export default function HomeLoanAdvisorScreen({ navigation }: Props) {
             <Ionicons name="cash-outline" size={20} color="#7c3aed" />
           </View>
           <View style={styles.flex}>
-            <Text style={styles.title}>Home Loan Advisor</Text>
-            <Text style={styles.subtitle}>
-              Estimate eligibility, a safe budget & monthly EMI based on FOIR limits.
-            </Text>
+            <Text style={styles.title}>{t('homeLoan.title')}</Text>
+            <Text style={styles.subtitle}>{t('homeLoan.subtitle')}</Text>
           </View>
         </View>
 
         <View style={styles.card}>
           <AuthTextField
-            label="Monthly income (₹)"
+            label={t('homeLoan.monthlyIncome')}
             icon="wallet-outline"
             keyboardType="numeric"
             placeholder="1,00,000"
@@ -89,7 +89,7 @@ export default function HomeLoanAdvisorScreen({ navigation }: Props) {
             onChangeText={setIncome}
           />
           <AuthTextField
-            label="Existing EMIs (₹ / month)"
+            label={t('homeLoan.existingEmis')}
             icon="card-outline"
             keyboardType="numeric"
             placeholder="8,000"
@@ -97,7 +97,7 @@ export default function HomeLoanAdvisorScreen({ navigation }: Props) {
             onChangeText={setExistingEmi}
           />
           <AuthTextField
-            label="Down payment saved (₹)"
+            label={t('homeLoan.downPayment')}
             icon="server-outline"
             keyboardType="numeric"
             placeholder="20,00,000"
@@ -105,13 +105,13 @@ export default function HomeLoanAdvisorScreen({ navigation }: Props) {
             onChangeText={setDownPayment}
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <GradientButton label="Calculate" loading={loading} onPress={calculate} />
+          <GradientButton label={t('homeLoan.calculate')} loading={loading} onPress={calculate} />
         </View>
 
         {loading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loadingText}>Checking FOIR limits and loan tenure…</Text>
+            <Text style={styles.loadingText}>{t('homeLoan.checkingFoir')}</Text>
           </View>
         ) : null}
 
@@ -119,28 +119,31 @@ export default function HomeLoanAdvisorScreen({ navigation }: Props) {
           <LinearGradient colors={['#faf5ff', '#f8fafc']} style={styles.resultCard}>
             <View style={styles.metricsRow}>
               <View style={styles.metric}>
-                <Text style={styles.metricLabel}>Eligible loan</Text>
+                <Text style={styles.metricLabel}>{t('homeLoan.eligibleLoan')}</Text>
                 <Text style={styles.metricValue}>{result.eligibleLoanLabel}</Text>
               </View>
               <View style={[styles.metric, styles.metricHighlight]}>
-                <Text style={styles.metricLabel}>Recommended budget</Text>
+                <Text style={styles.metricLabel}>{t('homeLoan.recommendedBudget')}</Text>
                 <Text style={styles.metricValue}>{result.recommendedBudgetLabel}</Text>
               </View>
               <View style={styles.metric}>
-                <Text style={styles.metricLabel}>Safe EMI</Text>
+                <Text style={styles.metricLabel}>{t('homeLoan.safeEmi')}</Text>
                 <Text style={styles.metricValue}>{result.safeEmiLabel}</Text>
               </View>
             </View>
 
             <Text style={styles.assumption}>
-              Assumes {result.assumedInterestRatePercent}% over {result.assumedTenureYears} years
+              {t('homeLoan.assumesRate', {
+                rate: result.assumedInterestRatePercent,
+                years: result.assumedTenureYears,
+              })}
             </Text>
 
             {result.summary ? <Text style={styles.summary}>{result.summary}</Text> : null}
 
             {result.tips.length > 0 ? (
               <View style={styles.tips}>
-                <Text style={styles.tipsLabel}>Tips</Text>
+                <Text style={styles.tipsLabel}>{t('homeLoan.tips')}</Text>
                 {result.tips.map((t) => (
                   <Text key={t} style={styles.tipItem}>
                     • {t}
@@ -149,9 +152,7 @@ export default function HomeLoanAdvisorScreen({ navigation }: Props) {
               </View>
             ) : null}
 
-            <Text style={styles.disclaimer}>
-              Indicative only — actual eligibility depends on the lender, credit score & documents.
-            </Text>
+            <Text style={styles.disclaimer}>{t('homeLoan.disclaimer')}</Text>
           </LinearGradient>
         ) : null}
       </ScrollView>

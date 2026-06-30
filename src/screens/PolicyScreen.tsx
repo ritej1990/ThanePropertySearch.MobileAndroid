@@ -7,12 +7,29 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PolicyDocumentView } from '../components/policy/PolicyDocumentView';
 import { POLICY_DOCUMENTS } from '../content/policies';
 import type { RootStackParamList } from '../navigation/types';
+import { useTranslation } from '../context/LocaleContext';
+import type { TranslateFn } from '../i18n';
+import type { PolicyKind } from '../content/policies';
 import { colors, gradients, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Policy'>;
 
+function policyTitle(t: TranslateFn, kind: PolicyKind): string {
+  switch (kind) {
+    case 'legal':
+      return t('policy.titleLegal');
+    case 'privacy':
+      return t('policy.titlePrivacy');
+    case 'terms':
+      return t('policy.titleTerms');
+    case 'refund':
+      return t('policy.titleRefund');
+  }
+}
+
 export default function PolicyScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const document = POLICY_DOCUMENTS[route.params.kind];
 
   return (
@@ -27,12 +44,12 @@ export default function PolicyScreen({ navigation, route }: Props) {
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           hitSlop={8}
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('policy.goBack')}
         >
           <Ionicons name="chevron-back" size={20} color={colors.heroText} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {document.title}
+          {policyTitle(t, route.params.kind)}
         </Text>
       </LinearGradient>
 

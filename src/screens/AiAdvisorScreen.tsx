@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -16,6 +16,7 @@ import { aiApi } from '../api/singleton';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing, typography } from '../theme';
 
@@ -27,13 +28,8 @@ type ChatMessage = {
   text: string;
 };
 
-const STARTER_PROMPTS = [
-  'What is a fair rent for a 2BHK in Thane West?',
-  'Compare Ghodbunder Road vs Kolshet for families',
-  'Is this a good time to buy in Thane?',
-];
-
 export default function AiAdvisorScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -42,6 +38,11 @@ export default function AiAdvisorScreen({ navigation }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+
+  const starterPrompts = useMemo(
+    () => [t('aiAdvisor.prompt1'), t('aiAdvisor.prompt2'), t('aiAdvisor.prompt3')],
+    [t]
+  );
 
   const startConversation = useCallback(async () => {
     setStarting(true);
@@ -53,16 +54,17 @@ export default function AiAdvisorScreen({ navigation }: Props) {
         {
           id: 'welcome',
           role: 'assistant',
-          text:
-            "Hi! I'm the Thane Flats AI advisor. Ask me about fair pricing, localities, commute, or anything about a listing you're considering.",
+          text: t('aiAdvisor.welcome'),
         },
       ]);
     } catch (e) {
-      setStartError(e instanceof ApiError ? e.message : 'Could not start the advisor chat.');
+      setStartError(
+        e instanceof ApiError ? e.message : t('aiAdvisor.couldNotReach')
+      );
     } finally {
       setStarting(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     startConversation();
@@ -84,7 +86,8 @@ export default function AiAdvisorScreen({ navigation }: Props) {
         { id: `a-${res.messageId}`, role: 'assistant', text: res.reply },
       ]);
     } catch (e) {
-      const message = e instanceof ApiError ? e.message : 'Could not reach the AI advisor.';
+      const message =
+        e instanceof ApiError ? e.message : t('aiAdvisor.couldNotReach');
       setMessages((prev) => [
         ...prev,
         { id: `err-${Date.now()}`, role: 'assistant', text: message },
@@ -103,7 +106,7 @@ export default function AiAdvisorScreen({ navigation }: Props) {
         showFloatingActions={false}
         showLegalFooter={false}
       >
-        <BrandLoading message="Starting AI advisor…" />
+        <BrandLoading message={t('aiAdvisor.loading')} />
       </AuthenticatedScreenLayout>
     );
   }
@@ -118,10 +121,10 @@ export default function AiAdvisorScreen({ navigation }: Props) {
       >
         <View style={styles.centered}>
           <Ionicons name="sparkles-outline" size={32} color={colors.slateLight} />
-          <Text style={styles.errorTitle}>AI advisor unavailable</Text>
+          <Text style={styles.errorTitle}>{t('aiAdvisor.unavailable')}</Text>
           <Text style={styles.errorText}>{startError}</Text>
           <Pressable style={styles.retryBtn} onPress={startConversation}>
-            <Text style={styles.retryText}>Try again</Text>
+            <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
           </Pressable>
         </View>
       </AuthenticatedScreenLayout>
@@ -144,8 +147,8 @@ export default function AiAdvisorScreen({ navigation }: Props) {
             <Ionicons name="sparkles" size={18} color="#7c3aed" />
           </View>
           <View>
-            <Text style={styles.title}>AI Property Advisor</Text>
-            <Text style={styles.subtitle}>Ask about pricing, areas & negotiation</Text>
+            <Text style={styles.title}>{t('aiAdvisor.title')}</Text>
+            <Text style={styles.subtitle}>{t('aiAdvisor.subtitle')}</Text>
           </View>
         </View>
 
@@ -175,7 +178,7 @@ export default function AiAdvisorScreen({ navigation }: Props) {
           ListFooterComponent={
             messages.length === 1 ? (
               <View style={styles.promptRow}>
-                {STARTER_PROMPTS.map((p) => (
+                {starterPrompts.map((p) => (
                   <Pressable key={p} style={styles.promptChip} onPress={() => send(p)}>
                     <Text style={styles.promptChipText}>{p}</Text>
                   </Pressable>
@@ -190,7 +193,7 @@ export default function AiAdvisorScreen({ navigation }: Props) {
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder="Ask the AI advisor…"
+            placeholder={t('aiAdvisor.placeholder')}
             placeholderTextColor={colors.slateLight}
             multiline
             onSubmitEditing={() => send(input)}

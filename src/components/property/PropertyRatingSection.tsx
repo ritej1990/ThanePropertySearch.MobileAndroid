@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { propertiesApi } from '../../api/singleton';
 import type { PropertyRatingItem } from '../../api/ratingTypes';
 import { ApiError } from '../../api/client';
+import { useTranslation } from '../../context/LocaleContext';
+import { localeToCulture } from '../../i18n/types';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
@@ -38,9 +40,9 @@ function StarRow({ stars, size = 16 }: { stars: number; size?: number }) {
   );
 }
 
-function formatReviewDate(iso: string): string {
+function formatReviewDate(iso: string, locale: ReturnType<typeof useTranslation>['locale']): string {
   try {
-    return new Date(iso).toLocaleDateString('en-IN', {
+    return new Date(iso).toLocaleDateString(localeToCulture(locale), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -57,6 +59,7 @@ export function PropertyRatingSection({
   canSubmit = false,
   onRated,
 }: Props) {
+  const { t, locale } = useTranslation();
   const [reviews, setReviews] = useState<PropertyRatingItem[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [stars, setStars] = useState('5');
@@ -107,20 +110,20 @@ export function PropertyRatingSection({
   async function submit() {
     const n = Number(stars);
     if (!Number.isFinite(n) || n < 1 || n > 5) {
-      Alert.alert('Invalid rating', 'Stars must be between 1 and 5.');
+      Alert.alert(t('ratings.invalidRating'), t('ratings.invalidRatingBody'));
       return;
     }
     setSubmitting(true);
     try {
       await propertiesApi.rateProperty(propertyId, n, review.trim());
-      Alert.alert('Thank you', 'Your rating was submitted.');
+      Alert.alert(t('shared.thankYou'), t('ratings.submitted'));
       setReview('');
       await loadReviews();
       onRated?.();
     } catch (e) {
       Alert.alert(
-        'Could not submit',
-        e instanceof ApiError ? e.message : 'Try again'
+        t('ratings.couldNotSubmit'),
+        e instanceof ApiError ? e.message : t('shared.tryAgain')
       );
     } finally {
       setSubmitting(false);
@@ -138,14 +141,15 @@ export function PropertyRatingSection({
                 <Text style={styles.summaryScore}>{displayAverage}</Text>
                 <StarRow stars={Math.round(averageRating)} size={14} />
                 <Text style={styles.summaryCount}>
-                  {ratingCount} review{ratingCount === 1 ? '' : 's'}
+                  {ratingCount}{' '}
+                  {ratingCount === 1 ? t('ratings.review') : t('ratings.reviews')}
                 </Text>
               </>
             ) : (
               <>
                 <Text style={styles.summaryScore}>—</Text>
-                <Text style={styles.summaryCount}>No reviews yet</Text>
-                <Text style={styles.summaryHint}>Be the first to rate this listing</Text>
+                <Text style={styles.summaryCount}>{t('ratings.noReviewsYet')}</Text>
+                <Text style={styles.summaryHint}>{t('ratings.beFirst')}</Text>
               </>
             )}
           </View>
@@ -160,7 +164,7 @@ export function PropertyRatingSection({
             accessibilityRole="button"
             accessibilityState={{ expanded: reviewsExpanded }}
           >
-            <Text style={styles.reviewsTitle}>Reviews</Text>
+            <Text style={styles.reviewsTitle}>{t('ratings.reviewsTitle')}</Text>
             <Ionicons
               name={reviewsExpanded ? 'chevron-up' : 'chevron-down'}
               size={20}
@@ -169,9 +173,9 @@ export function PropertyRatingSection({
           </Pressable>
           {reviewsExpanded ? (
             loadingReviews ? (
-              <Text style={styles.loadingText}>Loading reviews…</Text>
+              <Text style={styles.loadingText}>{t('ratings.loadingReviews')}</Text>
             ) : reviews.length === 0 ? (
-              <Text style={styles.emptyReviews}>No written reviews yet.</Text>
+              <Text style={styles.emptyReviews}>{t('ratings.noWrittenReviews')}</Text>
             ) : (
               reviews.map((r) => (
                 <View key={r.id} style={styles.reviewItem}>
@@ -183,7 +187,7 @@ export function PropertyRatingSection({
                     <Text style={styles.reviewBody}>{r.review.trim()}</Text>
                   ) : null}
                   <Text style={styles.reviewDate}>
-                    {formatReviewDate(r.createdAtUtc)}
+                    {formatReviewDate(r.createdAtUtc, locale)}
                   </Text>
                 </View>
               ))
@@ -200,18 +204,17 @@ export function PropertyRatingSection({
             color={colors.slateMuted}
           />
           <Text style={styles.lockedText}>
-            {reviewBlockReason ??
-              'You can review this flat only after a completed visit.'}
+            {reviewBlockReason ?? t('ratings.lockedDefault')}
           </Text>
         </View>
       ) : null}
 
       {canSubmit && canReview ? (
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Rate this property</Text>
+          <Text style={styles.formTitle}>{t('ratings.rateTitle')}</Text>
           <View style={styles.row}>
             <View style={styles.starsCol}>
-              <Text style={styles.label}>Stars (1–5)</Text>
+              <Text style={styles.label}>{t('ratings.starsLabel')}</Text>
               <TextInput
                 style={styles.starsInput}
                 value={stars}
@@ -221,10 +224,10 @@ export function PropertyRatingSection({
               />
             </View>
             <View style={styles.reviewCol}>
-              <Text style={styles.label}>Your review</Text>
+              <Text style={styles.label}>{t('ratings.yourReview')}</Text>
               <TextInput
                 style={styles.reviewInput}
-                placeholder="Share your experience…"
+                placeholder={t('ratings.reviewPlaceholder')}
                 value={review}
                 onChangeText={setReview}
                 multiline
@@ -237,7 +240,7 @@ export function PropertyRatingSection({
             disabled={submitting}
           >
             <Ionicons name="checkmark" size={18} color={colors.heroText} />
-            <Text style={styles.btnText}>Submit rating</Text>
+            <Text style={styles.btnText}>{t('ratings.submitRating')}</Text>
           </Pressable>
         </View>
       ) : null}

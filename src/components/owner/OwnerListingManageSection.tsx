@@ -18,6 +18,7 @@ type Props = {
   onOutcomeChange: (outcome: OwnerAvailabilityOutcome) => Promise<void>;
   onHideToggle: (hidden: boolean) => Promise<void>;
   onDelete: () => Promise<void>;
+  onVerifyAvailability?: () => Promise<void>;
 };
 
 const OUTCOMES: { value: OwnerAvailabilityOutcome; label: string }[] = [
@@ -31,8 +32,9 @@ export function OwnerListingManageSection({
   onOutcomeChange,
   onHideToggle,
   onDelete,
+  onVerifyAvailability,
 }: Props) {
-  const [busy, setBusy] = useState<'outcome' | 'hide' | 'delete' | null>(null);
+  const [busy, setBusy] = useState<'outcome' | 'hide' | 'delete' | 'verify' | null>(null);
   const closedOut = isOwnerClosedOutcome(item.ownerAvailabilityOutcome);
   const currentOutcome = (item.ownerAvailabilityOutcome ?? '').trim();
   const selectedOutcome: OwnerAvailabilityOutcome =
@@ -96,6 +98,30 @@ export function OwnerListingManageSection({
 
   return (
     <View style={styles.wrap}>
+      {onVerifyAvailability ? (
+        <Pressable
+          style={styles.verifyBtn}
+          disabled={busy != null}
+          onPress={async () => {
+            setBusy('verify');
+            try {
+              await onVerifyAvailability();
+            } finally {
+              setBusy(null);
+            }
+          }}
+        >
+          {busy === 'verify' ? (
+            <ActivityIndicator size="small" color={colors.heroText} />
+          ) : (
+            <>
+              <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+              <Text style={styles.verifyBtnText}>Verify availability</Text>
+            </>
+          )}
+        </Pressable>
+      ) : null}
+
       <Text style={styles.heading}>
         <Ionicons name="flag-outline" size={14} color={colors.slateMuted} /> Unit status
       </Text>
@@ -187,6 +213,24 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
+    gap: spacing.sm,
+  },
+  verifyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: '#eff6ff',
+  },
+  verifyBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
   },
   heading: {
     fontSize: 12,

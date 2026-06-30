@@ -84,7 +84,7 @@ export function AppNavMenu({
       .filter((g) => g.items.length > 0);
   }, [items, quickKeys]);
 
-  const displayName = profile?.fullName?.trim() || profile?.username || 'Guest';
+  const displayName = profile?.fullName?.trim() || profile?.username || t('common.guest');
   const initials = getProfileInitials(profile?.fullName);
   const accent = roleAccent(role);
   const primaryTarget = quickKeys[0];
@@ -97,7 +97,7 @@ export function AppNavMenu({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close menu" />
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t('common.closeMenu')} />
 
         <View
           style={[
@@ -144,7 +144,7 @@ export function AppNavMenu({
                 </Text>
                 <View style={[styles.rolePill, { backgroundColor: accent.bg, borderColor: accent.border }]}>
                   <Text style={[styles.roleText, { color: accent.text }]}>
-                    {getRoleLabel(role)}
+                    {getRoleLabel(role, t)}
                   </Text>
                 </View>
               </View>
@@ -184,12 +184,12 @@ export function AppNavMenu({
                 />
                 <Text style={styles.primaryCtaText}>
                   {isBuilderRole(role)
-                    ? 'Open builder dashboard'
+                    ? t('nav.ctaOpenBuilderDashboard')
                     : isAgentRole(role)
-                      ? 'Open agent dashboard'
+                      ? t('nav.ctaOpenAgentDashboard')
                       : isOwnerRole(role)
-                        ? 'My listings'
-                        : 'Search properties'}
+                        ? t('nav.ctaMyListings')
+                        : t('nav.ctaSearchProperties')}
                 </Text>
               </LinearGradient>
             </Pressable>

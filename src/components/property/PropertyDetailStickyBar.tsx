@@ -18,6 +18,9 @@ type Props = {
   mapLabel?: string;
 };
 
+/** Vertical clearance for floating support/chat FABs above the sticky action bar. */
+export const PROPERTY_DETAIL_STICKY_BAR_FLOAT_OFFSET = 76;
+
 export function PropertyDetailStickyBar({
   primaryLabel,
   primaryIcon = 'chatbubble-ellipses-outline',

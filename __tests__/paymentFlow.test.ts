@@ -1,8 +1,11 @@
+import { createTranslator } from '../src/i18n';
 import {
   isPaymentIncompleteMessage,
   paymentIncompleteAlert,
   routeForPaymentProduct,
 } from '../src/utils/paymentFlow';
+
+const t = createTranslator('en');
 
 describe('paymentFlow', () => {
   it('routes products back to the correct screen', () => {
@@ -18,7 +21,7 @@ describe('paymentFlow', () => {
   });
 
   it('uses friendly copy for abandoned checkout', () => {
-    const alert = paymentIncompleteAlert('Cashfree order is not paid yet.');
+    const alert = paymentIncompleteAlert(t, 'Cashfree order is not paid yet.');
     expect(alert.title).toBe('Payment not completed');
     expect(alert.body).toMatch(/left checkout/i);
   });

@@ -26,6 +26,7 @@ import { ScrollChromeBar } from '../components/ui/ScrollChromeBar';
 import { scrollLinkedHostStyle } from '../components/ui/ScrollLinkedOverlay';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
+import { useTranslation } from '../context/LocaleContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AgentDashboard'>;
 
@@ -52,6 +53,7 @@ export default function AgentDashboardScreen(props: Props) {
 }
 
 function AgentDashboardContent({ navigation }: Props) {
+  const { t } = useTranslation();
   const listRef = useRef<FlatListType<AgentListingSummary>>(null);
   const [profile, setProfile] = useState<AgentProfile | null>(null);
   const [listings, setListings] = useState<AgentListingSummary[]>([]);
@@ -102,7 +104,7 @@ function AgentDashboardContent({ navigation }: Props) {
         navigation.replace('AgentPendingApproval');
         return;
       }
-      setError(e instanceof ApiError ? e.message : 'Could not load dashboard');
+      setError(e instanceof ApiError ? e.message : t('agent.couldNotLoadDashboard'));
     } finally {
       setLoading(false);
     }
@@ -121,7 +123,7 @@ function AgentDashboardContent({ navigation }: Props) {
     <View style={[styles.wrap, scrollLinkedHostStyle]}>
       <ScrollChromeBar scrollY={scrollY} revealAt={280} overlay>
         <DashboardCompactBar
-          title="Agent dashboard"
+          title={t('agent.dashboard')}
           subtitle={`${listings.length} listings · ${publishCredits} publish slots`}
           onPress={scrollToTop}
         />
@@ -160,7 +162,7 @@ function AgentDashboardContent({ navigation }: Props) {
           }
           ListEmptyComponent={
             loading ? (
-              <BrandLoading fullScreen={false} message="Loading dashboard…" />
+              <BrandLoading fullScreen={false} message={t('agent.loading')} />
             ) : error ? (
               <View style={styles.centered}>
                 <Text style={styles.err}>{error}</Text>
@@ -171,7 +173,7 @@ function AgentDashboardContent({ navigation }: Props) {
             ) : (
               <View style={styles.empty}>
                 <Ionicons name="home-outline" size={40} color={colors.slateLight} />
-                <Text style={styles.emptyTitle}>No listings yet</Text>
+                <Text style={styles.emptyTitle}>{t('agent.noListings')}</Text>
                 <Text style={styles.emptySub}>
                   Purchase a publish plan, then post your first agent listing — same flow
                   as the web dashboard.
@@ -191,7 +193,7 @@ function AgentDashboardContent({ navigation }: Props) {
                       color={colors.heroText}
                     />
                     <Text style={styles.ctaText}>
-                      {publishCredits > 0 ? 'Post your first listing' : 'Get publish plan'}
+                      {publishCredits > 0 ? t('agent.postFirstListing') : t('agent.getPublishPlan')}
                     </Text>
                   </Pressable>
                 ) : null}

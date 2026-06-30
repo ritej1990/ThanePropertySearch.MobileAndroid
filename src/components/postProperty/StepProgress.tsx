@@ -2,7 +2,17 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { POST_PROPERTY_STEPS, type PostPropertyStepIndex } from '../../utils/postPropertyForm';
+import { useTranslation } from '../../context/LocaleContext';
+import type { TranslationKey } from '../../i18n';
 import { colors, radius, spacing } from '../../theme';
+
+const STEP_TITLE_KEYS: TranslationKey[] = [
+  'postProperty.stepBasics',
+  'postProperty.stepPricing',
+  'postProperty.stepDetails',
+  'postProperty.stepLocation',
+  'postProperty.stepPhotos',
+];
 
 type Props = {
   current: PostPropertyStepIndex;
@@ -11,6 +21,7 @@ type Props = {
 };
 
 export function StepProgress({ current, variant = 'light' }: Props) {
+  const { t } = useTranslation();
   const isLight = variant === 'light';
 
   return (
@@ -61,7 +72,7 @@ export function StepProgress({ current, variant = 'light' }: Props) {
                 ]}
                 numberOfLines={1}
               >
-                {step.title}
+                {t(STEP_TITLE_KEYS[index])}
               </Text>
             </View>
           );

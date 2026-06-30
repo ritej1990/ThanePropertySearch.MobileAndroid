@@ -13,6 +13,7 @@ import {
 } from '../storage/pendingPaymentStorage';
 import type { RootStackParamList } from '../navigation/types';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
+import { useTranslation } from '../context/LocaleContext';
 import {
   paymentIncompleteAlert,
   routeForPaymentProduct,
@@ -24,6 +25,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PaymentReturn'>;
 type Phase = 'activating' | 'success' | 'error';
 
 export default function PaymentReturnScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>('activating');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
@@ -58,9 +60,7 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
 
       if (!orderId || !product || amountInr == null) {
         if (!cancelled) {
-          setError(
-            'Missing payment details. Open checkout again from the plan or property page.'
-          );
+          setError(t('checkout.missingPaymentDetails'));
           setPhase('error');
         }
         return;
@@ -92,7 +92,7 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
         const message = e instanceof Error ? e.message : 'Payment activation failed';
         await clearPendingPayment();
         const dest = routeForPaymentProduct(product);
-        const alertCopy = paymentIncompleteAlert(message);
+        const alertCopy = paymentIncompleteAlert(t, message);
         navigation.replace(dest);
         setTimeout(() => {
           Alert.alert(alertCopy.title, alertCopy.body);
@@ -102,7 +102,7 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [navigation, route.params]);
+  }, [navigation, route.params, t]);
 
   const continueAfterSuccess = useCallback(() => {
     if (!resolved) {
@@ -141,6 +141,20 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
     [resolved]
   );
 
+  const retryLabel = useCallback(() => {
+    if (resolved?.product === 'contact_pack') return t('checkout.backToContactPack');
+    if (
+      resolved?.product === 'builder_upload' ||
+      resolved?.product === 'builder_leads'
+    ) {
+      return t('checkout.backToBuilderPayments');
+    }
+    if (resolved?.product === 'agent_publish' || resolved?.product === 'agent_leads') {
+      return t('checkout.backToAgentPayments');
+    }
+    return t('checkout.backToPlans');
+  }, [resolved?.product, t]);
+
   return (
     <AuthenticatedScreenLayout
       showFloatingActions={false}
@@ -151,9 +165,9 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
           <View style={styles.centered}>
             <BrandLoading
               fullScreen={false}
-              message="Confirming your payment…"
+              message={t('checkout.confirming')}
             />
-            <Text style={styles.statusHint}>This usually takes a few seconds.</Text>
+            <Text style={styles.statusHint}>{t('checkout.confirmingHint')}</Text>
           </View>
         ) : null}
 
@@ -175,33 +189,20 @@ export default function PaymentReturnScreen({ navigation, route }: Props) {
 
         {phase === 'error' ? (
           <View style={styles.errorCard}>
-            <Text style={styles.errorTitle}>Could not confirm payment</Text>
+            <Text style={styles.errorTitle}>{t('checkout.couldNotConfirm')}</Text>
             <Text style={styles.err}>{error}</Text>
-            <Text style={styles.hint}>
-              If money was deducted, wait a minute and open Plan payment again — we
-              will sync automatically.
-            </Text>
+            <Text style={styles.hint}>{t('checkout.syncHint')}</Text>
             <Pressable
               style={styles.retryBtn}
               onPress={() => navigation.replace(retryRoute())}
             >
-              <Text style={styles.retryText}>
-                {resolved?.product === 'contact_pack'
-                  ? 'Back to contact pack'
-                  : resolved?.product === 'builder_upload' ||
-                      resolved?.product === 'builder_leads'
-                    ? 'Back to builder payments'
-                    : resolved?.product === 'agent_publish' ||
-                        resolved?.product === 'agent_leads'
-                      ? 'Back to agent payments'
-                      : 'Back to plans'}
-              </Text>
+              <Text style={styles.retryText}>{retryLabel()}</Text>
             </Pressable>
             <Pressable
               style={styles.homeBtn}
               onPress={() => navigation.replace('Home')}
             >
-              <Text style={styles.homeBtnText}>Go home</Text>
+              <Text style={styles.homeBtnText}>{t('shared.goHome')}</Text>
             </Pressable>
           </View>
         ) : null}

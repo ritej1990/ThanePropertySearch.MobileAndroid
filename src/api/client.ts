@@ -1,10 +1,13 @@
 import { API_BASE_URL } from '../config/env';
+import { notifySessionExpired } from '../auth/sessionManager';
 import type { TokenStorage } from '../storage/tokenStorage';
 import { getAcceptLanguageHeader } from './localeHeader';
 
 export type ApiRequestInit = RequestInit & {
   /** When false, do not attach Bearer token (default true). */
   auth?: boolean;
+  /** When true, a 401 does not trigger global session expiry handling. */
+  skipSessionExpiry?: boolean;
 };
 
 function joinUrl(base: string, path: string): string {
@@ -29,10 +32,11 @@ export function createApiClient(tokenStorage: TokenStorage) {
     }
 
     const useAuth = init.auth !== false;
+    let bearerToken: string | null = null;
     if (useAuth) {
-      const token = await tokenStorage.getAccessToken();
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
+      bearerToken = await tokenStorage.getAccessToken();
+      if (bearerToken) {
+        headers.set('Authorization', `Bearer ${bearerToken}`);
       }
     }
 
@@ -62,6 +66,14 @@ export function createApiClient(tokenStorage: TokenStorage) {
         } catch {
           /* keep raw */
         }
+      }
+      if (
+        res.status === 401
+        && useAuth
+        && !init.skipSessionExpiry
+        && bearerToken
+      ) {
+        notifySessionExpired();
       }
       throw new ApiError(res.status, message, text);
     }

@@ -15,6 +15,8 @@ import {
 import type { RootStackParamList } from '../navigation/types';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
+import type { TranslateFn } from '../i18n';
 import {
   isPaymentAppDeepLink,
   openPaymentAppDeepLink,
@@ -26,18 +28,23 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CashfreeCheckout'>;
 function buildCheckoutHtml(
   paymentSessionId: string,
   environment: string,
-  returnUrl: string
+  returnUrl: string,
+  t: TranslateFn
 ): string {
   const mode = environment === 'production' ? 'production' : 'sandbox';
   const escapedSession = paymentSessionId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   const escapedReturn = returnUrl.replace(/'/g, "\\'");
+  const title = t('checkout.secureCheckoutTitle').replace(/'/g, "\\'");
+  const opening = t('checkout.openingCashfree').replace(/'/g, "\\'");
+  const couldNotStart = t('checkout.couldNotStartPayment').replace(/'/g, "\\'");
+  const goBackTryAgain = t('checkout.goBackTryAgain').replace(/'/g, "\\'");
 
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>Secure checkout</title>
+  <title>${title}</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f8fafc; color: #0f172a; text-align: center; }
     .box { max-width: 360px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; }
@@ -48,8 +55,8 @@ function buildCheckoutHtml(
 </head>
 <body>
   <div class="box">
-    <h1>Thane Flats — Secure checkout</h1>
-    <p id="status">Opening Cashfree payment…</p>
+    <h1>${title}</h1>
+    <p id="status">${opening}</p>
     <p class="err" id="err"></p>
   </div>
   <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
@@ -63,8 +70,8 @@ function buildCheckoutHtml(
         }
       }
       function fail(msg, cancelled) {
-        status.textContent = 'Could not start payment';
-        errEl.textContent = msg || 'Please go back and try again.';
+        status.textContent = '${couldNotStart}';
+        errEl.textContent = msg || '${goBackTryAgain}';
         if (cancelled) {
           notifyNative({ type: 'checkout_cancelled', message: msg || 'Payment cancelled.' });
         }
@@ -100,6 +107,7 @@ function buildCheckoutHtml(
 }
 
 export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const {
     paymentSessionId,
     orderId,
@@ -125,8 +133,8 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
   const returnUrlTemplate = cashfreeReturnUrlForProduct(product, tierCode);
   const returnUrl = resolveReturnUrl(returnUrlTemplate, orderId);
   const html = useMemo(
-    () => buildCheckoutHtml(paymentSessionId, environment, returnUrl),
-    [paymentSessionId, environment, returnUrl]
+    () => buildCheckoutHtml(paymentSessionId, environment, returnUrl, t),
+    [paymentSessionId, environment, returnUrl, t]
   );
 
   const exitCheckout = useCallback(
@@ -137,11 +145,11 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
       navigation.goBack();
       if (message) {
         setTimeout(() => {
-          Alert.alert('Payment not completed', message);
+          Alert.alert(t('checkout.notCompleted'), message);
         }, 200);
       }
     },
-    [navigation]
+    [navigation, t]
   );
 
   const handleReturn = useCallback(
@@ -174,8 +182,8 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
         void openPaymentAppDeepLink(url).then((opened) => {
           if (!opened) {
             Alert.alert(
-              'Payment app not found',
-              'Install Google Pay, PhonePe, Paytm, or another UPI app to complete payment.'
+              t('checkout.paymentAppNotFound'),
+              t('checkout.paymentAppNotFoundBody')
             );
           }
         });
@@ -184,7 +192,7 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
 
       return true;
     },
-    [handleReturn]
+    [handleReturn, t]
   );
 
   function onNavigationChange(nav: WebViewNavigation) {
@@ -192,22 +200,16 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
   }
 
   function confirmLeaveCheckout() {
-    Alert.alert(
-      'Leave checkout?',
-      'Payment is not complete. You can return and try again anytime.',
-      [
-        { text: 'Stay', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: () => {
-            exitCheckout(
-              'You left checkout before payment finished. No charge was made.'
-            );
-          },
+    Alert.alert(t('checkout.leaveCheckoutTitle'), t('checkout.leaveCheckoutBody'), [
+      { text: t('checkout.stay'), style: 'cancel' },
+      {
+        text: t('checkout.leave'),
+        style: 'destructive',
+        onPress: () => {
+          exitCheckout(t('checkout.leftEarly'));
         },
-      ]
-    );
+      },
+    ]);
   }
 
   return (
@@ -233,21 +235,16 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
                 message?: string;
               };
               if (data.type === 'checkout_cancelled') {
-                exitCheckout(
-                  data.message ||
-                    'You left checkout before payment finished. No charge was made.'
-                );
+                exitCheckout(data.message || t('checkout.leftEarly'));
               }
             } catch {
               /* ignore malformed messages */
             }
           }}
           onError={() => {
-            Alert.alert(
-              'Checkout error',
-              'Could not load secure payment page. Try again.',
-              [{ text: 'OK', onPress: () => navigation.goBack() }]
-            );
+            Alert.alert(t('checkout.checkoutError'), t('checkout.checkoutErrorBody'), [
+              { text: t('common.ok'), onPress: () => navigation.goBack() },
+            ]);
           }}
           style={styles.webview}
           javaScriptEnabled
@@ -259,7 +256,7 @@ export default function CashfreeCheckoutScreen({ navigation, route }: Props) {
           renderLoading={() => (
             <BrandLoading
               fullScreen={false}
-              message="Opening secure checkout…"
+              message={t('checkout.loading')}
             />
           )}
         />

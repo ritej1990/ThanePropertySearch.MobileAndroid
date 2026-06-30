@@ -13,11 +13,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { aiApi } from '../../api/singleton';
 import { ApiError } from '../../api/client';
 import { AiHubSection } from './AiHubSection';
+import { useTranslation } from '../../context/LocaleContext';
+import type { TranslateFn } from '../../i18n';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
   listingId: number;
   propertyTitle: string;
+  onComposerFocus?: () => void;
 };
 
 type ChatMessage = {
@@ -26,16 +29,21 @@ type ChatMessage = {
   text: string;
 };
 
-function propertyPrompts(title: string): string[] {
+function propertyPrompts(title: string, t: TranslateFn): string[] {
   return [
-    `Is "${title}" fairly priced for Thane?`,
-    'How is connectivity and commute from this property?',
-    'What should I ask the owner before finalizing?',
+    t('aiCopilot.promptFairPrice', { title }),
+    t('aiCopilot.promptCommute'),
+    t('aiCopilot.promptAskOwner'),
   ];
 }
 
 /** Property-scoped advisor chat — mirrors web AI Property Copilot. */
-export function AiPropertyCopilot({ listingId, propertyTitle }: Props) {
+export function AiPropertyCopilot({
+  listingId,
+  propertyTitle,
+  onComposerFocus,
+}: Props) {
+  const { t } = useTranslation();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [starting, setStarting] = useState(true);
@@ -57,17 +65,17 @@ export function AiPropertyCopilot({ listingId, propertyTitle }: Props) {
         {
           id: 'welcome',
           role: 'assistant',
-          text: `I'm your AI Property Copilot for "${propertyTitle}". Ask about fair price, commute, society, negotiation, or what to verify before you book a visit.`,
+          text: t('aiCopilot.welcome', { title: propertyTitle }),
         },
       ]);
     } catch (e) {
       setStartError(
-        e instanceof ApiError ? e.message : 'Could not start the property copilot.'
+        e instanceof ApiError ? e.message : t('aiCopilot.couldNotStart')
       );
     } finally {
       setStarting(false);
     }
-  }, [listingId, propertyTitle]);
+  }, [listingId, propertyTitle, t]);
 
   useEffect(() => {
     void startConversation();
@@ -91,7 +99,7 @@ export function AiPropertyCopilot({ listingId, propertyTitle }: Props) {
       ]);
     } catch (e) {
       const message =
-        e instanceof ApiError ? e.message : 'Could not reach the property copilot.';
+        e instanceof ApiError ? e.message : t('aiCopilot.couldNotReach');
       setMessages((prev) => [
         ...prev,
         { id: `err-${Date.now()}`, role: 'assistant', text: message },
@@ -104,21 +112,21 @@ export function AiPropertyCopilot({ listingId, propertyTitle }: Props) {
 
   return (
     <AiHubSection
-      eyebrow="ThaneFlats AI"
-      title="AI Property Copilot"
-      subtitle="Chat about this listing — price, area & visit checklist"
+      eyebrow={t('aiCopilot.eyebrow')}
+      title={t('aiCopilot.title')}
+      subtitle={t('aiCopilot.subtitle')}
       defaultExpanded={false}
     >
       {starting ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color="#7c3aed" />
-          <Text style={styles.loadingText}>Starting copilot…</Text>
+          <Text style={styles.loadingText}>{t('aiCopilot.starting')}</Text>
         </View>
       ) : startError ? (
         <View style={styles.errorBlock}>
           <Text style={styles.errorText}>{startError}</Text>
           <Pressable style={styles.retryBtn} onPress={startConversation}>
-            <Text style={styles.retryText}>Try again</Text>
+            <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -151,7 +159,7 @@ export function AiPropertyCopilot({ listingId, propertyTitle }: Props) {
             ListFooterComponent={
               messages.length === 1 ? (
                 <View style={styles.promptRow}>
-                  {propertyPrompts(propertyTitle).map((p) => (
+                  {propertyPrompts(propertyTitle, t).map((p) => (
                     <Pressable key={p} style={styles.promptChip} onPress={() => send(p)}>
                       <Text style={styles.promptChipText}>{p}</Text>
                     </Pressable>
@@ -166,10 +174,11 @@ export function AiPropertyCopilot({ listingId, propertyTitle }: Props) {
               style={styles.input}
               value={input}
               onChangeText={setInput}
-              placeholder="Ask about this property…"
+              placeholder={t('aiCopilot.placeholder')}
               placeholderTextColor={colors.slateLight}
               multiline
               editable={!sending}
+              onFocus={onComposerFocus}
             />
             <Pressable
               style={[styles.sendBtn, (!input.trim() || sending) && styles.sendBtnDisabled]}

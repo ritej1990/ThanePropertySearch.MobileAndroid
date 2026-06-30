@@ -1,4 +1,7 @@
+import { screensEn } from './screens/en';
+
 export const en = {
+  ...screensEn,
   language: {
     label: 'Language',
     english: 'English',
@@ -39,6 +42,8 @@ export const en = {
     homeLoan: 'Home loan',
     open: 'Open',
     more: 'More',
+    guest: 'Guest',
+    closeMenu: 'Close menu',
   },
   header: {
     tagline: 'Thane property search',
@@ -48,6 +53,11 @@ export const en = {
     dismissVerifyEmail: 'Dismiss email reminder',
     resendEmail: 'Resend verification email',
     sending: 'Sending…',
+    emailMissing: 'Email missing',
+    emailMissingBody: 'No email on your account.',
+    emailAlreadyVerified: 'Your email is already verified.',
+    verificationEmailSent: 'Verification email sent. Check your inbox.',
+    couldNotSendVerification: 'Could not send verification email.',
   },
   nav: {
     sectionExplore: 'Explore',
@@ -88,6 +98,16 @@ export const en = {
     myChatsSub: 'Negotiations with owners',
     support: 'Support',
     supportSub: 'Help desk & tickets',
+    ctaSearchProperties: 'Search properties',
+    ctaMyListings: 'My listings',
+    ctaOpenAgentDashboard: 'Open agent dashboard',
+    ctaOpenBuilderDashboard: 'Open builder dashboard',
+  },
+  roles: {
+    user: 'User',
+    owner: 'Owner',
+    builder: 'Builder',
+    agent: 'Agent',
   },
   auth: {
     signInContinue: 'Sign in to continue',
@@ -123,14 +143,23 @@ export const en = {
     otpEnterCode: 'Enter the OTP sent by SMS.',
     otpSendFailed: 'Could not send SMS OTP. Try again.',
     otpVerifyFailed: 'Invalid OTP. Try again.',
-  },
-  search: {
-    homesWithinKm: '{{count}} homes within {{km}} km',
-    homesInThane: '{{count}} of {{total}} homes in Thane',
-    mapUnavailable: 'Map view unavailable',
-    listView: 'List view',
-    mapView: 'Map view',
-    viewMode: 'Search view mode',
+    email: 'Email',
+    emailPlaceholder: 'name@example.com',
+    forgotPasswordEyebrow: 'Account recovery',
+    forgotPasswordTitle: 'Forgot password',
+    forgotPasswordSub:
+      'Enter your registered email. We will send a secure reset link you can open from your inbox.',
+    forgotPasswordSendLink: 'Send reset link',
+    forgotPasswordLinkSent: 'Link sent',
+    forgotPasswordBackToSignIn: 'Back to sign in',
+    forgotPasswordBackA11y: 'Back to sign in',
+    forgotPasswordEmailRequired: 'Email required',
+    forgotPasswordEnterEmail: 'Enter the email address linked to your account.',
+    forgotPasswordCheckEmail: 'Check your email',
+    forgotPasswordCheckEmailBody:
+      'If this email exists, a password reset link has been sent.',
+    forgotPasswordSendFailed: 'Could not send reset link',
+    forgotPasswordTryAgain: 'Try again in a moment.',
   },
   plan: {
     expired: 'Expired',

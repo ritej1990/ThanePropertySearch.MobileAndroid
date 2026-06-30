@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { aiApi } from '../../api/singleton';
 import type { NearbyPlaceCategory } from '../../api/aiTypes';
 import { AiHubSection } from './AiHubSection';
+import { useTranslation } from '../../context/LocaleContext';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = {
@@ -21,7 +22,13 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   bus: 'bus-outline',
 };
 
-function CategoryBlock({ category }: { category: NearbyPlaceCategory }) {
+function CategoryBlock({
+  category,
+  t,
+}: {
+  category: NearbyPlaceCategory;
+  t: ReturnType<typeof useTranslation>['t'];
+}) {
   const icon = CATEGORY_ICONS[category.key] ?? 'location-outline';
 
   return (
@@ -38,8 +45,12 @@ function CategoryBlock({ category }: { category: NearbyPlaceCategory }) {
           </View>
           <View style={styles.placeMeta}>
             <Text style={styles.placeDistance}>{place.distanceLabel}</Text>
-            <Text style={styles.placeDrive}>{place.driveMinutes} min drive</Text>
-            <Text style={styles.placeFare}>Auto {place.autoFareLabel}</Text>
+            <Text style={styles.placeDrive}>
+              {t('aiLocation.minDrive', { minutes: place.driveMinutes })}
+            </Text>
+            <Text style={styles.placeFare}>
+              {t('aiLocation.autoFare', { fare: place.autoFareLabel })}
+            </Text>
           </View>
         </View>
       ))}
@@ -49,6 +60,7 @@ function CategoryBlock({ category }: { category: NearbyPlaceCategory }) {
 
 /** GET /api/ai/property/{id}/location-intelligence — mirrors web Location Intelligence hub. */
 export function AiLocationIntelligence({ listingId }: Props) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [summary, setSummary] = useState('');
@@ -81,14 +93,14 @@ export function AiLocationIntelligence({ listingId }: Props) {
   if (loading) {
     return (
       <AiHubSection
-        eyebrow="ThaneFlats AI"
-        title="Location Intelligence"
-        subtitle="Nearby Places & Auto Fare Guide"
+        eyebrow={t('aiLocation.eyebrow')}
+        title={t('aiLocation.title')}
+        subtitle={t('aiLocation.subtitle')}
         collapsible={false}
       >
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color="#7c3aed" />
-          <Text style={styles.loadingText}>Mapping nearby places…</Text>
+          <Text style={styles.loadingText}>{t('aiLocation.loading')}</Text>
         </View>
       </AiHubSection>
     );
@@ -98,13 +110,13 @@ export function AiLocationIntelligence({ listingId }: Props) {
 
   return (
     <AiHubSection
-      eyebrow="ThaneFlats AI"
-      title="Location Intelligence"
-      subtitle="Nearby Places & Auto Fare Guide"
+      eyebrow={t('aiLocation.eyebrow')}
+      title={t('aiLocation.title')}
+      subtitle={t('aiLocation.subtitle')}
     >
       {summary ? <Text style={styles.summary}>{summary}</Text> : null}
       {categories.map((category) => (
-        <CategoryBlock key={category.key} category={category} />
+        <CategoryBlock key={category.key} category={category} t={t} />
       ))}
       {disclaimer ? <Text style={styles.disclaimer}>{disclaimer}</Text> : null}
     </AiHubSection>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   Pressable,
@@ -45,8 +46,33 @@ import {
   type OwnerListFilter,
 } from '../utils/ownerDashboard';
 import { isOwnerRole } from '../utils/roles';
+import { useTranslation } from '../context/LocaleContext';
+import type { TranslateFn } from '../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OwnerDashboard'>;
+
+function ownerFilterLabel(t: TranslateFn, key: OwnerListFilter): string {
+  switch (key) {
+    case 'all':
+      return t('shared.all');
+    case 'approved':
+      return t('statusLabels.approved');
+    case 'pending':
+      return t('statusLabels.pending');
+    case 'rejected':
+      return t('statusLabels.rejected');
+    case 'needs-reply':
+      return t('owner.filterNeedsReply');
+    case 'rented':
+      return t('owner.rented');
+    case 'sold':
+      return t('owner.filterSold');
+    case 'expired':
+      return t('owner.filterExpired');
+    default:
+      return key;
+  }
+}
 
 export default function OwnerDashboardScreen(props: Props) {
   return (
@@ -59,6 +85,7 @@ export default function OwnerDashboardScreen(props: Props) {
 function OwnerDashboardContent({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatListType<OwnerDashboardItem>>(null);
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const { showToast } = useToast();
   const [rows, setRows] = useState<OwnerDashboardItem[]>([]);
@@ -87,15 +114,15 @@ function OwnerDashboardContent({ navigation }: Props) {
         .catch(() => setPlanSummary(null));
     } catch (e) {
       if (e instanceof ApiError && e.status === 403) {
-        setError('Owner access only. Sign in with an owner account.');
+        setError(t('owner.ownerOnly'));
       } else {
-        setError(e instanceof ApiError ? e.message : 'Could not load dashboard');
+        setError(e instanceof ApiError ? e.message : t('owner.couldNotLoadDashboard'));
       }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -141,19 +168,19 @@ function OwnerDashboardContent({ navigation }: Props) {
           isHiddenFromSearch: outcome ? previous.isHiddenFromSearch : false,
         });
         showToast({
-          message: readApiMessage(res) || 'Unit status updated',
+          message: readApiMessage(res) || t('owner.unitStatusUpdated'),
           variant: 'success',
         });
       } catch (e) {
         patchListing(item.id, previous);
         showToast({
-          message: e instanceof ApiError ? e.message : 'Could not update unit status',
+          message: e instanceof ApiError ? e.message : t('owner.couldNotUpdateUnit'),
           variant: 'error',
         });
         throw e;
       }
     },
-    [patchListing, showToast]
+    [patchListing, showToast, t]
   );
 
   const handleHideToggle = useCallback(
@@ -164,19 +191,21 @@ function OwnerDashboardContent({ navigation }: Props) {
         const res = await propertiesApi.setOwnerHideFromSearch(item.id, hidden);
         patchListing(item.id, { isHiddenFromSearch: readApiHidden(res) });
         showToast({
-          message: readApiMessage(res) || (hidden ? 'Hidden from search' : 'Visible in search'),
+          message:
+            readApiMessage(res) ||
+            (hidden ? t('owner.hiddenFromSearch') : t('owner.visibleInSearch')),
           variant: 'success',
         });
       } catch (e) {
         patchListing(item.id, { isHiddenFromSearch: previousHidden });
         showToast({
-          message: e instanceof ApiError ? e.message : 'Could not update visibility',
+          message: e instanceof ApiError ? e.message : t('owner.couldNotUpdateVisibility'),
           variant: 'error',
         });
         throw e;
       }
     },
-    [patchListing, showToast]
+    [patchListing, showToast, t]
   );
 
   const handleDelete = useCallback(
@@ -185,18 +214,96 @@ function OwnerDashboardContent({ navigation }: Props) {
         const res = await propertiesApi.deleteOwnerListing(item.id);
         setRows((prev) => prev.filter((row) => row.id !== item.id));
         showToast({
-          message: readApiMessage(res) || 'Listing deleted',
+          message: readApiMessage(res) || t('owner.listingDeleted'),
           variant: 'success',
         });
       } catch (e) {
         showToast({
-          message: e instanceof ApiError ? e.message : 'Could not delete listing',
+          message: e instanceof ApiError ? e.message : t('owner.couldNotDelete'),
           variant: 'error',
         });
         throw e;
       }
     },
-    [showToast]
+    [showToast, t]
+  );
+
+  const handleVerifyAvailability = useCallback(
+    (item: OwnerDashboardItem) =>
+      new Promise<void>((resolve, reject) => {
+        Alert.alert(
+          t('owner.verifyAvailability'),
+          t('owner.verifyPrompt', { title: item.title }),
+          [
+            { text: t('common.cancel'), style: 'cancel', onPress: () => reject(new Error('cancelled')) },
+            {
+              text: t('owner.stillAvailable'),
+              onPress: async () => {
+                try {
+                  const res = await propertiesApi.verifyPropertyAvailability(item.id, 'AVAILABLE');
+                  patchListing(item.id, {
+                    availabilityVerificationStatus: 'VERIFIED',
+                    autoHidden: false,
+                    isHiddenFromSearch: false,
+                    lastVerifiedAtUtc: new Date().toISOString(),
+                  });
+                  showToast({ message: res.message, variant: 'success' });
+                  resolve();
+                } catch (e) {
+                  showToast({
+                    message: e instanceof ApiError ? e.message : t('owner.couldNotVerify'),
+                    variant: 'error',
+                  });
+                  reject(e);
+                }
+              },
+            },
+            {
+              text: t('owner.sold'),
+              onPress: async () => {
+                try {
+                  const res = await propertiesApi.verifyPropertyAvailability(item.id, 'SOLD');
+                  patchListing(item.id, {
+                    availabilityVerificationStatus: 'SOLD',
+                    isHiddenFromSearch: true,
+                    ownerAvailabilityOutcome: 'Sold',
+                  });
+                  showToast({ message: res.message, variant: 'success' });
+                  resolve();
+                } catch (e) {
+                  showToast({
+                    message: e instanceof ApiError ? e.message : t('owner.couldNotUpdate'),
+                    variant: 'error',
+                  });
+                  reject(e);
+                }
+              },
+            },
+            {
+              text: t('owner.rented'),
+              onPress: async () => {
+                try {
+                  const res = await propertiesApi.verifyPropertyAvailability(item.id, 'RENTED');
+                  patchListing(item.id, {
+                    availabilityVerificationStatus: 'RENTED',
+                    isHiddenFromSearch: true,
+                    ownerAvailabilityOutcome: 'Rented',
+                  });
+                  showToast({ message: res.message, variant: 'success' });
+                  resolve();
+                } catch (e) {
+                  showToast({
+                    message: e instanceof ApiError ? e.message : t('owner.couldNotUpdate'),
+                    variant: 'error',
+                  });
+                  reject(e);
+                }
+              },
+            },
+          ]
+        );
+      }),
+    [patchListing, showToast, t]
   );
 
   const handleResubmit = useCallback(
@@ -204,16 +311,16 @@ function OwnerDashboardContent({ navigation }: Props) {
       try {
         const res = await propertiesApi.resubmitForReview(item.id);
         patchListing(item.id, { reviewStatus: res.reviewStatus, verificationDetail: null });
-        showToast({ message: res.message || 'Resubmitted for review', variant: 'success' });
+        showToast({ message: res.message || t('owner.resubmitted'), variant: 'success' });
       } catch (e) {
         showToast({
-          message: e instanceof ApiError ? e.message : 'Could not resubmit',
+          message: e instanceof ApiError ? e.message : t('owner.couldNotResubmit'),
           variant: 'error',
         });
         throw e;
       }
     },
-    [patchListing, showToast]
+    [patchListing, showToast, t]
   );
 
   const handleViewVisitRequests = useCallback(
@@ -232,12 +339,11 @@ function OwnerDashboardContent({ navigation }: Props) {
 
   if (!isOwner) {
     return (
-      <BrandLoading message="Loading…" />
+      <BrandLoading message={t('shared.loading')} />
     );
   }
 
-  const filterLabel =
-    OWNER_LIST_FILTERS.find((f) => f.key === listFilter)?.label ?? 'All';
+  const filterLabel = ownerFilterLabel(t, listFilter);
 
   const listHeader = (
     <View>
@@ -255,10 +361,8 @@ function OwnerDashboardContent({ navigation }: Props) {
 
       {planSummary ? <OwnerListingPlanCard summary={planSummary} /> : null}
 
-      <Text style={styles.sectionTitle}>Your listings</Text>
-      <Text style={styles.sectionSub}>
-        Update unit status, hide from search, or delete — same as the web owner dashboard
-      </Text>
+      <Text style={styles.sectionTitle}>{t('owner.yourListings')}</Text>
+      <Text style={styles.sectionSub}>{t('owner.sectionSub')}</Text>
 
       <ScrollView
         horizontal
@@ -277,15 +381,16 @@ function OwnerDashboardContent({ navigation }: Props) {
                 listFilter === f.key && styles.filterTextOn,
               ]}
             >
-              {f.label}
+              {ownerFilterLabel(t, f.key)}
             </Text>
           </Pressable>
         ))}
       </ScrollView>
 
       <Text style={styles.resultCount}>
-        {filtered.length} {filtered.length === 1 ? 'listing' : 'listings'}
-        {listFilter !== 'all' ? ' in this view' : ''}
+        {filtered.length}{' '}
+        {filtered.length === 1 ? t('owner.listing') : t('owner.listings')}
+        {listFilter !== 'all' ? t('owner.inThisView') : ''}
       </Text>
     </View>
   );
@@ -294,20 +399,23 @@ function OwnerDashboardContent({ navigation }: Props) {
     <View style={[styles.wrap, scrollLinkedHostStyle]}>
       <ScrollChromeBar scrollY={scrollY} revealAt={220} overlay>
         <DashboardCompactBar
-          title="Owner dashboard"
-          subtitle={`${filtered.length} listings · ${filterLabel}`}
+          title={t('owner.dashboard')}
+          subtitle={t('owner.compactSubtitle', {
+            count: filtered.length,
+            filter: filterLabel,
+          })}
           onPress={scrollToTop}
         />
       </ScrollChromeBar>
 
       {loading && rows.length === 0 ? (
-        <BrandLoading message="Loading your dashboard…" />
+        <BrandLoading message={t('owner.loading')} />
       ) : error ? (
         <View style={styles.centered}>
-          <Text style={styles.errTitle}>Dashboard unavailable</Text>
+          <Text style={styles.errTitle}>{t('owner.unavailable')}</Text>
           <Text style={styles.err}>{error}</Text>
           <Pressable style={styles.retry} onPress={() => load()}>
-            <Text style={styles.retryText}>Try again</Text>
+            <Text style={styles.retryText}>{t('shared.tryAgain')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -341,27 +449,27 @@ function OwnerDashboardContent({ navigation }: Props) {
               <Text style={styles.emptyIcon}>🏠</Text>
               <Text style={styles.emptyTitle}>
                 {listFilter === 'all'
-                  ? 'No listings yet'
-                  : 'Nothing in this filter'}
+                  ? t('owner.noListings')
+                  : t('owner.nothingInFilter')}
               </Text>
               <Text style={styles.empty}>
                 {listFilter === 'all'
-                  ? 'Post your first property — it will appear here with inquiries and review status.'
-                  : 'Try another filter or add more listings.'}
+                  ? t('owner.emptyAll')
+                  : t('owner.emptyFilter')}
               </Text>
               {listFilter === 'all' ? (
                 <Pressable
                   style={styles.emptyBtn}
                   onPress={() => navigation.navigate('PostProperty')}
                 >
-                  <Text style={styles.emptyBtnText}>Post property</Text>
+                  <Text style={styles.emptyBtnText}>{t('shared.postProperty')}</Text>
                 </Pressable>
               ) : (
                 <Pressable
                   style={styles.emptyBtn}
                   onPress={() => navigation.navigate('Home')}
                 >
-                  <Text style={styles.emptyBtnText}>Browse Thane market</Text>
+                  <Text style={styles.emptyBtnText}>{t('owner.browseMarket')}</Text>
                 </Pressable>
               )}
             </View>
@@ -385,6 +493,7 @@ function OwnerDashboardContent({ navigation }: Props) {
               onOutcomeChange={(outcome) => handleOutcomeChange(item, outcome)}
               onHideToggle={(hidden) => handleHideToggle(item, hidden)}
               onDelete={() => handleDelete(item)}
+              onVerifyAvailability={() => handleVerifyAvailability(item)}
               onResubmit={() => handleResubmit(item)}
               onViewVisitRequests={() => handleViewVisitRequests(item)}
               onViewClarification={handleViewClarification}

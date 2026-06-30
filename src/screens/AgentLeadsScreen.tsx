@@ -15,14 +15,17 @@ import type { AgentLead } from '../api/agentTypes';
 import { ApiError } from '../api/client';
 import { AuthenticatedScreenLayout } from '../components/layout/AuthenticatedScreenLayout';
 import { BrandLoading } from '../components/ui/BrandLoading';
+import { useTranslation } from '../context/LocaleContext';
+import { localeToCulture } from '../i18n/types';
+import type { AppLocale } from '../i18n/types';
 import type { RootStackParamList } from '../navigation/types';
 import { colors, radius, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AgentLeads'>;
 
-function formatWhen(iso: string) {
+function formatWhen(iso: string, locale: AppLocale) {
   try {
-    return new Date(iso).toLocaleString(undefined, {
+    return new Date(iso).toLocaleString(localeToCulture(locale), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -35,6 +38,7 @@ function formatWhen(iso: string) {
 }
 
 export default function AgentLeadsScreen({ navigation }: Props) {
+  const { t, locale } = useTranslation();
   const [rows, setRows] = useState<AgentLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,11 +49,11 @@ export default function AgentLeadsScreen({ navigation }: Props) {
       const data = await agentLeadsApi.listMine();
       setRows(data);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not load leads');
+      setError(e instanceof ApiError ? e.message : t('agent.couldNotLoadLeads'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,19 +66,17 @@ export default function AgentLeadsScreen({ navigation }: Props) {
     <AuthenticatedScreenLayout showBack onBack={() => navigation.goBack()}>
       <View style={styles.wrap}>
         <View style={styles.header}>
-          <Text style={styles.title}>Lead enquiries</Text>
-          <Text style={styles.sub}>
-            Buyer enquiries unlocked with your lead credits — same as the web agent dashboard.
-          </Text>
+          <Text style={styles.title}>{t('agent.leadsTitle')}</Text>
+          <Text style={styles.sub}>{t('agent.leadsSub')}</Text>
         </View>
 
         {loading ? (
-          <BrandLoading fullScreen={false} message="Loading leads…" />
+          <BrandLoading fullScreen={false} message={t('agent.loadingLeads')} />
         ) : error ? (
           <View style={styles.centered}>
             <Text style={styles.err}>{error}</Text>
             <Pressable style={styles.retry} onPress={load}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t('shared.retry')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -85,24 +87,23 @@ export default function AgentLeadsScreen({ navigation }: Props) {
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Ionicons name="mail-open-outline" size={40} color={colors.slateLight} />
-                <Text style={styles.emptyTitle}>No leads yet</Text>
-                <Text style={styles.emptySub}>
-                  Buy a lead pack from Plans & payments. Enquiries appear here once unlocked.
-                </Text>
+                <Text style={styles.emptyTitle}>{t('agent.noLeads')}</Text>
+                <Text style={styles.emptySub}>{t('agent.noLeadsEmptySub')}</Text>
                 <Pressable
                   style={styles.cta}
                   onPress={() => navigation.navigate('AgentPayments')}
                 >
-                  <Text style={styles.ctaText}>View plans</Text>
+                  <Text style={styles.ctaText}>{t('agent.viewPlans')}</Text>
                 </Pressable>
               </View>
             }
             renderItem={({ item }) => (
               <View style={styles.card}>
                 <Text style={styles.listingTitle} numberOfLines={2}>
-                  {item.listingTitle || `Listing #${item.listingId}`}
+                  {item.listingTitle ||
+                    t('agent.listingFallback', { id: item.listingId })}
                 </Text>
-                <Text style={styles.when}>{formatWhen(item.createdAtUtc)}</Text>
+                <Text style={styles.when}>{formatWhen(item.createdAtUtc, locale)}</Text>
                 <View style={styles.contactRow}>
                   <Ionicons name="person-outline" size={16} color={colors.teal} />
                   <Text style={styles.contactText}>{item.name}</Text>
